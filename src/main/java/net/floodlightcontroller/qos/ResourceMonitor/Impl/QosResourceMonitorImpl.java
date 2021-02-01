@@ -1,13 +1,13 @@
-package net.floodlightcontroller.qos.StatusMonitor.Impl;
+package net.floodlightcontroller.qos.ResourceMonitor.Impl;
 
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.module.FloodlightModuleException;
 import net.floodlightcontroller.core.module.IFloodlightService;
 import net.floodlightcontroller.core.types.NodePortTuple;
-import net.floodlightcontroller.qos.StatusMonitor.MonitorBandwidthService;
-import net.floodlightcontroller.qos.StatusMonitor.MonitorDelayService;
-import net.floodlightcontroller.qos.StatusMonitor.MonitorPkLossService;
-import net.floodlightcontroller.qos.StatusMonitor.QosStatusMonitor;
+import net.floodlightcontroller.qos.ResourceMonitor.MonitorBandwidthService;
+import net.floodlightcontroller.qos.ResourceMonitor.MonitorDelayService;
+import net.floodlightcontroller.qos.ResourceMonitor.MonitorPkLossService;
+import net.floodlightcontroller.qos.ResourceMonitor.QosResourceMonitor;
 import net.floodlightcontroller.statistics.SwitchPortBandwidth;
 
 import java.util.Collection;
@@ -17,7 +17,7 @@ import java.util.Map;
  * @author Michael Kang
  * @create 2021-01-29 下午 06:15
  */
-public class QosStatusMonitorImpl implements QosStatusMonitor {
+public class QosResourceMonitorImpl implements QosResourceMonitor {
     /**
      * fixme: 这里的成员声明为什么是protected
      * todo: 完成资源监视模块

@@ -1,4 +1,4 @@
-package net.floodlightcontroller.qos.StatusMonitor;
+package net.floodlightcontroller.qos.ResourceMonitor;
 
 import net.floodlightcontroller.core.IOFMessageListener;
 import net.floodlightcontroller.core.IOFSwitchListener;

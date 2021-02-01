@@ -1,4 +1,4 @@
-package net.floodlightcontroller.qos.StatusMonitor.Impl;
+package net.floodlightcontroller.qos.ResourceMonitor.Impl;
 
 import com.google.common.primitives.UnsignedLong;
 import com.google.common.util.concurrent.ListenableFuture;
@@ -10,7 +10,7 @@ import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.module.FloodlightModuleException;
 import net.floodlightcontroller.core.module.IFloodlightService;
 import net.floodlightcontroller.core.types.NodePortTuple;
-import net.floodlightcontroller.qos.StatusMonitor.MonitorPkLossService;
+import net.floodlightcontroller.qos.ResourceMonitor.MonitorPkLossService;
 import net.floodlightcontroller.statistics.IStatisticsService;
 import net.floodlightcontroller.statistics.StatisticsCollector;
 import net.floodlightcontroller.threadpool.IThreadPoolService;

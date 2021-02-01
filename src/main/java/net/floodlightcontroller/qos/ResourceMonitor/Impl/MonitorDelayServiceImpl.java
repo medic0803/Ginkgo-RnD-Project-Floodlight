@@ -1,4 +1,4 @@
-package net.floodlightcontroller.qos.StatusMonitor.Impl;
+package net.floodlightcontroller.qos.ResourceMonitor.Impl;
 
 import net.floodlightcontroller.core.FloodlightContext;
 import net.floodlightcontroller.core.IFloodlightProviderService;
@@ -11,7 +11,7 @@ import net.floodlightcontroller.core.module.IFloodlightService;
 import net.floodlightcontroller.linkdiscovery.ILinkDiscoveryService;
 import net.floodlightcontroller.linkdiscovery.Link;
 import net.floodlightcontroller.linkdiscovery.internal.LinkInfo;
-import net.floodlightcontroller.qos.StatusMonitor.MonitorDelayService;
+import net.floodlightcontroller.qos.ResourceMonitor.MonitorDelayService;
 import net.floodlightcontroller.threadpool.IThreadPoolService;
 import org.projectfloodlight.openflow.protocol.OFMessage;
 import org.projectfloodlight.openflow.protocol.OFPortDesc;
