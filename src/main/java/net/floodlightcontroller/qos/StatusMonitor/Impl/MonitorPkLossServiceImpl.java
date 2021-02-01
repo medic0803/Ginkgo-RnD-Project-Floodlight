@@ -1,4 +1,4 @@
-package net.floodlightcontroller.qos.StatusMonitor.Iml;
+package net.floodlightcontroller.qos.StatusMonitor.Impl;
 
 import com.google.common.primitives.UnsignedLong;
 import com.google.common.util.concurrent.ListenableFuture;
@@ -10,7 +10,7 @@ import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.module.FloodlightModuleException;
 import net.floodlightcontroller.core.module.IFloodlightService;
 import net.floodlightcontroller.core.types.NodePortTuple;
-import net.floodlightcontroller.qos.StatusMonitor.MonitorPkLossStatus;
+import net.floodlightcontroller.qos.StatusMonitor.MonitorPkLossService;
 import net.floodlightcontroller.statistics.IStatisticsService;
 import net.floodlightcontroller.statistics.StatisticsCollector;
 import net.floodlightcontroller.threadpool.IThreadPoolService;
@@ -34,7 +34,7 @@ import java.lang.Thread.State;
  * @author Michael Kang
  * @create 2021-01-29 下午 04:14
  */
-public class MonitorPkLossStatusIml implements MonitorPkLossStatus {
+public class MonitorPkLossServiceImpl implements MonitorPkLossService {
     private static final Logger log = LoggerFactory.getLogger(StatisticsCollector.class);
 
     private static HashMap<NodePortTuple, Long> DPID_PK_LOSS = new HashMap<NodePortTuple, Long>();
@@ -124,7 +124,7 @@ public class MonitorPkLossStatusIml implements MonitorPkLossStatus {
     @Override
     public Collection<Class<? extends IFloodlightService>> getModuleServices() {
         Collection<Class<? extends IFloodlightService>> l = new ArrayList<Class<? extends IFloodlightService>>();
-        l.add(MonitorPkLossStatus.class);
+        l.add(MonitorPkLossService.class);
         return l;
     }
 
@@ -139,7 +139,7 @@ public class MonitorPkLossStatusIml implements MonitorPkLossStatus {
     @Override
     public Map<Class<? extends IFloodlightService>, IFloodlightService> getServiceImpls() {
         Map<Class<? extends IFloodlightService>, IFloodlightService> m = new HashMap<Class<? extends IFloodlightService>, IFloodlightService>();
-        m.put(MonitorPkLossStatus.class, this);
+        m.put(MonitorPkLossService.class, this);
         return m;
     }
 

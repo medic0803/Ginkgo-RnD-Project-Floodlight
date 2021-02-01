@@ -1,4 +1,4 @@
-package net.floodlightcontroller.qos.StatusMonitor.Iml;
+package net.floodlightcontroller.qos.StatusMonitor.Impl;
 
 import net.floodlightcontroller.core.FloodlightContext;
 import net.floodlightcontroller.core.IFloodlightProviderService;
@@ -11,7 +11,7 @@ import net.floodlightcontroller.core.module.IFloodlightService;
 import net.floodlightcontroller.linkdiscovery.ILinkDiscoveryService;
 import net.floodlightcontroller.linkdiscovery.Link;
 import net.floodlightcontroller.linkdiscovery.internal.LinkInfo;
-import net.floodlightcontroller.qos.StatusMonitor.MonitorDelayStatus;
+import net.floodlightcontroller.qos.StatusMonitor.MonitorDelayService;
 import net.floodlightcontroller.threadpool.IThreadPoolService;
 import org.projectfloodlight.openflow.protocol.OFMessage;
 import org.projectfloodlight.openflow.protocol.OFPortDesc;
@@ -25,7 +25,7 @@ import java.util.Map.Entry;
  * @author Michael Kang
  * @create 2021-01-29 下午 06:03
  */
-public class MonitorDelayStatusIml implements MonitorDelayStatus {
+public class MonitorDelayServiceImpl implements MonitorDelayService {
 
     private IThreadPoolService threadPoolServcie;
     private IOFSwitchService switchService;
@@ -171,7 +171,7 @@ public class MonitorDelayStatusIml implements MonitorDelayStatus {
     @Override
     public Collection<Class<? extends IFloodlightService>> getModuleServices() {
         Collection<Class<? extends IFloodlightService>> l = new ArrayList<Class<? extends IFloodlightService>>();
-        l.add(MonitorDelayStatus.class);
+        l.add(MonitorDelayService.class);
         return l;
     }
 
@@ -186,7 +186,7 @@ public class MonitorDelayStatusIml implements MonitorDelayStatus {
     @Override
     public Map<Class<? extends IFloodlightService>, IFloodlightService> getServiceImpls() {
         Map<Class<? extends IFloodlightService>, IFloodlightService> l = new HashMap<>();
-        l.put(MonitorDelayStatus.class, this);
+        l.put(MonitorDelayService.class, this);
         return l;
     }
 

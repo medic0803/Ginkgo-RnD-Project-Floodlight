@@ -1,4 +1,4 @@
-package net.floodlightcontroller.qos.StatusMonitor.Iml;
+package net.floodlightcontroller.qos.StatusMonitor.Impl;
 
 import net.floodlightcontroller.core.IFloodlightProviderService;
 import net.floodlightcontroller.core.internal.IOFSwitchService;
@@ -6,7 +6,7 @@ import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.module.FloodlightModuleException;
 import net.floodlightcontroller.core.module.IFloodlightService;
 import net.floodlightcontroller.core.types.NodePortTuple;
-import net.floodlightcontroller.qos.StatusMonitor.MonitorBandwidthStatus;
+import net.floodlightcontroller.qos.StatusMonitor.MonitorBandwidthService;
 import net.floodlightcontroller.statistics.IStatisticsService;
 import net.floodlightcontroller.statistics.StatisticsCollector;
 import net.floodlightcontroller.statistics.SwitchPortBandwidth;
@@ -25,7 +25,7 @@ import java.util.concurrent.TimeUnit;
  * @author Michael Kang
  * @create 2021-01-29 上午 10:53
  */
-public class MonitorBandwidthStatusIml implements MonitorBandwidthStatus{
+public class MonitorBandwidthServiceImpl implements MonitorBandwidthService {
     //日志工具
     private static final Logger log = LoggerFactory.getLogger(StatisticsCollector.class);
     //Floodlight最核心的service类，其他service类需要该类提供
@@ -71,7 +71,7 @@ public class MonitorBandwidthStatusIml implements MonitorBandwidthStatus{
     @Override
     public Collection<Class<? extends IFloodlightService>> getModuleServices() {
         Collection<Class<? extends IFloodlightService>> l = new ArrayList<Class<? extends IFloodlightService>>();
-        l.add(MonitorBandwidthStatus.class);
+        l.add(MonitorBandwidthService.class);
         return l;
     }
 
@@ -79,7 +79,7 @@ public class MonitorBandwidthStatusIml implements MonitorBandwidthStatus{
     @Override
     public Map<Class<? extends IFloodlightService>, IFloodlightService> getServiceImpls() {
         Map<Class<? extends IFloodlightService>, IFloodlightService> m = new HashMap<Class<? extends IFloodlightService>, IFloodlightService>();
-        m.put(MonitorBandwidthStatus.class, this);
+        m.put(MonitorBandwidthService.class, this);
         return m;
     }
 

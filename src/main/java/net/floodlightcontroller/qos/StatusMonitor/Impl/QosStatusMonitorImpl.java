@@ -1,13 +1,13 @@
-package net.floodlightcontroller.qos.StatusMonitor.Iml;
+package net.floodlightcontroller.qos.StatusMonitor.Impl;
 
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.module.FloodlightModuleException;
 import net.floodlightcontroller.core.module.IFloodlightService;
 import net.floodlightcontroller.core.types.NodePortTuple;
-import net.floodlightcontroller.qos.StatusMonitor.MonitorBandwidthStatus;
-import net.floodlightcontroller.qos.StatusMonitor.MonitorDelayStatus;
-import net.floodlightcontroller.qos.StatusMonitor.MonitorPkLossStatus;
-import net.floodlightcontroller.qos.StatusMonitor.StatusMonitor;
+import net.floodlightcontroller.qos.StatusMonitor.MonitorBandwidthService;
+import net.floodlightcontroller.qos.StatusMonitor.MonitorDelayService;
+import net.floodlightcontroller.qos.StatusMonitor.MonitorPkLossService;
+import net.floodlightcontroller.qos.StatusMonitor.QosStatusMonitor;
 import net.floodlightcontroller.statistics.SwitchPortBandwidth;
 
 import java.util.Collection;
@@ -17,14 +17,14 @@ import java.util.Map;
  * @author Michael Kang
  * @create 2021-01-29 下午 06:15
  */
-public class StatusMonitorIml implements StatusMonitor {
+public class QosStatusMonitorImpl implements QosStatusMonitor {
     /**
      * fixme: 这里的成员声明为什么是protected
      * todo: 完成资源监视模块
      */
-    protected static MonitorBandwidthStatus BandwidthStatus;
-    protected static MonitorDelayStatus DelayStatus;
-    protected static MonitorPkLossStatus PkLossStatus;
+    protected static MonitorBandwidthService BandwidthStatus;
+    protected static MonitorDelayService DelayStatus;
+    protected static MonitorPkLossService PkLossStatus;
 
     @Override
     public Map<NodePortTuple, SwitchPortBandwidth> getBandwidthMap() {
