@@ -41,6 +41,7 @@ import net.floodlightcontroller.devicemanager.SwitchPort;
 import net.floodlightcontroller.linkdiscovery.ILinkDiscoveryListener;
 import net.floodlightcontroller.linkdiscovery.ILinkDiscoveryService;
 import net.floodlightcontroller.packet.*;
+import net.floodlightcontroller.qos.DSCPField;
 import net.floodlightcontroller.restserver.IRestApiService;
 import net.floodlightcontroller.routing.*;
 import net.floodlightcontroller.routing.web.RoutingWebRoutable;
@@ -216,7 +217,7 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
 
                 case FORWARD_OR_FLOOD:
                 case FORWARD:
-                    doL2ForwardFlow(sw, pi, decision, cntx, false);
+                    doL2ForwardFlow(eth, sw, pi, decision, cntx, false);
                     return Command.CONTINUE;
 
                 case MULTICAST:
@@ -614,7 +615,7 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
         if (isBroadcastOrMulticast(eth)) {
             doFlood(sw, pi, decision, cntx);
         } else {
-            doL2ForwardFlow(sw, pi, decision, cntx, false);
+            doL2ForwardFlow(eth, sw, pi, decision, cntx, false);
         }
     }
 
@@ -627,7 +628,7 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
      * @param cntx The FloodlightContext associated with this OFPacketIn
      * @param requestFlowRemovedNotifn The OpenFlow "flow remove flag"
      */
-    protected void doL2ForwardFlow(IOFSwitch sw, OFPacketIn pi, IRoutingDecision decision, FloodlightContext cntx, boolean requestFlowRemovedNotifn) {
+    protected void doL2ForwardFlow(Ethernet eth, IOFSwitch sw, OFPacketIn pi, IRoutingDecision decision, FloodlightContext cntx, boolean requestFlowRemovedNotifn) {
         OFPort srcPort = OFMessageUtils.getInPort(pi);
         DatapathId srcSw = sw.getId();
         IDevice dstDevice = IDeviceService.fcStore.get(cntx, IDeviceService.CONTEXT_DST_DEVICE);
@@ -699,10 +700,45 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
 
         U64 flowSetId = flowSetIdRegistry.generateFlowSetId();
         U64 cookie = makeForwardingCookie(decision, flowSetId);
-        Path path = routingEngineService.getPath(srcSw,
+
+//        TODO:
+
+        Path path;
+
+        // TODO: Detele after complete
+        // temporary initialisation for proceeding
+        path = routingEngineService.getPath(srcSw,
                 srcPort,
                 dstAp.getNodeId(),
                 dstAp.getPortId());
+        if (eth.getEtherType() == EthType.IPv4){
+            byte diffServ = (byte) ((((IPv4) eth.getPayload()).getDiffServ() >> 2) & 0x3f);
+
+            System.out.println("----------- DiffServ: " + diffServ + "-----------------");
+            // initilise the descpField
+            DSCPField dscpField = DSCPField.Default;
+            for (DSCPField dscp: DSCPField.values()){
+                if ((byte) dscp.getDscpField() == diffServ){
+                    dscpField = dscp;
+                }
+            }
+            if (dscpField.equals(DSCPField.Default)){
+                path = routingEngineService.getPath(srcSw,
+                        srcPort,
+                        dstAp.getNodeId(),
+                        dstAp.getPortId());
+                System.out.println(dscpField);
+                System.out.println("------------------Non-Qos flow-----------------");
+            } else{
+                // TODO: getQoSPath
+                path = routingEngineService.getPath(srcSw,
+                        srcPort,
+                        dstAp.getNodeId(),
+                        dstAp.getPortId());
+                System.out.println(dscpField);
+                System.out.println("------------------Qos flow-----------------");
+            }
+        }
 
         Match m = createMatchFromPacket(sw, srcPort, pi, cntx);
 

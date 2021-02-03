@@ -32,4 +32,11 @@ public enum DSCPField {
     public byte getDscpField() {
         return dscpField;
     }
+
+//    public static void main(String[] args) {
+//        for (DSCPField dscp: DSCPField.values()){
+//            System.out.println(dscp.getDscpField());
+//            }
+//        }
+
 }
