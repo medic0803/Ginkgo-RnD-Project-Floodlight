@@ -2,6 +2,7 @@ package net.floodlightcontroller.qos.ResourceMonitor.Impl;
 
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.module.FloodlightModuleException;
+import net.floodlightcontroller.core.module.IFloodlightModule;
 import net.floodlightcontroller.core.module.IFloodlightService;
 import net.floodlightcontroller.core.types.NodePortTuple;
 import net.floodlightcontroller.qos.ResourceMonitor.MonitorBandwidthService;
@@ -10,14 +11,16 @@ import net.floodlightcontroller.qos.ResourceMonitor.MonitorPkLossService;
 import net.floodlightcontroller.qos.ResourceMonitor.QosResourceMonitor;
 import net.floodlightcontroller.statistics.SwitchPortBandwidth;
 
+import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.Map;
 
 /**
  * @author Michael Kang
  * @create 2021-01-29 下午 06:15
  */
-public class QosResourceMonitorImpl implements QosResourceMonitor {
+public class QosResourceMonitorImpl implements QosResourceMonitor, IFloodlightModule {
     /**
      * fixme: 这里的成员声明为什么是protected
      * todo: 完成资源监视模块
@@ -26,9 +29,12 @@ public class QosResourceMonitorImpl implements QosResourceMonitor {
     protected static MonitorDelayService DelayStatus;
     protected static MonitorPkLossService PkLossStatus;
 
+    //存放每条俩路的带宽使用情况
+    private static Map<NodePortTuple,SwitchPortBandwidth> bandwidth;
+
     @Override
     public Map<NodePortTuple, SwitchPortBandwidth> getBandwidthMap() {
-        return null;
+        return BandwidthStatus.getBandwidthMap();
     }
 
     /**
@@ -39,7 +45,9 @@ public class QosResourceMonitorImpl implements QosResourceMonitor {
      */
     @Override
     public Collection<Class<? extends IFloodlightService>> getModuleServices() {
-        return null;
+        Collection<Class<? extends IFloodlightService>> l = new ArrayList<Class<? extends IFloodlightService>>();
+        l.add(QosResourceMonitor.class);
+        return l;
     }
 
     /**
@@ -52,7 +60,9 @@ public class QosResourceMonitorImpl implements QosResourceMonitor {
      */
     @Override
     public Map<Class<? extends IFloodlightService>, IFloodlightService> getServiceImpls() {
-        return null;
+        Map<Class<? extends IFloodlightService>, IFloodlightService> m = new HashMap<Class<? extends IFloodlightService>, IFloodlightService>();
+        m.put(QosResourceMonitor.class, this);
+        return m;
     }
 
     /**
@@ -65,7 +75,11 @@ public class QosResourceMonitorImpl implements QosResourceMonitor {
      */
     @Override
     public Collection<Class<? extends IFloodlightService>> getModuleDependencies() {
-        return null;
+        Collection<Class<? extends IFloodlightService>> l = new ArrayList<Class<? extends IFloodlightService>>();
+        l.add(MonitorBandwidthService.class);
+        l.add(MonitorDelayService.class);
+        l.add(MonitorPkLossService.class);
+        return l;
     }
 
     /**
@@ -80,7 +94,9 @@ public class QosResourceMonitorImpl implements QosResourceMonitor {
      */
     @Override
     public void init(FloodlightModuleContext context) throws FloodlightModuleException {
-
+        BandwidthStatus = context.getServiceImpl(MonitorBandwidthService.class);
+        DelayStatus = context.getServiceImpl(MonitorDelayService.class);
+        PkLossStatus = context.getServiceImpl(MonitorPkLossService.class);
     }
 
     /**
@@ -95,6 +111,6 @@ public class QosResourceMonitorImpl implements QosResourceMonitor {
      */
     @Override
     public void startUp(FloodlightModuleContext context) throws FloodlightModuleException {
-
+        System.out.println("----------------QosResourceMonitor actived-------------------");
     }
 }

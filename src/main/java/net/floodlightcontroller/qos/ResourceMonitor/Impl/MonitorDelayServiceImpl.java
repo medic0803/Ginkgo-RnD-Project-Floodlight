@@ -1,12 +1,10 @@
 package net.floodlightcontroller.qos.ResourceMonitor.Impl;
 
-import net.floodlightcontroller.core.FloodlightContext;
-import net.floodlightcontroller.core.IFloodlightProviderService;
-import net.floodlightcontroller.core.IOFSwitch;
-import net.floodlightcontroller.core.PortChangeType;
+import net.floodlightcontroller.core.*;
 import net.floodlightcontroller.core.internal.IOFSwitchService;
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.module.FloodlightModuleException;
+import net.floodlightcontroller.core.module.IFloodlightModule;
 import net.floodlightcontroller.core.module.IFloodlightService;
 import net.floodlightcontroller.linkdiscovery.ILinkDiscoveryService;
 import net.floodlightcontroller.linkdiscovery.Link;
@@ -25,7 +23,7 @@ import java.util.Map.Entry;
  * @author Michael Kang
  * @create 2021-01-29 下午 06:03
  */
-public class MonitorDelayServiceImpl implements MonitorDelayService {
+public class MonitorDelayServiceImpl implements MonitorDelayService, IFloodlightModule, IOFMessageListener, IOFSwitchListener {
 
     private IThreadPoolService threadPoolServcie;
     private IOFSwitchService switchService;

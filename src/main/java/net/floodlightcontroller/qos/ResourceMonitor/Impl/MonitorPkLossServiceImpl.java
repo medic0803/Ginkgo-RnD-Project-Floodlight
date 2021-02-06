@@ -4,10 +4,12 @@ import com.google.common.primitives.UnsignedLong;
 import com.google.common.util.concurrent.ListenableFuture;
 import net.floodlightcontroller.core.FloodlightContext;
 import net.floodlightcontroller.core.IFloodlightProviderService;
+import net.floodlightcontroller.core.IOFMessageListener;
 import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.internal.IOFSwitchService;
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.module.FloodlightModuleException;
+import net.floodlightcontroller.core.module.IFloodlightModule;
 import net.floodlightcontroller.core.module.IFloodlightService;
 import net.floodlightcontroller.core.types.NodePortTuple;
 import net.floodlightcontroller.qos.ResourceMonitor.MonitorPkLossService;
@@ -34,7 +36,7 @@ import java.lang.Thread.State;
  * @author Michael Kang
  * @create 2021-01-29 下午 04:14
  */
-public class MonitorPkLossServiceImpl implements MonitorPkLossService {
+public class MonitorPkLossServiceImpl implements MonitorPkLossService, IFloodlightModule, IOFMessageListener {
     private static final Logger log = LoggerFactory.getLogger(StatisticsCollector.class);
 
     private static HashMap<NodePortTuple, Long> DPID_PK_LOSS = new HashMap<NodePortTuple, Long>();
