@@ -20,6 +20,7 @@ import com.google.common.collect.ImmutableSet;
 import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.types.NodePortTuple;
 import net.floodlightcontroller.linkdiscovery.Link;
+import net.floodlightcontroller.qos.DSCPField;
 import net.floodlightcontroller.routing.BroadcastTree;
 import net.floodlightcontroller.routing.Path;
 import net.floodlightcontroller.routing.PathId;
@@ -1186,11 +1187,12 @@ public class TopologyInstance {
      * @param srcPort
      * @param dstId
      * @param dstPort
+     * @param dscpField
      * @return
      */
     public Path getPath(DatapathId srcId, OFPort srcPort,
-            DatapathId dstId, OFPort dstPort) {
-        Path r = getPath(srcId, dstId);
+                        DatapathId dstId, OFPort dstPort, DSCPField dscpField) {
+        Path r = getPath(srcId, dstId, dscpField);
         
         /* Path cannot be null, but empty b/t 2 diff DPIDs -> not found */
         if (! srcId.equals(dstId) && r.getPath().isEmpty()) {
@@ -1214,9 +1216,10 @@ public class TopologyInstance {
      * Get the fastest path from the pathcache.
      * @param srcId
      * @param dstId
+     * @param dscpField
      * @return
      */
-    public Path getPath(DatapathId srcId, DatapathId dstId) {
+    public Path getPath(DatapathId srcId, DatapathId dstId, DSCPField dscpField) {
         PathId id = new PathId(srcId, dstId);
 
         /* Return empty route if srcId equals dstId */
@@ -1225,7 +1228,7 @@ public class TopologyInstance {
         }
 
         Path result = null;
-
+        // TODO: determine routing strategy based on dscpField, default or other?
         try {
             if (!pathcache.get(id).isEmpty()) {
                 result = pathcache.get(id).get(0);

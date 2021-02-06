@@ -23,6 +23,7 @@ import java.util.Optional;
 
 import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.types.NodePortTuple;
+import net.floodlightcontroller.qos.DSCPField;
 import org.projectfloodlight.openflow.types.*;
 
 import net.floodlightcontroller.core.module.IFloodlightService;
@@ -150,11 +151,23 @@ public interface IRoutingService extends IFloodlightService {
     Path getPath(DatapathId src, OFPort srcPort, DatapathId dst, OFPort dstPort);
 
     /**
+     * Provides the shortest path between srcPort on src and dstPort on dst based on the .
+     * @param src source switch
+     * @param srcPort source port on source switch
+     * @param dst destination switch
+     * @param dstPort destination port on destination switch
+     * @param dscpField specific PHB of DscpField
+     * @return the lowest cost path
+     */
+    Path getPath(DatapathId src, OFPort srcPort, DatapathId dst, OFPort dstPort, DSCPField dscpField);
+
+    /**
      * Return all possible paths up to quantity of the globally configured max.
      * @param src source switch
      * @param dst destination switch
      * @return list of paths ordered least to greatest cost
      */
+
     List<Path> getPathsFast(DatapathId src, DatapathId dst);
 
     /**

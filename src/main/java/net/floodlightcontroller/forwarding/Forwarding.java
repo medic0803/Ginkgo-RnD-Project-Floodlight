@@ -701,44 +701,36 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
         U64 flowSetId = flowSetIdRegistry.generateFlowSetId();
         U64 cookie = makeForwardingCookie(decision, flowSetId);
 
-//        TODO:
+        // initilise dscpfiled
+        DSCPField dscpField = DSCPField.Default;
 
-        Path path;
-
-        // TODO: Detele after complete
-        // temporary initialisation for proceeding
-        path = routingEngineService.getPath(srcSw,
-                srcPort,
-                dstAp.getNodeId(),
-                dstAp.getPortId());
         if (eth.getEtherType() == EthType.IPv4){
+            // translate from two's complement representation
             byte diffServ = (byte) ((((IPv4) eth.getPayload()).getDiffServ() >> 2) & 0x3f);
 
-            System.out.println("----------- DiffServ: " + diffServ + "-----------------");
-            // initilise the descpField
-            DSCPField dscpField = DSCPField.Default;
+            // determine the PHB of DSCPField
             for (DSCPField dscp: DSCPField.values()){
                 if ((byte) dscp.getDscpField() == diffServ){
                     dscpField = dscp;
                 }
             }
+
+            // Non-QoS Flow
             if (dscpField.equals(DSCPField.Default)){
-                path = routingEngineService.getPath(srcSw,
-                        srcPort,
-                        dstAp.getNodeId(),
-                        dstAp.getPortId());
                 System.out.println(dscpField);
-                System.out.println("------------------Non-Qos flow-----------------");
-            } else{
-                // TODO: getQoSPath
-                path = routingEngineService.getPath(srcSw,
-                        srcPort,
-                        dstAp.getNodeId(),
-                        dstAp.getPortId());
+                System.out.println("------------------Non-QoS Flow-----------------");
+            } else{ // QoS Flow
                 System.out.println(dscpField);
                 System.out.println("------------------Qos flow-----------------");
             }
+
         }
+
+        Path path = routingEngineService.getPath(srcSw,
+                srcPort,
+                dstAp.getNodeId(),
+                dstAp.getPortId(),
+                dscpField);
 
         Match m = createMatchFromPacket(sw, srcPort, pi, cntx);
 

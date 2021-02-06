@@ -4,6 +4,7 @@ import java.util.*;
 
 import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.types.NodePortTuple;
+import net.floodlightcontroller.qos.DSCPField;
 import org.projectfloodlight.openflow.types.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -93,14 +94,21 @@ public class RoutingManager implements IFloodlightModule, IRoutingService {
 
     @Override
     public Path getPath(DatapathId src, DatapathId dst) {
-        return tm.getCurrentTopologyInstance().getPath(src, dst);
+        return tm.getCurrentTopologyInstance().getPath(src, dst, DSCPField.Default);
+    }
+
+    public Path getPath(DatapathId src, DatapathId dst, DSCPField dscpField) {
+        return tm.getCurrentTopologyInstance().getPath(src, dst, dscpField);
     }
 
     @Override
     public Path getPath(DatapathId src, OFPort srcPort, DatapathId dst, OFPort dstPort) {
-        return tm.getCurrentTopologyInstance().getPath(src, srcPort, dst, dstPort);
+        return tm.getCurrentTopologyInstance().getPath(src, srcPort, dst, dstPort, DSCPField.Default);
     }
 
+    public Path getPath(DatapathId src, OFPort srcPort, DatapathId dst, OFPort dstPort, DSCPField dscpField) {
+        return tm.getCurrentTopologyInstance().getPath(src, srcPort, dst, dstPort, dscpField);
+    }
     @Override
     public List<Path> getPathsFast(DatapathId src, DatapathId dst) {
         return tm.getCurrentTopologyInstance().getPathsFast(src, dst, tm.getMaxPathsToCompute());
