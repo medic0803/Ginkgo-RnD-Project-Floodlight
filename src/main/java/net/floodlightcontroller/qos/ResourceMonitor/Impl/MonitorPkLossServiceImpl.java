@@ -12,6 +12,7 @@ import net.floodlightcontroller.core.module.FloodlightModuleException;
 import net.floodlightcontroller.core.module.IFloodlightModule;
 import net.floodlightcontroller.core.module.IFloodlightService;
 import net.floodlightcontroller.core.types.NodePortTuple;
+import net.floodlightcontroller.packet.Ethernet;
 import net.floodlightcontroller.qos.ResourceMonitor.MonitorPkLossService;
 import net.floodlightcontroller.statistics.IStatisticsService;
 import net.floodlightcontroller.statistics.StatisticsCollector;
@@ -42,7 +43,6 @@ public class MonitorPkLossServiceImpl implements MonitorPkLossService, IFloodlig
     private static HashMap<NodePortTuple, Long> DPID_PK_LOSS = new HashMap<NodePortTuple, Long>();
 
     protected static IFloodlightProviderService floodlightProvider;
-    protected static IStatisticsService statisticsService;
     private static IOFSwitchService switchService;
     private static IThreadPoolService threadPoolService;
     private static ScheduledFuture<?> portStatsCollector;
@@ -59,21 +59,21 @@ public class MonitorPkLossServiceImpl implements MonitorPkLossService, IFloodlig
      */
     @Override
     public Command receive(IOFSwitch sw, OFMessage msg, FloodlightContext cntx) {
-//      Ethernet eth = IFloodlightProviderService.bcStore.get(cntx, IFloodlightProviderService.CONTEXT_PI_PAYLOAD);
-//      Long sourceMACHash = eth.getSourceMACAddress().getLong();
-//      OFFactory factory = sw.getOFFactory();
+        Ethernet eth = IFloodlightProviderService.bcStore.get(cntx, IFloodlightProviderService.CONTEXT_PI_PAYLOAD);
+        Long sourceMACHash = eth.getSourceMACAddress().getLong();
+        OFFactory factory = sw.getOFFactory();
         /**
          * 获取丢包率
          */
-//      if(msg.getType() == OFType.STATS_REPLY){
-//          OFStatsReply reply = (OFStatsReply) msg;
-//          OFPortStatsReply psr = (OFPortStatsReply) reply;
-//          OFPortStatsEntry pse = (OFPortStatsEntry) psr;
-//          System.out.println("rx bytes:"+pse.getRxBytes().getValue());
-//          System.out.println("rx_dropped bytes:"+pse.getRxDropped().getValue());
-//          System.out.println("tx bytes:"+pse.getTxBytes().getValue());
-//          System.out.println("tx_dropped bytes:"+pse.getTxDropped().getValue());
-//      }
+        if(msg.getType() == OFType.STATS_REPLY){
+          OFStatsReply reply = (OFStatsReply) msg;
+          OFPortStatsReply psr = (OFPortStatsReply) reply;
+          OFPortStatsEntry pse = (OFPortStatsEntry) psr;
+          System.out.println("rx bytes:"+pse.getRxBytes().getValue());
+          System.out.println("rx_dropped bytes:"+pse.getRxDropped().getValue());
+          System.out.println("tx bytes:"+pse.getTxBytes().getValue());
+          System.out.println("tx_dropped bytes:"+pse.getTxDropped().getValue());
+        }
         return Command.CONTINUE;
     }
 
@@ -176,7 +176,6 @@ public class MonitorPkLossServiceImpl implements MonitorPkLossService, IFloodlig
     @Override
     public void init(FloodlightModuleContext context) throws FloodlightModuleException {
         floodlightProvider = context.getServiceImpl(IFloodlightProviderService.class);
-        statisticsService = context.getServiceImpl(IStatisticsService.class);
         switchService = context.getServiceImpl(IOFSwitchService.class);
         threadPoolService = context.getServiceImpl(IThreadPoolService.class);
     }
@@ -202,6 +201,60 @@ public class MonitorPkLossServiceImpl implements MonitorPkLossService, IFloodlig
     private synchronized void startStatisticsCollection() {
         portStatsCollector = threadPoolService.getScheduledExecutor().scheduleAtFixedRate(new PortStatsCollector(), portStatsInterval, portStatsInterval, TimeUnit.SECONDS);
         log.warn("Statistics collection thread(s) started");
+    }
+
+    /**
+     * Run periodically to collect all port statistics. This only collects
+     * bandwidth stats right now, but it could be expanded to record other
+     * information as well. The difference between the most recent and the
+     * current RX/TX bytes is used to determine the "elapsed" bytes. A
+     * timestamp is saved each time stats results are saved to compute the
+     * bits per second over the elapsed time. There isn't a better way to
+     * compute the precise bandwidth unless the switch were to include a
+     * timestamp in the stats reply message, which would be nice but isn't
+     * likely to happen. It would be even better if the switch recorded
+     * bandwidth and reported bandwidth directly.
+     *
+     * Stats are not reported unless at least two iterations have occurred
+     * for a single switch's reply. This must happen to compare the byte
+     * counts and to get an elapsed time.
+     *
+     */
+    private class PortStatsCollector implements Runnable {
+        @Override
+        public void run() {
+//          System.out.println("Runnable run()....");
+            Map<DatapathId, List<OFStatsReply>> replies = getSwitchStatistics(switchService.getAllSwitchDpids(), OFStatsType.PORT);
+//          System.out.println("replies.size():"+replies.size());
+            for (Entry<DatapathId, List<OFStatsReply>> e : replies.entrySet()) {
+                for (OFStatsReply r : e.getValue()) {
+                    OFPortStatsReply psr = (OFPortStatsReply) r;
+                    for (OFPortStatsEntry pse : psr.getEntries()) {
+//                      System.out.println("dpid:"+e.getKey().toString());
+//                      System.out.println("for (OFPortStatsEntry pse : psr.getEntries())");
+
+                        long pk_loss = 0;
+
+                        if(e.getKey().toString().equals("") || e.getKey() == null){
+//                          System.out.println("e.getKey() is null....");
+                        }
+//                      System.out.println("--------------------------------------------");
+                        NodePortTuple npt = new NodePortTuple(e.getKey(), pse.getPortNo());
+//                      System.out.println("--------------------------------------------");
+//                      System.out.println(pse.getRxDropped().getValue() + pse.getTxDropped().getValue());
+//                      System.out.println(pse.getRxBytes().getValue() + pse.getTxBytes().getValue());
+                        if((pse.getRxBytes().getValue() + pse.getTxBytes().getValue()) != 0l){
+                            pk_loss = (pse.getRxDropped().getValue() + pse.getTxDropped().getValue())/(pse.getRxBytes().getValue() + pse.getTxBytes().getValue()) ;
+                        }else{
+                            pk_loss = 0;
+                        }
+
+//                      System.out.println("PK_LOSS:"+pk_loss+",dpid:"+e.getKey().toString());
+                        DPID_PK_LOSS.put(npt, pk_loss);
+                    }
+                }
+            }
+        }
     }
 
     /**
@@ -411,60 +464,6 @@ public class MonitorPkLossServiceImpl implements MonitorPkLossService, IFloodlig
         }
 
         return model;
-    }
-
-    /**
-     * Run periodically to collect all port statistics. This only collects
-     * bandwidth stats right now, but it could be expanded to record other
-     * information as well. The difference between the most recent and the
-     * current RX/TX bytes is used to determine the "elapsed" bytes. A
-     * timestamp is saved each time stats results are saved to compute the
-     * bits per second over the elapsed time. There isn't a better way to
-     * compute the precise bandwidth unless the switch were to include a
-     * timestamp in the stats reply message, which would be nice but isn't
-     * likely to happen. It would be even better if the switch recorded
-     * bandwidth and reported bandwidth directly.
-     *
-     * Stats are not reported unless at least two iterations have occurred
-     * for a single switch's reply. This must happen to compare the byte
-     * counts and to get an elapsed time.
-     *
-     */
-    private class PortStatsCollector implements Runnable {
-        @Override
-        public void run() {
-//          System.out.println("Runnable run()....");
-            Map<DatapathId, List<OFStatsReply>> replies = getSwitchStatistics(switchService.getAllSwitchDpids(), OFStatsType.PORT);
-//          System.out.println("replies.size():"+replies.size());
-            for (Entry<DatapathId, List<OFStatsReply>> e : replies.entrySet()) {
-                for (OFStatsReply r : e.getValue()) {
-                    OFPortStatsReply psr = (OFPortStatsReply) r;
-                    for (OFPortStatsEntry pse : psr.getEntries()) {
-//                      System.out.println("dpid:"+e.getKey().toString());
-//                      System.out.println("for (OFPortStatsEntry pse : psr.getEntries())");
-
-                        long pk_loss = 0;
-
-                        if(e.getKey().toString().equals("") || e.getKey() == null){
-//                          System.out.println("e.getKey() is null....");
-                        }
-//                      System.out.println("--------------------------------------------");
-                        NodePortTuple npt = new NodePortTuple(e.getKey(), pse.getPortNo());
-//                      System.out.println("--------------------------------------------");
-//                      System.out.println(pse.getRxDropped().getValue() + pse.getTxDropped().getValue());
-//                      System.out.println(pse.getRxBytes().getValue() + pse.getTxBytes().getValue());
-                        if((pse.getRxBytes().getValue() + pse.getTxBytes().getValue()) != 0l){
-                            pk_loss = (pse.getRxDropped().getValue() + pse.getTxDropped().getValue())/(pse.getRxBytes().getValue() + pse.getTxBytes().getValue()) ;
-                        }else{
-                            pk_loss = 0;
-                        }
-
-//                      System.out.println("PK_LOSS:"+pk_loss+",dpid:"+e.getKey().toString());
-                        DPID_PK_LOSS.put(npt, pk_loss);
-                    }
-                }
-            }
-        }
     }
 
 }
