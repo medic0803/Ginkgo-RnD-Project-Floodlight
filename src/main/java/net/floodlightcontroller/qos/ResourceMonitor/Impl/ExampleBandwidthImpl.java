@@ -7,7 +7,7 @@ import net.floodlightcontroller.core.module.FloodlightModuleException;
 import net.floodlightcontroller.core.module.IFloodlightModule;
 import net.floodlightcontroller.core.module.IFloodlightService;
 import net.floodlightcontroller.core.types.NodePortTuple;
-import net.floodlightcontroller.qos.ResourceMonitor.MonitorBandwidthService;
+import net.floodlightcontroller.qos.ResourceMonitor.ExampleBandwidth;
 import net.floodlightcontroller.statistics.IStatisticsService;
 import net.floodlightcontroller.statistics.StatisticsCollector;
 import net.floodlightcontroller.statistics.SwitchPortBandwidth;
@@ -28,7 +28,7 @@ import java.util.concurrent.TimeUnit;
  * @author Michael Kang
  * @create 2021-01-29 上午 10:53
  */
-public class MonitorBandwidthServiceImpl implements MonitorBandwidthService, IFloodlightModule {
+public class ExampleBandwidthImpl implements ExampleBandwidth, IFloodlightModule {
 
     private static final Logger log = LoggerFactory.getLogger(StatisticsCollector.class);
 
@@ -73,7 +73,7 @@ public class MonitorBandwidthServiceImpl implements MonitorBandwidthService, IFl
     @Override
     public Collection<Class<? extends IFloodlightService>> getModuleServices() {
         Collection<Class<? extends IFloodlightService>> l = new ArrayList<Class<? extends IFloodlightService>>();
-        l.add(MonitorBandwidthService.class);
+        l.add(ExampleBandwidth.class);
         return l;
     }
 
@@ -82,7 +82,7 @@ public class MonitorBandwidthServiceImpl implements MonitorBandwidthService, IFl
     @Override
     public Map<Class<? extends IFloodlightService>, IFloodlightService> getServiceImpls() {
         Map<Class<? extends IFloodlightService>, IFloodlightService> m = new HashMap<Class<? extends IFloodlightService>, IFloodlightService>();
-        m.put(MonitorBandwidthService.class, this);
+        m.put(ExampleBandwidth.class, this);
         return m;
     }
 

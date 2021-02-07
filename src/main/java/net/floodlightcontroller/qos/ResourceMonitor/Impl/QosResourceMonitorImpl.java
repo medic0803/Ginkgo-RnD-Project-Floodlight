@@ -5,16 +5,14 @@ import net.floodlightcontroller.core.module.FloodlightModuleException;
 import net.floodlightcontroller.core.module.IFloodlightModule;
 import net.floodlightcontroller.core.module.IFloodlightService;
 import net.floodlightcontroller.core.types.NodePortTuple;
-import net.floodlightcontroller.qos.ResourceMonitor.MonitorBandwidthService;
+import net.floodlightcontroller.qos.ResourceMonitor.ExampleBandwidth;
 import net.floodlightcontroller.qos.ResourceMonitor.MonitorDelayService;
 import net.floodlightcontroller.qos.ResourceMonitor.MonitorPkLossService;
 import net.floodlightcontroller.qos.ResourceMonitor.QosResourceMonitor;
+import net.floodlightcontroller.statistics.IStatisticsService;
 import net.floodlightcontroller.statistics.SwitchPortBandwidth;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
 
 /**
  * @author Michael Kang
@@ -25,7 +23,7 @@ public class QosResourceMonitorImpl implements QosResourceMonitor, IFloodlightMo
      * fixme: 这里的成员声明为什么是protected
      * todo: 完成资源监视模块
      */
-    protected static MonitorBandwidthService BandwidthStatus;
+    protected static IStatisticsService bandwidthStatus;
     protected static MonitorDelayService DelayStatus;
     protected static MonitorPkLossService PkLossStatus;
 
@@ -34,7 +32,16 @@ public class QosResourceMonitorImpl implements QosResourceMonitor, IFloodlightMo
 
     @Override
     public Map<NodePortTuple, SwitchPortBandwidth> getBandwidthMap() {
-        return BandwidthStatus.getBandwidthMap();
+        bandwidth = bandwidthStatus.getBandwidthConsumption();
+//        Iterator<Map.Entry<NodePortTuple,SwitchPortBandwidth>> iter = bandwidth.entrySet().iterator();
+//        while (iter.hasNext()) {
+//            Map.Entry<NodePortTuple,SwitchPortBandwidth> entry = iter.next();
+//            NodePortTuple tuple  = entry.getKey();
+//            SwitchPortBandwidth switchPortBand = entry.getValue();
+//            System.out.print(tuple.getNodeId()+","+tuple.getPortId().getPortNumber()+",");
+//            System.out.println(switchPortBand.getBitsPerSecondRx().getValue()/(8*1024) + switchPortBand.getBitsPerSecondTx().getValue()/(8*1024));
+//        }
+        return bandwidth;
     }
 
     /**
@@ -76,7 +83,7 @@ public class QosResourceMonitorImpl implements QosResourceMonitor, IFloodlightMo
     @Override
     public Collection<Class<? extends IFloodlightService>> getModuleDependencies() {
         Collection<Class<? extends IFloodlightService>> l = new ArrayList<Class<? extends IFloodlightService>>();
-        l.add(MonitorBandwidthService.class);
+        l.add(IStatisticsService.class);
         l.add(MonitorDelayService.class);
         l.add(MonitorPkLossService.class);
         return l;
@@ -94,7 +101,7 @@ public class QosResourceMonitorImpl implements QosResourceMonitor, IFloodlightMo
      */
     @Override
     public void init(FloodlightModuleContext context) throws FloodlightModuleException {
-        BandwidthStatus = context.getServiceImpl(MonitorBandwidthService.class);
+        bandwidthStatus = context.getServiceImpl(IStatisticsService.class);
         DelayStatus = context.getServiceImpl(MonitorDelayService.class);
         PkLossStatus = context.getServiceImpl(MonitorPkLossService.class);
     }

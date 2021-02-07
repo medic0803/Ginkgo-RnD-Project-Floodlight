@@ -13,7 +13,7 @@ import java.util.Map;
 public interface QosResourceMonitor extends IFloodlightService {
     /**
      * kwm:
-     * 获取带宽使用情况
+     * 使用Floodlight方法获取带宽
      * 需要简单的换算
      根据 switchPortBand.getBitsPerSecondRx().getValue()/(8*1024) + switchPortBand.getBitsPerSecondTx().getValue()/(8*1024)
      计算带宽
