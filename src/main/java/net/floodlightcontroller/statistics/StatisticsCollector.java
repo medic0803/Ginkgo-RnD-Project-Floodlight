@@ -42,6 +42,7 @@ public class StatisticsCollector implements IFloodlightModule, IStatisticsServic
 
 	private static final long BITS_PER_BYTE = 8;
 	private static final long MILLIS_PER_SEC = 1000;
+	private static final long NANOS_PER_MILLIS = 1000000;
 	
 	private static final String INTERVAL_PORT_STATS_STR = "collectionIntervalPortStatsSeconds";
 	private static final String ENABLED_STR = "enable";
@@ -68,6 +69,7 @@ public class StatisticsCollector implements IFloodlightModule, IStatisticsServic
 	 * @author Ryan Izard, ryan.izard@bigswitch.com, rizard@g.clemson.edu
 	 *
 	 */
+	//todo: understand the speed propose method
 	protected class PortStatsCollector implements Runnable {
 
 		@Override
@@ -108,7 +110,7 @@ public class StatisticsCollector implements IFloodlightModule, IStatisticsServic
 								txBytesCounted = pse.getTxBytes().subtract(spb.getPriorByteValueTx());
 							}
 							long speed = getSpeed(npt);
-							long timeDifSec = ((System.nanoTime() - spb.getStartTime_ns()) / 1000000) / MILLIS_PER_SEC;
+							long timeDifSec = ((System.nanoTime() - spb.getStartTime_ns()) / NANOS_PER_MILLIS) / MILLIS_PER_SEC;
 							portStats.put(npt, SwitchPortBandwidth.of(npt.getNodeId(), npt.getPortId(), 
 									U64.ofRaw(speed),
 									U64.ofRaw((rxBytesCounted.getValue() * BITS_PER_BYTE) / timeDifSec), 
