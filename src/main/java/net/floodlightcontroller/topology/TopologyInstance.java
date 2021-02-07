@@ -1182,7 +1182,7 @@ public class TopologyInstance {
     /**
      * Computes end-to-end path including src/dst switch
      * ports in addition to the switches. This chains into
-     * {@link #getPath(DatapathId, DatapathId)} below.
+     * {@link #getPath(DatapathId, DatapathId, DSCPField)} below.
      * @param srcId
      * @param srcPort
      * @param dstId
