@@ -1,4 +1,4 @@
-package net.floodlightcontroller.qos.ResourceMonitor;
+package net.floodlightcontroller.qos.ResourceMonitor.test;
 
 import net.floodlightcontroller.core.module.IFloodlightService;
 import net.floodlightcontroller.core.types.NodePortTuple;

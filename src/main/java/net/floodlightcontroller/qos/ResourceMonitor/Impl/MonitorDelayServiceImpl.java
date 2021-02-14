@@ -15,6 +15,8 @@ import org.projectfloodlight.openflow.protocol.OFMessage;
 import org.projectfloodlight.openflow.protocol.OFPortDesc;
 import org.projectfloodlight.openflow.protocol.OFType;
 import org.projectfloodlight.openflow.types.DatapathId;
+import org.python.modules.time.Time;
+import org.sdnplatform.sync.internal.SyncTorture;
 
 import java.util.*;
 import java.util.Map.Entry;
@@ -236,20 +238,39 @@ public class MonitorDelayServiceImpl implements MonitorDelayService, IFloodlight
      */
     @Override
     public void startUp(FloodlightModuleContext context) throws FloodlightModuleException {
-
+        boolean flag = true;
+        while(flag){
+            System.out.println(">>>>");
+            System.out.println(">>>>");
+            System.out.println(">>>>");
+            Time.sleep(5);
+            if (1==testFunc()){
+                flag = false;
+            }
+            System.out.println("<<<<<<<<<<<");
+            System.out.println("<<<<<<<<<<<");
+            System.out.println("<<<<<<<<<<<");
+        }
     }
 
 
-    //todo:Understand the Test.
-    public void testFunc(){
+    //kwmtodo:Understand the Test.
+    public int testFunc(){
         Map<Link, LinkInfo> linkInfo = linkDiscoveryService.getLinks();
         Iterator<Entry<Link, LinkInfo>> iter = linkInfo.entrySet().iterator();
         while(iter.hasNext()){
             Entry<Link, LinkInfo> node = iter.next();
+            System.out.println("=======================================");
             System.out.println("源交换机:"+node.getKey().getSrc().toString()+",源端口："+node.getKey().getSrcPort());
             System.out.println("目的交换机:"+node.getKey().getDst().toString()+",目的端口："+node.getKey().getDstPort());
             System.out.println("链路时延:"+node.getKey().getLatency());
             System.out.println("当前时延："+node.getValue().getCurrentLatency());
+            System.out.println("=======================================");
+        }
+        if (linkInfo.isEmpty()){
+            return 0;
+        }else {
+            return 1;
         }
     }
 }

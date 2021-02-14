@@ -1,4 +1,4 @@
-package net.floodlightcontroller.qos.ResourceMonitor.Impl;
+package net.floodlightcontroller.qos.ResourceMonitor.test;
 
 import net.floodlightcontroller.core.IFloodlightProviderService;
 import net.floodlightcontroller.core.internal.IOFSwitchService;
@@ -7,7 +7,6 @@ import net.floodlightcontroller.core.module.FloodlightModuleException;
 import net.floodlightcontroller.core.module.IFloodlightModule;
 import net.floodlightcontroller.core.module.IFloodlightService;
 import net.floodlightcontroller.core.types.NodePortTuple;
-import net.floodlightcontroller.qos.ResourceMonitor.ExampleBandwidth;
 import net.floodlightcontroller.statistics.IStatisticsService;
 import net.floodlightcontroller.statistics.StatisticsCollector;
 import net.floodlightcontroller.statistics.SwitchPortBandwidth;

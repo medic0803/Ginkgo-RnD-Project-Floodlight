@@ -69,7 +69,6 @@ public class StatisticsCollector implements IFloodlightModule, IStatisticsServic
 	 * @author Ryan Izard, ryan.izard@bigswitch.com, rizard@g.clemson.edu
 	 *
 	 */
-	//todo: understand the speed propose method
 	protected class PortStatsCollector implements Runnable {
 
 		@Override

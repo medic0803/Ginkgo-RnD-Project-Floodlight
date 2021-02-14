@@ -5,7 +5,6 @@ import net.floodlightcontroller.core.module.FloodlightModuleException;
 import net.floodlightcontroller.core.module.IFloodlightModule;
 import net.floodlightcontroller.core.module.IFloodlightService;
 import net.floodlightcontroller.core.types.NodePortTuple;
-import net.floodlightcontroller.qos.ResourceMonitor.ExampleBandwidth;
 import net.floodlightcontroller.qos.ResourceMonitor.MonitorDelayService;
 import net.floodlightcontroller.qos.ResourceMonitor.MonitorPkLossService;
 import net.floodlightcontroller.qos.ResourceMonitor.QosResourceMonitor;
@@ -15,13 +14,14 @@ import net.floodlightcontroller.statistics.SwitchPortBandwidth;
 import java.util.*;
 
 /**
+ * sub services: IStatisticsService, MonitorDelayService, MonitorPkLossService
  * @author Michael Kang
  * @create 2021-01-29 下午 06:15
  */
 public class QosResourceMonitorImpl implements QosResourceMonitor, IFloodlightModule {
     /**
-     * fixme: 这里的成员声明为什么是protected
-     * todo: 完成资源监视模块
+     * kwmtodo: 这里的成员声明为什么是protected
+     * kwmtodo:完成资源监视模块
      */
     protected static IStatisticsService bandwidthStatus;
     protected static MonitorDelayService DelayStatus;
