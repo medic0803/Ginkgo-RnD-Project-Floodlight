@@ -6,10 +6,12 @@ import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.module.FloodlightModuleException;
 import net.floodlightcontroller.core.module.IFloodlightModule;
 import net.floodlightcontroller.core.module.IFloodlightService;
+import net.floodlightcontroller.core.types.NodePortTuple;
 import net.floodlightcontroller.linkdiscovery.ILinkDiscoveryService;
 import net.floodlightcontroller.linkdiscovery.Link;
 import net.floodlightcontroller.linkdiscovery.internal.LinkInfo;
 import net.floodlightcontroller.qos.ResourceMonitor.MonitorDelayService;
+import net.floodlightcontroller.qos.ResourceMonitor.pojo.LinkEntry;
 import net.floodlightcontroller.threadpool.IThreadPoolService;
 import org.projectfloodlight.openflow.protocol.OFMessage;
 import org.projectfloodlight.openflow.protocol.OFPortDesc;
@@ -25,142 +27,10 @@ import java.util.Map.Entry;
  * @author Michael Kang
  * @create 2021-01-29 下午 06:03
  */
-public class MonitorDelayServiceImpl implements MonitorDelayService, IFloodlightModule, IOFMessageListener, IOFSwitchListener {
+public class MonitorDelayServiceImpl implements MonitorDelayService, IFloodlightModule{
 
-    private IThreadPoolService threadPoolServcie;
-    private IOFSwitchService switchService;
     private ILinkDiscoveryService linkDiscoveryService;
-    private IFloodlightProviderService floodlightProviderService;
-
-
-    /**
-     * This is the method Floodlight uses to call listeners with OpenFlow messages
-     *
-     * @param sw   the OpenFlow switch that sent this message
-     * @param msg  the message
-     * @param cntx a Floodlight message context object you can use to pass
-     *             information between listeners
-     * @return the command to continue or stop the execution
-     */
-    @Override
-    public Command receive(IOFSwitch sw, OFMessage msg, FloodlightContext cntx) {
-        return null;
-    }
-
-    /**
-     * The name assigned to this listener
-     *
-     * @return
-     */
-    @Override
-    public String getName() {
-        return "LinkDelayMonitor";
-    }
-
-    /**
-     * Check if the module called name is a callback ordering prerequisite
-     * for this module.  In other words, if this function returns true for
-     * the given name, then this listener will be called after that
-     * message listener.
-     *
-     * @param type the object type to which this applies
-     * @param name the name of the module
-     * @return whether name is a prerequisite.
-     */
-    @Override
-    public boolean isCallbackOrderingPrereq(OFType type, String name) {
-        return false;
-    }
-
-    /**
-     * Check if the module called name is a callback ordering post-requisite
-     * for this module.  In other words, if this function returns true for
-     * the given name, then this listener will be called before that
-     * message listener.
-     *
-     * @param type the object type to which this applies
-     * @param name the name of the module
-     * @return whether name is a post-requisite.
-     */
-    @Override
-    public boolean isCallbackOrderingPostreq(OFType type, String name) {
-        return false;
-    }
-
-    /**
-     * Fired when switch becomes known to the controller cluster. I.e.,
-     * the switch is connected at some controller in the cluster
-     *
-     * @param switchId the datapath Id of the new switch
-     */
-    @Override
-    public void switchAdded(DatapathId switchId) {
-
-    }
-
-    /**
-     * Fired when a switch disconnects from the cluster,
-     *
-     * @param switchId the datapath Id of the switch
-     */
-    @Override
-    public void switchRemoved(DatapathId switchId) {
-
-    }
-
-    /**
-     * Fired when a switch becomes active *on the local controller*, I.e.,
-     * the switch is connected to the local controller and is in MASTER mode
-     *
-     * @param switchId the datapath Id of the switch
-     */
-    @Override
-    public void switchActivated(DatapathId switchId) {
-
-    }
-
-    /**
-     * Fired when a port on a known switch changes.
-     * <p>
-     * A user of this notification needs to take care if the port and type
-     * information is used directly and if the collection of ports has been
-     * queried as well. This notification will only be dispatched after the
-     * the port changes have been committed to the IOFSwitch instance. However,
-     * if a user has previously called {@link IOFSwitch#getPorts()} or related
-     * method a subsequent update might already be present in the information
-     * returned by getPorts.
-     *
-     * @param switchId
-     * @param port
-     * @param type
-     */
-    @Override
-    public void switchPortChanged(DatapathId switchId, OFPortDesc port, PortChangeType type) {
-
-    }
-
-    /**
-     * Fired when any non-port related information (e.g., attributes,
-     * features) change after a switchAdded
-     * TODO: currently unused
-     *
-     * @param switchId
-     */
-    @Override
-    public void switchChanged(DatapathId switchId) {
-
-    }
-
-    /**
-     * Fired when receive a ROLE_STATUS message,
-     * TODO: At Master to Slave transitions, switch become deactivated.
-     *
-     * @param switchId
-     */
-    @Override
-    public void switchDeactivated(DatapathId switchId) {
-
-    }
+    private Map<LinkEntry<NodePortTuple, NodePortTuple>, Integer> linkEntryIntegerMap;
 
     /**
      * Return the list of interfaces that this module implements.
@@ -201,9 +71,6 @@ public class MonitorDelayServiceImpl implements MonitorDelayService, IFloodlight
     @Override
     public Collection<Class<? extends IFloodlightService>> getModuleDependencies() {
         Collection<Class<? extends IFloodlightService>> l = new ArrayList<Class<? extends IFloodlightService>>();
-        l.add(IFloodlightProviderService.class);
-        l.add(IThreadPoolService.class);
-        l.add(IOFSwitchService.class);
         l.add(ILinkDiscoveryService.class);
         return l;
     }
@@ -220,10 +87,7 @@ public class MonitorDelayServiceImpl implements MonitorDelayService, IFloodlight
      */
     @Override
     public void init(FloodlightModuleContext context) throws FloodlightModuleException {
-        floodlightProviderService = context.getServiceImpl(IFloodlightProviderService.class);
-        switchService = context.getServiceImpl(IOFSwitchService.class);
         linkDiscoveryService = context.getServiceImpl(ILinkDiscoveryService.class);
-        threadPoolServcie = context.getServiceImpl(IThreadPoolService.class);
     }
 
     /**
@@ -238,19 +102,7 @@ public class MonitorDelayServiceImpl implements MonitorDelayService, IFloodlight
      */
     @Override
     public void startUp(FloodlightModuleContext context) throws FloodlightModuleException {
-        boolean flag = true;
-        while(flag){
-            System.out.println(">>>>");
-            System.out.println(">>>>");
-            System.out.println(">>>>");
-            Time.sleep(5);
-            if (1==testFunc()){
-                flag = false;
-            }
-            System.out.println("<<<<<<<<<<<");
-            System.out.println("<<<<<<<<<<<");
-            System.out.println("<<<<<<<<<<<");
-        }
+        //kwmtodo: caution that the method should be the call when there exits the actual links;
     }
 
 
@@ -272,5 +124,11 @@ public class MonitorDelayServiceImpl implements MonitorDelayService, IFloodlight
         }else {
             return 1;
         }
+    }
+
+    @Override
+    public Map<LinkEntry<NodePortTuple, NodePortTuple>, Integer> getLinkDelay() {
+        //kwmtodo: implemnet the method of the get link status;  using linkDiscoveryService with LinkInfo;
+        return this.linkEntryIntegerMap;
     }
 }

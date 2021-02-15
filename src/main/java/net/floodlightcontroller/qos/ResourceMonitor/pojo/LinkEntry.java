@@ -6,15 +6,16 @@ import java.util.Map.Entry;
  * @create 2021-02-14 下午 02:29
  */
 public class LinkEntry<K,V> implements Entry<K,V>{
-
+    K source;
+    V destination;
     @Override
     public K getKey() {
-        return null;
+        return this.source;
     }
 
     @Override
     public V getValue() {
-        return null;
+        return this.destination;
     }
 
     @Override

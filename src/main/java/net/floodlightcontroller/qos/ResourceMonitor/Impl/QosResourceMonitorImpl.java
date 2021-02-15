@@ -30,6 +30,7 @@ public class QosResourceMonitorImpl implements QosResourceMonitor, IFloodlightMo
     //存放每条俩路的带宽使用情况
     private static Map<NodePortTuple,SwitchPortBandwidth> bandwidth;
 
+    //kwm: the method get the bandwith
     @Override
     public Map<NodePortTuple, SwitchPortBandwidth> getBandwidthMap() {
         bandwidth = bandwidthStatus.getBandwidthConsumption();

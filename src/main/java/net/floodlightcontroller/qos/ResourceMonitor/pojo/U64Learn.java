@@ -4,9 +4,9 @@ import org.projectfloodlight.openflow.types.U64;
 
 /**
  * @author Michael Kang
+ * kwmtodo: 这里的补码转换怎么回事,Floodlight 过载overflow U64处理
  * @create 2021-02-07 下午 06:40
  */
-//kwmtodo: 这里的补码转换怎么回事
 public class U64Learn {
     public static void main(String[] args) {
 //        if (spb.getPriorByteValueRx().compareTo(pse.getRxBytes()) > 0) { /* overflow */
