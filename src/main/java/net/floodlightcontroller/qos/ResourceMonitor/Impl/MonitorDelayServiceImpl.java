@@ -106,36 +106,41 @@ public class MonitorDelayServiceImpl implements MonitorDelayService, IFloodlight
      */
     @Override
     public void startUp(FloodlightModuleContext context) throws FloodlightModuleException {
-        //kwmtodo: caution that the method should be the call when there exits the actual links;
-        while (testFunc() == 0){
-            Time.sleep(5);
-        }
-    }
+        //kwm: caution that the method should be the call when there exits the actual links;
+//kwmtodo: reserve the x test function
+//        while (testFunc() == 0){
+//             Time.sleep(5);
+//        }
+//        System.out.println("=========休息十秒=============");
+//        Time.sleep(10);
+//        int x  = 3;
+//        while (x-- >0){
+//            testFunc();
+//        }
 
-
-    //kwmtodo:Understand the Test.
-    public int testFunc(){
-        Map<Link, LinkInfo> linkInfo = linkDiscoveryService.getLinks();
-        if (linkInfo.isEmpty()){
-            return 0;
-        }else {
-            Iterator<Entry<Link, LinkInfo>> iter = linkInfo.entrySet().iterator();
-            while(iter.hasNext()){
-                Entry<Link, LinkInfo> node = iter.next();
-                System.out.println("=======================================");
-                System.out.println("源交换机:"+node.getKey().getSrc().toString()+",源端口："+node.getKey().getSrcPort());
-                System.out.println("目的交换机:"+node.getKey().getDst().toString()+",目的端口："+node.getKey().getDstPort());
-                System.out.println("链路时延:"+node.getKey().getLatency().getValue()/8/1024);
-                System.out.println("当前时延："+node.getValue().getCurrentLatency().getValue());
-                System.out.println("=======================================");
-            }
-            return 1;
-        }
     }
+//kwmtodo: 有两种get延迟的方法
+//    public int testFunc(){
+//        Map<Link, LinkInfo> linkInfo = linkDiscoveryService.getLinks();
+//        if (linkInfo.isEmpty()){
+//            return 0;
+//        }else {
+//            Iterator<Entry<Link, LinkInfo>> iter = linkInfo.entrySet().iterator();
+//            while(iter.hasNext()){
+//                Entry<Link, LinkInfo> node = iter.next();
+//                System.out.println("=======================================");
+//                System.out.println("源交换机:"+node.getKey().getSrc().toString()+",源端口："+node.getKey().getSrcPort());
+//                System.out.println("目的交换机:"+node.getKey().getDst().toString()+",目的端口："+node.getKey().getDstPort());
+//                System.out.println("链路时延:"+node.getKey().getLatency().getValue()+"ms");
+//                System.out.println("当前时延："+node.getValue().getCurrentLatency().getValue()+"ms");
+//                System.out.println("=======================================");
+//            }
+//            return 1;
+//        }
+//    }
 
     @Override
     public Map<LinkEntry<NodePortTuple, NodePortTuple>, Integer> getLinkDelay() {
-        //kwmtodo: what the unit of this U64 for delay?
         this.linkDelaySecMap.clear();
         Map<Link, LinkInfo> linksMap = linkDiscoveryService.getLinks();
         Iterator<Entry<Link, LinkInfo>> iterator = linksMap.entrySet().iterator();
@@ -148,6 +153,7 @@ public class MonitorDelayServiceImpl implements MonitorDelayService, IFloodlight
                 logger.warn("link.getValue().getCurrentLatency() return null");
             }else {
                 Integer ansValue = new Long(link.getValue().getCurrentLatency().getValue()).intValue();
+                linkDelaySecMap.put(ansKey,ansValue);
             }
         }
         return this.linkDelaySecMap;

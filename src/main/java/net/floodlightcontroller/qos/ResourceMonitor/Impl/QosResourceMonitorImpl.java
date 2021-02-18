@@ -8,6 +8,7 @@ import net.floodlightcontroller.core.types.NodePortTuple;
 import net.floodlightcontroller.qos.ResourceMonitor.MonitorDelayService;
 import net.floodlightcontroller.qos.ResourceMonitor.MonitorPkLossService;
 import net.floodlightcontroller.qos.ResourceMonitor.QosResourceMonitor;
+import net.floodlightcontroller.qos.ResourceMonitor.pojo.LinkEntry;
 import net.floodlightcontroller.statistics.IStatisticsService;
 import net.floodlightcontroller.statistics.SwitchPortBandwidth;
 
@@ -24,8 +25,8 @@ public class QosResourceMonitorImpl implements QosResourceMonitor, IFloodlightMo
      * kwmtodo:完成资源监视模块
      */
     protected static IStatisticsService bandwidthStatus;
-    protected static MonitorDelayService DelayStatus;
-    protected static MonitorPkLossService PkLossStatus;
+    protected static MonitorDelayService delayStatus;
+    protected static MonitorPkLossService pkLossStatus;
 
     //存放每条俩路的带宽使用情况
     private static Map<NodePortTuple,SwitchPortBandwidth> bandwidth;
@@ -43,6 +44,12 @@ public class QosResourceMonitorImpl implements QosResourceMonitor, IFloodlightMo
 //            System.out.println(switchPortBand.getBitsPerSecondRx().getValue()/(8*1024) + switchPortBand.getBitsPerSecondTx().getValue()/(8*1024));
 //        }
         return bandwidth;
+    }
+
+    //kwm: the method get the linkDelay
+    @Override
+    public Map<LinkEntry<NodePortTuple, NodePortTuple>, Integer> getLinkDelay() {
+        return delayStatus.getLinkDelay();
     }
 
     /**
@@ -103,8 +110,8 @@ public class QosResourceMonitorImpl implements QosResourceMonitor, IFloodlightMo
     @Override
     public void init(FloodlightModuleContext context) throws FloodlightModuleException {
         bandwidthStatus = context.getServiceImpl(IStatisticsService.class);
-        DelayStatus = context.getServiceImpl(MonitorDelayService.class);
-        PkLossStatus = context.getServiceImpl(MonitorPkLossService.class);
+        delayStatus = context.getServiceImpl(MonitorDelayService.class);
+        pkLossStatus = context.getServiceImpl(MonitorPkLossService.class);
     }
 
     /**

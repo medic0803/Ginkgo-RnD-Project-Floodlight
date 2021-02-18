@@ -2,6 +2,7 @@ package net.floodlightcontroller.qos.ResourceMonitor;
 
 import net.floodlightcontroller.core.module.IFloodlightService;
 import net.floodlightcontroller.core.types.NodePortTuple;
+import net.floodlightcontroller.qos.ResourceMonitor.pojo.LinkEntry;
 import net.floodlightcontroller.statistics.SwitchPortBandwidth;
 
 import java.util.Map;
@@ -19,6 +20,10 @@ public interface QosResourceMonitor extends IFloodlightService {
      计算带宽
      */
     public Map<NodePortTuple, SwitchPortBandwidth> getBandwidthMap();
-//    public Map<MyEntry<NodePortTuple,NodePortTuple>,Integer> getLinkDelay();
+
+    /**
+     * @return key:Link  value: delay （ms）
+     */
+    public Map<LinkEntry<NodePortTuple,NodePortTuple>,Integer> getLinkDelay();
 //    public Map<> getPkLoss(Object o1,Object o2);
 }
