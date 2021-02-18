@@ -19,6 +19,8 @@ import org.projectfloodlight.openflow.protocol.OFType;
 import org.projectfloodlight.openflow.types.DatapathId;
 import org.python.modules.time.Time;
 import org.sdnplatform.sync.internal.SyncTorture;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.*;
 import java.util.Map.Entry;
@@ -29,8 +31,10 @@ import java.util.Map.Entry;
  */
 public class MonitorDelayServiceImpl implements MonitorDelayService, IFloodlightModule{
 
+    private static final Logger logger = LoggerFactory.getLogger(MonitorDelayServiceImpl.class);
+
     private ILinkDiscoveryService linkDiscoveryService;
-    private Map<LinkEntry<NodePortTuple, NodePortTuple>, Integer> linkEntryIntegerMap;
+    private Map<LinkEntry<NodePortTuple, NodePortTuple>, Integer> linkDelaySecMap;
 
     /**
      * Return the list of interfaces that this module implements.
@@ -103,32 +107,49 @@ public class MonitorDelayServiceImpl implements MonitorDelayService, IFloodlight
     @Override
     public void startUp(FloodlightModuleContext context) throws FloodlightModuleException {
         //kwmtodo: caution that the method should be the call when there exits the actual links;
+        while (testFunc() == 0){
+            Time.sleep(5);
+        }
     }
 
 
     //kwmtodo:Understand the Test.
     public int testFunc(){
         Map<Link, LinkInfo> linkInfo = linkDiscoveryService.getLinks();
-        Iterator<Entry<Link, LinkInfo>> iter = linkInfo.entrySet().iterator();
-        while(iter.hasNext()){
-            Entry<Link, LinkInfo> node = iter.next();
-            System.out.println("=======================================");
-            System.out.println("源交换机:"+node.getKey().getSrc().toString()+",源端口："+node.getKey().getSrcPort());
-            System.out.println("目的交换机:"+node.getKey().getDst().toString()+",目的端口："+node.getKey().getDstPort());
-            System.out.println("链路时延:"+node.getKey().getLatency());
-            System.out.println("当前时延："+node.getValue().getCurrentLatency());
-            System.out.println("=======================================");
-        }
         if (linkInfo.isEmpty()){
             return 0;
         }else {
+            Iterator<Entry<Link, LinkInfo>> iter = linkInfo.entrySet().iterator();
+            while(iter.hasNext()){
+                Entry<Link, LinkInfo> node = iter.next();
+                System.out.println("=======================================");
+                System.out.println("源交换机:"+node.getKey().getSrc().toString()+",源端口："+node.getKey().getSrcPort());
+                System.out.println("目的交换机:"+node.getKey().getDst().toString()+",目的端口："+node.getKey().getDstPort());
+                System.out.println("链路时延:"+node.getKey().getLatency().getValue()/8/1024);
+                System.out.println("当前时延："+node.getValue().getCurrentLatency().getValue());
+                System.out.println("=======================================");
+            }
             return 1;
         }
     }
 
     @Override
     public Map<LinkEntry<NodePortTuple, NodePortTuple>, Integer> getLinkDelay() {
-        //kwmtodo: implemnet the method of the get link status;  using linkDiscoveryService with LinkInfo;
-        return this.linkEntryIntegerMap;
+        //kwmtodo: what the unit of this U64 for delay?
+        this.linkDelaySecMap.clear();
+        Map<Link, LinkInfo> linksMap = linkDiscoveryService.getLinks();
+        Iterator<Entry<Link, LinkInfo>> iterator = linksMap.entrySet().iterator();
+        while (iterator.hasNext()){
+            Entry<Link, LinkInfo> link = iterator.next();
+            NodePortTuple src = new NodePortTuple(link.getKey().getSrc(),link.getKey().getSrcPort());
+            NodePortTuple dst = new NodePortTuple(link.getKey().getDst(),link.getKey().getDstPort());
+            LinkEntry<NodePortTuple,NodePortTuple> ansKey = new LinkEntry<NodePortTuple,NodePortTuple>(src,dst);
+            if (null == link.getValue().getCurrentLatency()){
+                logger.warn("link.getValue().getCurrentLatency() return null");
+            }else {
+                Integer ansValue = new Long(link.getValue().getCurrentLatency().getValue()).intValue();
+            }
+        }
+        return this.linkDelaySecMap;
     }
 }

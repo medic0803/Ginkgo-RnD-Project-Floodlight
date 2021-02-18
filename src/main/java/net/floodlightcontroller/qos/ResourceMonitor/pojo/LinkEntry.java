@@ -8,6 +8,10 @@ import java.util.Map.Entry;
 public class LinkEntry<K,V> implements Entry<K,V>{
     K source;
     V destination;
+    public LinkEntry(K key, V value){
+        this.source = key;
+        this.destination = value;
+    }
     @Override
     public K getKey() {
         return this.source;
