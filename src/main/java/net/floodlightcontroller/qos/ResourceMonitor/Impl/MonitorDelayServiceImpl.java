@@ -32,7 +32,6 @@ import java.util.Map.Entry;
 public class MonitorDelayServiceImpl implements MonitorDelayService, IFloodlightModule{
 
     private static final Logger logger = LoggerFactory.getLogger(MonitorDelayServiceImpl.class);
-
     private ILinkDiscoveryService linkDiscoveryService;
     private Map<LinkEntry<NodePortTuple, NodePortTuple>, Integer> linkDelaySecMap;
 

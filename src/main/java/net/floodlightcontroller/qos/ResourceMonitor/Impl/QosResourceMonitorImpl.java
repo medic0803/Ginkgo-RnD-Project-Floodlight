@@ -9,8 +9,11 @@ import net.floodlightcontroller.qos.ResourceMonitor.MonitorDelayService;
 import net.floodlightcontroller.qos.ResourceMonitor.MonitorPkLossService;
 import net.floodlightcontroller.qos.ResourceMonitor.QosResourceMonitor;
 import net.floodlightcontroller.qos.ResourceMonitor.pojo.LinkEntry;
+import net.floodlightcontroller.qos.ResourceMonitor.pojo.SwitchPortPkLoss;
 import net.floodlightcontroller.statistics.IStatisticsService;
 import net.floodlightcontroller.statistics.SwitchPortBandwidth;
+import org.projectfloodlight.openflow.types.DatapathId;
+import org.projectfloodlight.openflow.types.OFPort;
 
 import java.util.*;
 
@@ -20,21 +23,22 @@ import java.util.*;
  * @create 2021-01-29 下午 06:15
  */
 public class QosResourceMonitorImpl implements QosResourceMonitor, IFloodlightModule {
+    //kwmtodo 完成资源监视模块
+    // 注册module
+    private static IStatisticsService bandwidthService;
+    private static MonitorDelayService delayService;
+    private static MonitorPkLossService pkLossService;
+
+    private static Map<NodePortTuple,SwitchPortBandwidth> bandwidthMap;
+    private static Map<LinkEntry<NodePortTuple, NodePortTuple>, Integer> linkDelaySecMap;
+    private static Map<NodePortTuple, SwitchPortPkLoss> pklossMap;
+
     /**
-     * kwmtodo: 这里的成员声明为什么是protected
-     * kwmtodo:完成资源监视模块
+     *  bandwidth methods
      */
-    protected static IStatisticsService bandwidthStatus;
-    protected static MonitorDelayService delayStatus;
-    protected static MonitorPkLossService pkLossStatus;
-
-    //存放每条俩路的带宽使用情况
-    private static Map<NodePortTuple,SwitchPortBandwidth> bandwidth;
-
-    //kwm: the method get the bandwith
     @Override
     public Map<NodePortTuple, SwitchPortBandwidth> getBandwidthMap() {
-        bandwidth = bandwidthStatus.getBandwidthConsumption();
+        bandwidthMap = bandwidthService.getBandwidthConsumption();
 //        Iterator<Map.Entry<NodePortTuple,SwitchPortBandwidth>> iter = bandwidth.entrySet().iterator();
 //        while (iter.hasNext()) {
 //            Map.Entry<NodePortTuple,SwitchPortBandwidth> entry = iter.next();
@@ -43,19 +47,48 @@ public class QosResourceMonitorImpl implements QosResourceMonitor, IFloodlightMo
 //            System.out.print(tuple.getNodeId()+","+tuple.getPortId().getPortNumber()+",");
 //            System.out.println(switchPortBand.getBitsPerSecondRx().getValue()/(8*1024) + switchPortBand.getBitsPerSecondTx().getValue()/(8*1024));
 //        }
-        return bandwidth;
+        return bandwidthMap;
     }
 
-    //kwm: the method get the linkDelay
     @Override
-    public Map<LinkEntry<NodePortTuple, NodePortTuple>, Integer> getLinkDelay() {
-        return delayStatus.getLinkDelay();
+    public void setBandwidthCollection(boolean collect) {
+        bandwidthService.collectStatistics(collect);
     }
 
     /**
+     * linkdelay services
+     */
+    @Override
+    public Map<LinkEntry<NodePortTuple, NodePortTuple>, Integer> getLinkDelay() {
+        linkDelaySecMap = delayService.getLinkDelay();
+        return linkDelaySecMap;
+    }
+
+    /**
+     * parket loss services
+     */
+    @Override
+    public void setPkLossCollection(boolean collect) {
+        pkLossService.collectStatistics(collect);
+    }
+
+    @Override
+    public Map<NodePortTuple, SwitchPortPkLoss> getPkLoss() {
+        pklossMap = pkLossService.getPkLoss();
+        return pklossMap;
+    }
+
+    @Override
+    public SwitchPortPkLoss getPkLoss(DatapathId dpid, OFPort p) {
+        return pkLossService.getPkLoss(dpid,p);
+    }
+
+    /**
+     * Floodlight Module skeleton
+     */
+    /**
      * Return the list of interfaces that this module implements.
      * All interfaces must inherit IFloodlightService
-     *
      * @return
      */
     @Override
@@ -109,9 +142,9 @@ public class QosResourceMonitorImpl implements QosResourceMonitor, IFloodlightMo
      */
     @Override
     public void init(FloodlightModuleContext context) throws FloodlightModuleException {
-        bandwidthStatus = context.getServiceImpl(IStatisticsService.class);
-        delayStatus = context.getServiceImpl(MonitorDelayService.class);
-        pkLossStatus = context.getServiceImpl(MonitorPkLossService.class);
+        bandwidthService = context.getServiceImpl(IStatisticsService.class);
+        delayService = context.getServiceImpl(MonitorDelayService.class);
+        pkLossService = context.getServiceImpl(MonitorPkLossService.class);
     }
 
     /**
@@ -127,5 +160,7 @@ public class QosResourceMonitorImpl implements QosResourceMonitor, IFloodlightMo
     @Override
     public void startUp(FloodlightModuleContext context) throws FloodlightModuleException {
         System.out.println("----------------QosResourceMonitor actived-------------------");
+        this.setBandwidthCollection(true);
+        this.setPkLossCollection(true);
     }
 }
