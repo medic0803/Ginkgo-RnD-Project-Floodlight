@@ -1,4 +1,4 @@
-package net.floodlightcontroller.qos.ResourceMonitor.test;
+package net.floodlightcontroller.qos.ResourceMonitor;
 
 import org.projectfloodlight.openflow.types.U64;
 

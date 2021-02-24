@@ -1,7 +1,5 @@
 package net.floodlightcontroller.qos.ResourceMonitor.Impl;
 
-import net.floodlightcontroller.core.*;
-import net.floodlightcontroller.core.internal.IOFSwitchService;
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.module.FloodlightModuleException;
 import net.floodlightcontroller.core.module.IFloodlightModule;
@@ -12,13 +10,6 @@ import net.floodlightcontroller.linkdiscovery.Link;
 import net.floodlightcontroller.linkdiscovery.internal.LinkInfo;
 import net.floodlightcontroller.qos.ResourceMonitor.MonitorDelayService;
 import net.floodlightcontroller.qos.ResourceMonitor.pojo.LinkEntry;
-import net.floodlightcontroller.threadpool.IThreadPoolService;
-import org.projectfloodlight.openflow.protocol.OFMessage;
-import org.projectfloodlight.openflow.protocol.OFPortDesc;
-import org.projectfloodlight.openflow.protocol.OFType;
-import org.projectfloodlight.openflow.types.DatapathId;
-import org.python.modules.time.Time;
-import org.sdnplatform.sync.internal.SyncTorture;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

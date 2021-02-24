@@ -1,4 +1,4 @@
-package net.floodlightcontroller.qos.ResourceMonitor.test;
+package net.floodlightcontroller.qos.ResourceMonitor;
 
 import net.floodlightcontroller.core.IFloodlightProviderService;
 import net.floodlightcontroller.core.internal.IOFSwitchService;
