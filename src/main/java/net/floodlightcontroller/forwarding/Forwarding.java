@@ -217,12 +217,20 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
 
                 case FORWARD_OR_FLOOD:
                 case FORWARD:
+                    log.debug("detect forward action");
+                    System.out.println("detect forward action");
                     doL2ForwardFlow(eth, sw, pi, decision, cntx, false);
+                    System.out.println(((IPv4)eth.getPayload()).getProtocol());
                     return Command.CONTINUE;
 
                 case MULTICAST:
                     // treat as broadcast
+                    log.debug("detect multicast");
+                    System.out.println("detect multicast transform");
+                    System.out.println(((IPv4)eth.getPayload()).getProtocol());
                     doFlood(sw, pi, decision, cntx);
+                    // TODO:
+                    // doMulticast()
                     return Command.CONTINUE;
 
                 case DROP:
@@ -707,6 +715,7 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
         if (eth.getEtherType() == EthType.IPv4){
             // translate from two's complement representation
             byte diffServ = (byte) ((((IPv4) eth.getPayload()).getDiffServ() >> 2) & 0x3f);
+
 
             // determine the PHB of DSCPField
             for (DSCPField dscp: DSCPField.values()){

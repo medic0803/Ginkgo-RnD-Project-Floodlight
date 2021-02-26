@@ -32,6 +32,7 @@ import net.floodlightcontroller.devicemanager.SwitchPort;
 import net.floodlightcontroller.linkdiscovery.ILinkDiscoveryService;
 import net.floodlightcontroller.packet.Ethernet;
 import net.floodlightcontroller.packet.IPacket;
+import net.floodlightcontroller.packet.IPv4;
 import net.floodlightcontroller.restserver.IRestApiService;
 import net.floodlightcontroller.topology.ITopologyService;
 import net.floodlightcontroller.util.*;
@@ -138,6 +139,13 @@ public abstract class ForwardingBase implements IOFMessageListener {
         switch (msg.getType()) {
         case PACKET_IN:
             IRoutingDecision decision = null;
+
+            // Multicasting module already handle the IGMP information
+            if (eth.getEtherType() == EthType.IPv4){
+                if (((IPv4)eth.getPayload()).getProtocol() == IpProtocol.IGMP){
+                    break;
+                }
+            }
             if (cntx != null) {
                 decision = RoutingDecision.rtStore.get(cntx, IRoutingDecision.CONTEXT_DECISION);
             }
