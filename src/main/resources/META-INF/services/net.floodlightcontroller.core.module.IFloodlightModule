@@ -31,3 +31,5 @@ net.floodlightcontroller.routing.RoutingManager
 net.floodlightcontroller.cpanalyzer.CPAnalyzer
 net.floodlightcontroller.hasupport.HAController
 net.floodlightcontroller.qos.ResourceMonitor.Impl.MonitorDelayServiceImpl
+net.floodlightcontroller.qos.ResourceMonitor.Impl.MonitorPkLossServiceImpl
+net.floodlightcontroller.qos.ResourceMonitor.Impl.QosResourceMonitorImpl
