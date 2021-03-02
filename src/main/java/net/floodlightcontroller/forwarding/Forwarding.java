@@ -40,6 +40,7 @@ import net.floodlightcontroller.devicemanager.IDeviceService;
 import net.floodlightcontroller.devicemanager.SwitchPort;
 import net.floodlightcontroller.linkdiscovery.ILinkDiscoveryListener;
 import net.floodlightcontroller.linkdiscovery.ILinkDiscoveryService;
+import net.floodlightcontroller.multicasting.IFetchMulticastGroupService;
 import net.floodlightcontroller.packet.*;
 import net.floodlightcontroller.qos.DSCPField;
 import net.floodlightcontroller.restserver.IRestApiService;
@@ -1382,6 +1383,7 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
         this.debugCounterService = context.getServiceImpl(IDebugCounterService.class);
         this.switchService = context.getServiceImpl(IOFSwitchService.class);
         this.linkService = context.getServiceImpl(ILinkDiscoveryService.class);
+        this.fetchMulticastGroupService = context.getServiceImpl(IFetchMulticastGroupService.class);
 
         l3manager = new L3RoutingManager();
         l3cache = new ConcurrentHashMap<>();
@@ -1931,6 +1933,29 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
         log.error("Could not locate a 'true' attachment point in {}", aps);
         return null;
     }
+    @Override
+    public Command receive(IOFSwitch sw, OFMessage msg, FloodlightContext cntx) {
+        Ethernet eth = IFloodlightProviderService.bcStore.get(cntx, IFloodlightProviderService.CONTEXT_PI_PAYLOAD);
 
+        switch (msg.getType()) {
+            case PACKET_IN:
+                IRoutingDecision decision = null;
+
+                // Destination IPv4Address was included in multicast group, skip the forwarding
+            if (eth.getEtherType() == EthType.IPv4){
+                if (fetchMulticastGroupService.getmulticastInforTable().containsKey(((IPv4)eth.getPayload()).getDestinationAddress())) {
+                    System.out.println("=============Break due to multicast destination detected");
+                    break;
+                }
+            }
+                if (cntx != null) {
+                    decision = RoutingDecision.rtStore.get(cntx, IRoutingDecision.CONTEXT_DECISION);
+                }
+                return this.processPacketInMessage(sw, (OFPacketIn) msg, decision, cntx);
+            default:
+                break;
+        }
+        return Command.CONTINUE;
+    }
 
 }

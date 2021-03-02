@@ -30,6 +30,7 @@ import net.floodlightcontroller.debugcounter.IDebugCounterService;
 import net.floodlightcontroller.devicemanager.IDeviceService;
 import net.floodlightcontroller.devicemanager.SwitchPort;
 import net.floodlightcontroller.linkdiscovery.ILinkDiscoveryService;
+import net.floodlightcontroller.multicasting.IFetchMulticastGroupService;
 import net.floodlightcontroller.packet.Ethernet;
 import net.floodlightcontroller.packet.IPacket;
 import net.floodlightcontroller.packet.IPv4;
@@ -90,6 +91,7 @@ public abstract class ForwardingBase implements IOFMessageListener {
     protected ITopologyService topologyService;
     protected IDebugCounterService debugCounterService;
     protected ILinkDiscoveryService linkService;
+    protected IFetchMulticastGroupService fetchMulticastGroupService;
     protected IRestApiService restApiService;
 
     // flow-mod - for use in the cookie
@@ -140,12 +142,12 @@ public abstract class ForwardingBase implements IOFMessageListener {
         case PACKET_IN:
             IRoutingDecision decision = null;
 
-            // Multicasting module already handle the IGMP information
-            if (eth.getEtherType() == EthType.IPv4){
-                if (((IPv4)eth.getPayload()).getProtocol() == IpProtocol.IGMP){
-                    break;
-                }
-            }
+            // Destination IPv4Address was included in multicast group, skip the forwarding
+//            if (eth.getEtherType() == EthType.IPv4){
+//                if (((IPv4)eth.getPayload()).getDestinationAddress() == ){
+//                    break;
+//                }
+//            }
             if (cntx != null) {
                 decision = RoutingDecision.rtStore.get(cntx, IRoutingDecision.CONTEXT_DECISION);
             }
