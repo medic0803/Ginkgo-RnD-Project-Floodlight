@@ -29,7 +29,7 @@ public interface QosResourceMonitor extends IFloodlightService{
      * use the service of Floodlight get links, and return the delay using class Link and LinkInfo of Floodlight
      * @return key-value ==> Link-delay （ms）
      */
-    public Map<LinkEntry<NodePortTuple,NodePortTuple>,Integer> getLinkDelay();
+    public Map<LinkEntry<DatapathId,DatapathId>,Integer> getLinkDelay();
 
     /**
      * MonitorPkLossServices

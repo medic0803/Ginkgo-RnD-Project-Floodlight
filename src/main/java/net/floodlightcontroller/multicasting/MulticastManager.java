@@ -8,10 +8,12 @@ import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.module.FloodlightModuleException;
 import net.floodlightcontroller.core.module.IFloodlightModule;
 import net.floodlightcontroller.core.module.IFloodlightService;
+import net.floodlightcontroller.linkdiscovery.Link;
 import net.floodlightcontroller.packet.Ethernet;
 import net.floodlightcontroller.packet.IPv4;
 import org.projectfloodlight.openflow.protocol.OFMessage;
 import org.projectfloodlight.openflow.protocol.OFType;
+import org.projectfloodlight.openflow.types.DatapathId;
 import org.projectfloodlight.openflow.types.EthType;
 import org.projectfloodlight.openflow.types.IPAddress;
 import org.projectfloodlight.openflow.types.IpProtocol;
@@ -20,7 +22,6 @@ import java.util.*;
 
 
 public class MulticastManager implements IOFMessageListener, IFloodlightModule {
-
     // Instance field
     protected IFloodlightProviderService floodlightProvider;
     private MulticastInfoTable multicastInfoTable = new MulticastInfoTable();
@@ -56,6 +57,11 @@ public class MulticastManager implements IOFMessageListener, IFloodlightModule {
                                 // nothing happen
                             } else {    // host has not joined the multicast group yes
                                multicastInfoTable.get(multicastGroupIPAddress).add(hostIPAddress);
+//                               for(IPAddress ipAddress : multicastInfoTable.get(multicastGroupIPAddress)){
+//                                   for(DatapathId datapathId : TopologyInstance.getSwitches()){
+//                                       if()
+//                                   }
+//                               }
                                 // TODO: use algorithm to analyse
                                 // getMulticastRoutingDecision(multicastInfoTable.keySet(multicastGroupIPAddress));
                             }
@@ -122,5 +128,12 @@ public class MulticastManager implements IOFMessageListener, IFloodlightModule {
     @Override
     public void startUp(FloodlightModuleContext context) throws FloodlightModuleException {
         floodlightProvider.addOFMessageListener(OFType.PACKET_IN, this);
+    }
+
+    private void getMulticastRoutingDecision(Map<DatapathId, Set<Link>> links,
+                                                DatapathId source,
+                                                DatapathId dst,
+                                                Map<Link, Integer> LinkCost){
+
     }
 }

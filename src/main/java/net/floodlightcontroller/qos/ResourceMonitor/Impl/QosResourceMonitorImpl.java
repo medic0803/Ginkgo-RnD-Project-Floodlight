@@ -30,7 +30,7 @@ public class QosResourceMonitorImpl implements QosResourceMonitor, IFloodlightMo
     private static MonitorPkLossService pkLossService;
 
     private static Map<NodePortTuple,SwitchPortBandwidth> bandwidthMap;
-    private static Map<LinkEntry<NodePortTuple, NodePortTuple>, Integer> linkDelaySecMap;
+    private static Map<LinkEntry<DatapathId, DatapathId>, Integer> linkDelaySecMap;
     private static Map<NodePortTuple, SwitchPortPkLoss> pklossMap;
 
     /**
@@ -59,7 +59,7 @@ public class QosResourceMonitorImpl implements QosResourceMonitor, IFloodlightMo
      * linkdelay services
      */
     @Override
-    public Map<LinkEntry<NodePortTuple, NodePortTuple>, Integer> getLinkDelay() {
+    public Map<LinkEntry<DatapathId, DatapathId>, Integer> getLinkDelay() {
         linkDelaySecMap = delayService.getLinkDelay();
         return linkDelaySecMap;
     }

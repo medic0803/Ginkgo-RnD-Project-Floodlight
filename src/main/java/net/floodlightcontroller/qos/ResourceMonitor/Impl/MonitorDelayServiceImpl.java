@@ -10,6 +10,7 @@ import net.floodlightcontroller.linkdiscovery.Link;
 import net.floodlightcontroller.linkdiscovery.internal.LinkInfo;
 import net.floodlightcontroller.qos.ResourceMonitor.MonitorDelayService;
 import net.floodlightcontroller.qos.ResourceMonitor.pojo.LinkEntry;
+import org.projectfloodlight.openflow.types.DatapathId;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -24,7 +25,7 @@ public class MonitorDelayServiceImpl implements MonitorDelayService, IFloodlight
 
     private static final Logger logger = LoggerFactory.getLogger(MonitorDelayServiceImpl.class);
     private ILinkDiscoveryService linkDiscoveryService;
-    private Map<LinkEntry<NodePortTuple, NodePortTuple>, Integer> linkDelaySecMap;
+    private Map<LinkEntry<DatapathId, DatapathId>, Integer> linkDelaySecMap;
 
     /**
      * Return the list of interfaces that this module implements.
@@ -130,7 +131,7 @@ public class MonitorDelayServiceImpl implements MonitorDelayService, IFloodlight
 //    }
 
     @Override
-    public Map<LinkEntry<NodePortTuple, NodePortTuple>, Integer> getLinkDelay() {
+    public Map<LinkEntry<DatapathId, DatapathId>, Integer> getLinkDelay() {
         this.linkDelaySecMap.clear();
         Map<Link, LinkInfo> linksMap = linkDiscoveryService.getLinks();
         Iterator<Entry<Link, LinkInfo>> iterator = linksMap.entrySet().iterator();
@@ -138,7 +139,9 @@ public class MonitorDelayServiceImpl implements MonitorDelayService, IFloodlight
             Entry<Link, LinkInfo> link = iterator.next();
             NodePortTuple src = new NodePortTuple(link.getKey().getSrc(),link.getKey().getSrcPort());
             NodePortTuple dst = new NodePortTuple(link.getKey().getDst(),link.getKey().getDstPort());
-            LinkEntry<NodePortTuple,NodePortTuple> ansKey = new LinkEntry<NodePortTuple,NodePortTuple>(src,dst);
+            DatapathId srcNode = src.getNodeId();
+            DatapathId dstNode = dst.getNodeId();
+            LinkEntry<DatapathId,DatapathId> ansKey = new LinkEntry<DatapathId,DatapathId>(srcNode,dstNode);
             if (null == link.getValue().getCurrentLatency()){
                 logger.warn("link.getValue().getCurrentLatency() return null");
             }else {
