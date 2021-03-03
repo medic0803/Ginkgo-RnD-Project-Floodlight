@@ -21,6 +21,8 @@ import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.types.NodePortTuple;
 import net.floodlightcontroller.linkdiscovery.Link;
 import net.floodlightcontroller.qos.DSCPField;
+import net.floodlightcontroller.qos.ResourceMonitor.Impl.MonitorDelayServiceImpl;
+import net.floodlightcontroller.qos.ResourceMonitor.pojo.LinkEntry;
 import net.floodlightcontroller.routing.BroadcastTree;
 import net.floodlightcontroller.routing.Path;
 import net.floodlightcontroller.routing.PathId;
@@ -55,7 +57,7 @@ public class TopologyInstance {
     private static final Logger log = LoggerFactory.getLogger(TopologyInstance.class);
 
     /* Global: general switch, port, link */
-    private Set<DatapathId>                 switches;
+    private static Set<DatapathId>                 switches;
     private Map<DatapathId, Set<OFPort>>    portsWithLinks; /* only ports with links */
     private Map<DatapathId, Set<OFPort>>    portsPerSwitch; /* every port on the switch */
     private Set<NodePortTuple>              portsTunnel; /* all tunnel ports in topology */
@@ -81,6 +83,8 @@ public class TopologyInstance {
     private Map<Cluster, Archipelago>           archipelagoFromCluster;
     private Map<DatapathId, Set<NodePortTuple>> portsBroadcastPerArchipelago; /* broadcast ports in each archipelago ID */
     private Map<PathId, List<Path>>             pathcache; /* contains computed paths ordered best to worst */
+
+    private MonitorDelayServiceImpl monitorDelayService;
 
     protected TopologyInstance(Map<DatapathId, Set<OFPort>> portsWithLinks,
             Set<NodePortTuple> portsBlocked,
@@ -612,7 +616,9 @@ public class TopologyInstance {
                 if (seen.containsKey(neighbor)) continue;
 
                 if (linkCost == null || linkCost.get(link) == null) {
-                    w = 1;
+                    LinkEntry<DatapathId, DatapathId> key = new LinkEntry<>(cnode,neighbor);
+                    w = monitorDelayService.getLinkDelay().get(key);
+                    System.out.println(w);
                 } else {
                     w = linkCost.get(link);
                 }
@@ -1324,7 +1330,7 @@ public class TopologyInstance {
         return false;
     }
 
-    public Set<DatapathId> getSwitches() {
+    public static Set<DatapathId> getSwitches() {
         return switches;
     }
 
