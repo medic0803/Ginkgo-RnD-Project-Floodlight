@@ -115,14 +115,6 @@ public class MulticastManager implements IOFMessageListener, IFloodlightModule, 
     }
 
 
-    private void pushMulticastRoute(){
-        // TODO::
-//        OFGroupAdd groupAdd = sw1.getOFFactory().buildGroupAdd()
-//                .setGroup(OFGroup.of(1))
-//                .setGroupType(OFGroupType.FF)
-//                .setBuckets(buckets)
-//                .build();
-    }
     public boolean pushMulticastingRoute(Path route, Match match, OFPacketIn pi,
                              DatapathId pinSwitch, U64 cookie, FloodlightContext cntx,
                              boolean requestFlowRemovedNotification, OFFlowModCommand flowModCommand, boolean packetOutSent) {
