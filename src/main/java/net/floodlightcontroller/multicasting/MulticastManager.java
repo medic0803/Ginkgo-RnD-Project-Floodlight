@@ -74,8 +74,8 @@ public class MulticastManager implements IOFMessageListener, IFloodlightModule, 
                 byte[] igmpPayload = eth.getPayload().serialize();
                 byte[] multicastAddress = new byte[4];
                 System.arraycopy(igmpPayload, 36, multicastAddress, 0, 4);
-                IPAddress multicastGroupIPAddress = IPv4Address.of(multicastAddress);
-                IPAddress hostIPAddress = ((IPv4)eth.getPayload()).getSourceAddress();
+                IPv4Address multicastGroupIPAddress = IPv4Address.of(multicastAddress);
+                IPv4Address hostIPAddress = ((IPv4)eth.getPayload()).getSourceAddress();
 
                 System.out.println("Destination Address is: " + multicastGroupIPAddress);
                 System.out.println("Payload length = " + igmpPayload.length);
@@ -83,7 +83,7 @@ public class MulticastManager implements IOFMessageListener, IFloodlightModule, 
                 if (igmpPayload[32] == 4){
                     System.out.println(igmpPayload + "IGMP join message");
                     if (multicastInfoTable.isEmpty()){  // empty multicast information table
-                        HashSet<IPAddress> newMulticastGroup = new HashSet();
+                        HashSet<IPv4Address> newMulticastGroup = new HashSet();
                         newMulticastGroup.add(hostIPAddress);
                         multicastInfoTable.put(multicastGroupIPAddress, newMulticastGroup);
                     } else{ // non-empty table
@@ -94,7 +94,7 @@ public class MulticastManager implements IOFMessageListener, IFloodlightModule, 
                                multicastInfoTable.get(multicastGroupIPAddress).add(hostIPAddress);
                             }
                         } else {    // multicast group IP address do not exist
-                            HashSet<IPAddress> newMulticastGroup = new HashSet();
+                            HashSet<IPv4Address> newMulticastGroup = new HashSet();
                             newMulticastGroup.add(hostIPAddress);
                             multicastInfoTable.put(multicastGroupIPAddress, newMulticastGroup);
                         }

@@ -1,11 +1,11 @@
 package net.floodlightcontroller.multicasting;
 
 import net.floodlightcontroller.packet.IPacket;
-import org.projectfloodlight.openflow.types.IPAddress;
+import org.projectfloodlight.openflow.types.IPv4Address;
 
 import java.util.HashMap;
 import java.util.Set;
 
-public class MulticastInfoTable extends HashMap<IPAddress, Set<IPAddress>>{
+public class MulticastInfoTable extends HashMap<IPv4Address, Set<IPv4Address>>{
 
 }
