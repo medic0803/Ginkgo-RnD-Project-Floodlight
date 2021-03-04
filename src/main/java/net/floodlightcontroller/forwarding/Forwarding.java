@@ -230,8 +230,6 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
                     System.out.println("detect multicast transform");
                     System.out.println(((IPv4)eth.getPayload()).getProtocol());
                     doFlood(sw, pi, decision, cntx);
-                    // TODO:
-                    // doMulticast()
                     return Command.CONTINUE;
 
                 case DROP:

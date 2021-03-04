@@ -10,6 +10,7 @@ import net.floodlightcontroller.core.module.FloodlightModuleException;
 import net.floodlightcontroller.core.module.IFloodlightModule;
 import net.floodlightcontroller.core.module.IFloodlightService;
 import net.floodlightcontroller.core.types.NodePortTuple;
+import net.floodlightcontroller.forwarding.Forwarding;
 import net.floodlightcontroller.packet.Ethernet;
 import net.floodlightcontroller.packet.IPv4;
 import net.floodlightcontroller.routing.ForwardingBase;
@@ -34,6 +35,7 @@ public class MulticastManager implements IOFMessageListener, IFloodlightModule, 
     protected IOFSwitchService switchService;
     protected static Logger log = LoggerFactory.getLogger(MulticastManager.class);
     private MulticastInfoTable multicastInfoTable = new MulticastInfoTable();
+    private HashMap<IPv4Address, DatapathId> pinSwitchIPv4AddressMatchMap = new HashMap<>();
 
     public static int FLOWMOD_DEFAULT_IDLE_TIMEOUT = 5; // in seconds
     public static int FLOWMOD_DEFAULT_HARD_TIMEOUT = 0; // infinite
@@ -70,6 +72,7 @@ public class MulticastManager implements IOFMessageListener, IFloodlightModule, 
                 // TODO: Delete
                 System.out.println("-----------receive igmp packet ----------------");
                 System.out.println("Source Address is: " + ((IPv4)eth.getPayload()).getSourceAddress());
+                System.out.println("Switch ID is " + sw.getId());
 
                 byte[] igmpPayload = eth.getPayload().serialize();
                 byte[] multicastAddress = new byte[4];
@@ -82,27 +85,38 @@ public class MulticastManager implements IOFMessageListener, IFloodlightModule, 
                 // the total lengeth of this packet is 54, the previous 14(0-13) is for header, the rest 40 is for paylod, and the 46/32 is for record type
                 if (igmpPayload[32] == 4){
                     System.out.println(igmpPayload + "IGMP join message");
+
                     if (multicastInfoTable.isEmpty()){  // empty multicast information table
                         HashSet<IPv4Address> newMulticastGroup = new HashSet();
                         newMulticastGroup.add(hostIPAddress);
                         multicastInfoTable.put(multicastGroupIPAddress, newMulticastGroup);
+
+
+                        // A new host join, add it's match item
+                        pinSwitchIPv4AddressMatchMap.put(hostIPAddress, sw.getId());
                     } else{ // non-empty table
                         if (multicastInfoTable.containsValue(multicastGroupIPAddress)){
                             if (multicastInfoTable.get(multicastGroupIPAddress).contains(hostIPAddress)){   // host already join the multicast group
                                 // nothing happen
                             } else {    // host has not joined the multicast group yes
                                multicastInfoTable.get(multicastGroupIPAddress).add(hostIPAddress);
+                                // A new host join, add it's match item
+                                pinSwitchIPv4AddressMatchMap.put(hostIPAddress, sw.getId());
                             }
                         } else {    // multicast group IP address do not exist
                             HashSet<IPv4Address> newMulticastGroup = new HashSet();
                             newMulticastGroup.add(hostIPAddress);
                             multicastInfoTable.put(multicastGroupIPAddress, newMulticastGroup);
+                            // A new host join, add it's match item
+                            pinSwitchIPv4AddressMatchMap.put(hostIPAddress, sw.getId());
                         }
                     }
                 } else if (igmpPayload[32] == 3){
                     System.out.println(igmpPayload + "IGMP leave message");
-                }
 
+                    // host leave, delete the match item
+                    pinSwitchIPv4AddressMatchMap.remove(hostIPAddress);
+                }
 
             } else if (multicastInfoTable.containsKey(((IPv4)eth.getPayload()).getDestinationAddress())){
                 // TODO: use algorithm to analyse
