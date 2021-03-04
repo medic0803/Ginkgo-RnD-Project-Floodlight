@@ -362,9 +362,8 @@ public class MulticastManager implements IOFMessageListener, IFloodlightModule, 
     @Override
     public MulticastInfoTable getmulticastInforTable() {
         return this.multicastInfoTable;
-
-    private Path getMulticastRoutingDecision(DatapathId src,
-                                                DatapathId dst){
+    }
+    private Path getMulticastRoutingDecision(DatapathId src, DatapathId dst){
         Stack<DatapathId> tempRP = new Stack<>();
         Path nPath = routingService.getPath(src, dst);
         for(Path nextPath : pathsList){
