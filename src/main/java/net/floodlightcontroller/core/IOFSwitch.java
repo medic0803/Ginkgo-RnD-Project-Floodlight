@@ -16,35 +16,20 @@
 
 package net.floodlightcontroller.core;
 
-import java.net.SocketAddress;
-import java.util.Collection;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.Date;
-
-import org.projectfloodlight.openflow.protocol.OFActionType;
-import org.projectfloodlight.openflow.protocol.OFCapabilities;
-import org.projectfloodlight.openflow.protocol.OFControllerRole;
-import org.projectfloodlight.openflow.protocol.OFFactory;
-import org.projectfloodlight.openflow.protocol.OFMessage;
-import org.projectfloodlight.openflow.protocol.OFPortDesc;
-import org.projectfloodlight.openflow.protocol.OFRequest;
-import org.projectfloodlight.openflow.protocol.OFStatsReply;
-import org.projectfloodlight.openflow.protocol.OFStatsRequest;
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
+import com.google.common.collect.ImmutableList;
+import com.google.common.util.concurrent.ListenableFuture;
+import net.floodlightcontroller.core.internal.OFConnection;
+import net.floodlightcontroller.core.internal.TableFeatures;
+import net.floodlightcontroller.core.web.serializers.IOFSwitchSerializer;
+import org.projectfloodlight.openflow.protocol.*;
 import org.projectfloodlight.openflow.types.DatapathId;
 import org.projectfloodlight.openflow.types.OFPort;
 import org.projectfloodlight.openflow.types.TableId;
 import org.projectfloodlight.openflow.types.U64;
 
-import com.google.common.collect.ImmutableList;
-import com.google.common.util.concurrent.ListenableFuture;
-
-import net.floodlightcontroller.core.internal.OFConnection;
-import net.floodlightcontroller.core.internal.TableFeatures;
-import net.floodlightcontroller.core.web.serializers.IOFSwitchSerializer;
-
-import com.fasterxml.jackson.databind.annotation.JsonSerialize;
+import java.net.SocketAddress;
+import java.util.*;
 /**
  * An openflow switch connecting to the controller.  This interface offers
  * methods for interacting with switches using OpenFlow, and retrieving
@@ -132,7 +117,7 @@ public interface IOFSwitch extends IOFMessageWriter {
     SwitchDescription getSwitchDescription();
 
     /**
-     * Get the IP address of the remote (switch) end of the connection
+     * Get the IP address of the remote (switch) end of the co  nnection
      * @return the inet address
      */
     SocketAddress getInetAddress();
