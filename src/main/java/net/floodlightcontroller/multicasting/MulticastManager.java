@@ -8,15 +8,15 @@ import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.module.FloodlightModuleException;
 import net.floodlightcontroller.core.module.IFloodlightModule;
 import net.floodlightcontroller.core.module.IFloodlightService;
-import net.floodlightcontroller.linkdiscovery.Link;
 import net.floodlightcontroller.packet.Ethernet;
 import net.floodlightcontroller.packet.IPv4;
+import net.floodlightcontroller.routing.IRoutingService;
+import net.floodlightcontroller.routing.Path;
 import org.projectfloodlight.openflow.protocol.OFMessage;
+import org.projectfloodlight.openflow.protocol.OFPacketIn;
 import org.projectfloodlight.openflow.protocol.OFType;
-import org.projectfloodlight.openflow.types.DatapathId;
-import org.projectfloodlight.openflow.types.EthType;
-import org.projectfloodlight.openflow.types.IPAddress;
-import org.projectfloodlight.openflow.types.IpProtocol;
+import org.projectfloodlight.openflow.protocol.match.MatchField;
+import org.projectfloodlight.openflow.types.*;
 
 import java.util.*;
 
@@ -25,12 +25,20 @@ public class MulticastManager implements IOFMessageListener, IFloodlightModule {
     // Instance field
     protected IFloodlightProviderService floodlightProvider;
     private MulticastInfoTable multicastInfoTable = new MulticastInfoTable();
+    protected IRoutingService routingService;
+    List<Path> pathsList;
+    Set<DatapathId> rendezvousPoints;
 
     @Override
     public Command receive(IOFSwitch sw, OFMessage msg, FloodlightContext cntx) {
         Ethernet eth =
                 IFloodlightProviderService.bcStore.get(cntx,
                         IFloodlightProviderService.CONTEXT_PI_PAYLOAD);
+
+        OFPacketIn pki = (OFPacketIn) msg;
+        OFPort in_port = pki.getMatch().get(MatchField.IN_PORT);
+
+
         if (eth.getEtherType() == EthType.IPv4){
             if (((IPv4)eth.getPayload()).getProtocol() == IpProtocol.IGMP){
 
@@ -130,10 +138,22 @@ public class MulticastManager implements IOFMessageListener, IFloodlightModule {
         floodlightProvider.addOFMessageListener(OFType.PACKET_IN, this);
     }
 
-    private void getMulticastRoutingDecision(Map<DatapathId, Set<Link>> links,
-                                                DatapathId source,
-                                                DatapathId dst,
-                                                Map<Link, Integer> LinkCost){
-
+    private Path getMulticastRoutingDecision(DatapathId src,
+                                                DatapathId dst){
+        Stack<DatapathId> tempRP = new Stack<>();
+        Path nPath = routingService.getPath(src, dst);
+        for(Path nextPath : pathsList){
+            for(int k = 0; k < nPath.getPath().size(); k += 2){
+                for (int l = 0; l < nextPath.getPath().size(); l += 2) {
+                    if(nPath.getPath().get(k).getNodeId().equals(nextPath.getPath().get(l).getNodeId())){
+                        tempRP.push(nPath.getPath().get(k).getNodeId());
+                    }
+                }
+            }
+            rendezvousPoints.add(tempRP.peek());
+            tempRP.empty();
+        }
+        pathsList.add(nPath);
+        return nPath;
     }
 }

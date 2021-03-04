@@ -577,13 +577,13 @@ public class TopologyInstance {
         HashMap<DatapathId, Integer> cost = new HashMap<DatapathId, Integer>();
         int w;
 
-        for (Link key : linkCost.keySet()){
-            DatapathId src = key.getSrc();
-            DatapathId dst = key.getDst();
-            LinkEntry<DatapathId, DatapathId> linkEntry = new LinkEntry<>(src,dst);
-            int newCost = monitorDelayService.getLinkDelay().get(linkEntry);
-            linkCost.put(key, newCost);
-        }
+//        for (Link key : linkCost.keySet()){
+//            DatapathId src = key.getSrc();
+//            DatapathId dst = key.getDst();
+//            LinkEntry<DatapathId, DatapathId> linkEntry = new LinkEntry<>(src,dst);
+//            int newCost = monitorDelayService.getLinkDelay().get(linkEntry);
+//            linkCost.put(key, newCost);
+//        }
 
         for (DatapathId node : links.keySet()) {
             nexthoplinks.put(node, null);
