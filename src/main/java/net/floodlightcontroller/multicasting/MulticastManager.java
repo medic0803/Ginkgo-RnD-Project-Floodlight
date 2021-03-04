@@ -24,9 +24,14 @@ import org.projectfloodlight.openflow.protocol.match.MatchField;
 import org.projectfloodlight.openflow.types.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
+import net.floodlightcontroller.routing.IRoutingService;
+import net.floodlightcontroller.routing.Path;
+import org.projectfloodlight.openflow.protocol.OFMessage;
+import org.projectfloodlight.openflow.protocol.OFPacketIn;
+import org.projectfloodlight.openflow.protocol.OFType;
+import org.projectfloodlight.openflow.protocol.match.MatchField;
+import org.projectfloodlight.openflow.types.*;
 import java.util.*;
-
 
 public class MulticastManager implements IOFMessageListener, IFloodlightModule, IFetchMulticastGroupService {
 
@@ -36,6 +41,9 @@ public class MulticastManager implements IOFMessageListener, IFloodlightModule, 
     protected static Logger log = LoggerFactory.getLogger(MulticastManager.class);
     private MulticastInfoTable multicastInfoTable = new MulticastInfoTable();
     private HashMap<IPv4Address, DatapathId> pinSwitchIPv4AddressMatchMap = new HashMap<>();
+    protected IRoutingService routingService;
+    List<Path> pathsList;
+    Set<DatapathId> rendezvousPoints;
 
     public static int FLOWMOD_DEFAULT_IDLE_TIMEOUT = 5; // in seconds
     public static int FLOWMOD_DEFAULT_HARD_TIMEOUT = 0; // infinite
@@ -66,6 +74,11 @@ public class MulticastManager implements IOFMessageListener, IFloodlightModule, 
         Ethernet eth =
                 IFloodlightProviderService.bcStore.get(cntx,
                         IFloodlightProviderService.CONTEXT_PI_PAYLOAD);
+
+        OFPacketIn pki = (OFPacketIn) msg;
+        OFPort in_port = pki.getMatch().get(MatchField.IN_PORT);
+
+
         if (eth.getEtherType() == EthType.IPv4){
             if (((IPv4)eth.getPayload()).getProtocol() == IpProtocol.IGMP){
 
@@ -102,6 +115,7 @@ public class MulticastManager implements IOFMessageListener, IFloodlightModule, 
                                multicastInfoTable.get(multicastGroupIPAddress).add(hostIPAddress);
                                 // A new host join, add it's match item
                                 pinSwitchIPv4AddressMatchMap.put(hostIPAddress, sw.getId());
+                                // TODO: use algorithm to analyse
                             }
                         } else {    // multicast group IP address do not exist
                             HashSet<IPv4Address> newMulticastGroup = new HashSet();
@@ -348,5 +362,23 @@ public class MulticastManager implements IOFMessageListener, IFloodlightModule, 
     @Override
     public MulticastInfoTable getmulticastInforTable() {
         return this.multicastInfoTable;
+
+    private Path getMulticastRoutingDecision(DatapathId src,
+                                                DatapathId dst){
+        Stack<DatapathId> tempRP = new Stack<>();
+        Path nPath = routingService.getPath(src, dst);
+        for(Path nextPath : pathsList){
+            for(int k = 0; k < nPath.getPath().size(); k += 2){
+                for (int l = 0; l < nextPath.getPath().size(); l += 2) {
+                    if(nPath.getPath().get(k).getNodeId().equals(nextPath.getPath().get(l).getNodeId())){
+                        tempRP.push(nPath.getPath().get(k).getNodeId());
+                    }
+                }
+            }
+            rendezvousPoints.add(tempRP.peek());
+            tempRP.empty();
+        }
+        pathsList.add(nPath);
+        return nPath;
     }
 }
