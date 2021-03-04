@@ -109,7 +109,7 @@ public class MonitorDelayServiceImpl implements MonitorDelayService, IFloodlight
 //        }
 
     }
-//kwmtodo: 有两种get延迟的方法
+//kwmtodo: 有两种get延迟的方法, 记录实验结果到日志中。
 //    public int testFunc(){
 //        Map<Link, LinkInfo> linkInfo = linkDiscoveryService.getLinks();
 //        if (linkInfo.isEmpty()){
