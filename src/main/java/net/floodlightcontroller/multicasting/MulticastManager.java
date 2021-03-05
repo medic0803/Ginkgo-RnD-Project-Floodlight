@@ -178,27 +178,28 @@ public class MulticastManager implements IOFMessageListener, IFloodlightModule, 
 
     @Override
     public Command receive(IOFSwitch sw, OFMessage msg, FloodlightContext cntx) {
-        Ethernet eth =
-                IFloodlightProviderService.bcStore.get(cntx,
-                        IFloodlightProviderService.CONTEXT_PI_PAYLOAD);
+        Ethernet eth = IFloodlightProviderService.bcStore.get(cntx, IFloodlightProviderService.CONTEXT_PI_PAYLOAD);
 
-        OFPacketIn pi = (OFPacketIn) msg;
+        switch (msg.getType()) {
+            case PACKET_IN:
+                OFPacketIn pi = (OFPacketIn) msg;
 
-        if (eth.getEtherType() == EthType.IPv4){
-            if (((IPv4)eth.getPayload()).getProtocol() == IpProtocol.IGMP){
-                processIGMPMessage(sw, pi, cntx);
+                if (eth.getEtherType() == EthType.IPv4){
+                    if (((IPv4)eth.getPayload()).getProtocol() == IpProtocol.IGMP){
+                        processIGMPMessage(sw, pi, cntx);
 
-            } else if (multicastInfoTable.containsKey(((IPv4)eth.getPayload()).getDestinationAddress())){
-                processMulticastPacketInMessage(sw, pi, null, cntx);
+                    } else if (multicastInfoTable.containsKey(((IPv4)eth.getPayload()).getDestinationAddress())){
+                        processMulticastPacketInMessage(sw, pi, null, cntx);
 
-            }
+                    }
+                }
         }
+
         return Command.CONTINUE;
     }
     public Command processIGMPMessage(IOFSwitch sw, OFPacketIn pi, FloodlightContext cntx){
-        Ethernet eth =
-                IFloodlightProviderService.bcStore.get(cntx,
-                        IFloodlightProviderService.CONTEXT_PI_PAYLOAD);
+        Ethernet eth = IFloodlightProviderService.bcStore.get(cntx, IFloodlightProviderService.CONTEXT_PI_PAYLOAD);
+
         // TODO: Delete
         System.out.println("-----------receive igmp packet ----------------");
         System.out.println("Source Address is: " + ((IPv4)eth.getPayload()).getSourceAddress());
@@ -251,9 +252,7 @@ public class MulticastManager implements IOFMessageListener, IFloodlightModule, 
         return Command.CONTINUE;
     }
     public Command processMulticastPacketInMessage(IOFSwitch sw, OFPacketIn pi, IRoutingDecision decision, FloodlightContext cntx){
-        Ethernet eth =
-                IFloodlightProviderService.bcStore.get(cntx,
-                        IFloodlightProviderService.CONTEXT_PI_PAYLOAD);
+        Ethernet eth = IFloodlightProviderService.bcStore.get(cntx, IFloodlightProviderService.CONTEXT_PI_PAYLOAD);
 
         // TODO: use algorithm to analyse
         IPv4Address streamingSourceIPAddress = ((IPv4)eth.getPayload()).getSourceAddress();
@@ -676,6 +675,8 @@ public class MulticastManager implements IOFMessageListener, IFloodlightModule, 
         messageDamper = new OFMessageDamper(OFMESSAGE_DAMPER_CAPACITY,
                 EnumSet.of(OFType.FLOW_MOD),
                 OFMESSAGE_DAMPER_TIMEOUT);
+
+        flowSetIdRegistry = FlowSetIdRegistry.getInstance();
     }
 
     @Override
