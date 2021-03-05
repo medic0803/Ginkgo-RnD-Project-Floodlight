@@ -16,6 +16,7 @@ import net.floodlightcontroller.packet.*;
 import net.floodlightcontroller.routing.IRoutingDecision;
 import net.floodlightcontroller.routing.IRoutingService;
 import net.floodlightcontroller.routing.Path;
+import net.floodlightcontroller.routing.RoutingDecision;
 import net.floodlightcontroller.util.*;
 import org.projectfloodlight.openflow.protocol.*;
 import org.projectfloodlight.openflow.protocol.action.OFAction;
@@ -54,8 +55,8 @@ public class MulticastManager implements IOFMessageListener, IFloodlightModule, 
 
     protected IRoutingService routingService;
     //zzy
-    List<Path> pathsList;
-    Map<DatapathId, Set<OFPort>> rendezvousPoints;
+    List<Path> pathsList = new LinkedList<>();
+    Map<DatapathId, Set<OFPort>> rendezvousPoints = new HashMap<>();
 
     public static int FLOWMOD_DEFAULT_IDLE_TIMEOUT = 5; // in seconds
     public static int FLOWMOD_DEFAULT_HARD_TIMEOUT = 0; // infinite
@@ -255,18 +256,22 @@ public class MulticastManager implements IOFMessageListener, IFloodlightModule, 
     public Command processMulticastPacketInMessage(IOFSwitch sw, OFPacketIn pi, IRoutingDecision decision, FloodlightContext cntx){
         Ethernet eth = IFloodlightProviderService.bcStore.get(cntx, IFloodlightProviderService.CONTEXT_PI_PAYLOAD);
 
-        // TODO: use algorithm to analyse
+        IPv4Address destinationAddress = ((IPv4)eth.getPayload()).getDestinationAddress();
         IPv4Address streamingSourceIPAddress = ((IPv4)eth.getPayload()).getSourceAddress();
 
+        Path path = null;
+        for (IPv4Address hostAddress : multicastInfoTable.get(destinationAddress)){
+            path = getMulticastRoutingDecision(sw.getId(), pinSwitchIPv4AddressMatchMap.get(hostAddress));
+        }
         // getMulticastRoutingDecision(streamingSourceIPAddress ,multicastInfoTable.keySet(multicastGroupIPAddress));
 
         U64 flowSetId = flowSetIdRegistry.generateFlowSetId();
-        U64 cookie = makeForwardingCookie(null, flowSetId);
+        U64 cookie = makeForwardingCookie(RoutingDecision.rtStore.get(cntx, IRoutingDecision.CONTEXT_DECISION), flowSetId);
 
         OFPort srcPort = OFMessageUtils.getInPort(pi);
 
-        Match m = createMatchFromPacket(sw, srcPort, pi, cntx);
-
+        Match match = createMatchFromPacket(sw, srcPort, pi, cntx);
+        pushMulticastingRoute(path, match, pi, sw.getId(), cookie, cntx, false, OFFlowModCommand.ADD, null, false);
         return Command.CONTINUE;
     }
     public boolean pushMulticastingRoute(Path route, Match match, OFPacketIn pi,
@@ -673,6 +678,7 @@ public class MulticastManager implements IOFMessageListener, IFloodlightModule, 
     public void init(FloodlightModuleContext context) throws FloodlightModuleException {
         floodlightProvider = context.getServiceImpl(IFloodlightProviderService.class);
         switchService = context.getServiceImpl(IOFSwitchService.class);
+        routingService = context.getServiceImpl(IRoutingService.class);
         messageDamper = new OFMessageDamper(OFMESSAGE_DAMPER_CAPACITY,
                 EnumSet.of(OFType.FLOW_MOD),
                 OFMESSAGE_DAMPER_TIMEOUT);
@@ -694,30 +700,37 @@ public class MulticastManager implements IOFMessageListener, IFloodlightModule, 
         Set<OFPort> portSet = null;
         Stack<DatapathId> tempRP = new Stack<>();
         Path nPath = routingService.getPath(src, dst);
-        for(Path nextPath : pathsList){
-            for(int k = 0; k < nPath.getPath().size(); k += 2){
-                for (int l = 0; l < nextPath.getPath().size(); l += 2) {
-                    if(nPath.getPath().get(k).getNodeId().equals(nextPath.getPath().get(l).getNodeId())){
-                        tempRP.push(nPath.getPath().get(k).getNodeId());
+        if (!pathsList.isEmpty()){
+            for(Path nextPath : pathsList){
+                for(int k = 0; k < nPath.getPath().size(); k += 2){
+                    for (int l = 0; l < nextPath.getPath().size(); l += 2) {
+                        if(nPath.getPath().get(k).getNodeId().equals(nextPath.getPath().get(l).getNodeId())){
+                            tempRP.push(nPath.getPath().get(k).getNodeId());
+                        }
                     }
                 }
-            }
-            DatapathId surRP = tempRP.peek();
-            for(Path p : pathsList){
-                List<NodePortTuple> pathPortList = p.getPath();
-                if (pathPortList.contains(surRP)) {
-                    for (int i = 0; i < pathPortList.size(); i++) {
-                        if (pathPortList.get(i).getNodeId().equals(surRP)) {
-                            if (pathPortList.get(i).getPortId().getPortNumber() % 2 != 0) {
-                                portSet.add(pathPortList.get(i).getPortId());
+                DatapathId surRP = null;
+                if (!tempRP.isEmpty()) {
+                    surRP = tempRP.peek();
+                    for(Path p : pathsList){
+                        List<NodePortTuple> pathPortList = p.getPath();
+                        if (pathPortList.contains(surRP)) {
+                            for (int i = 0; i < pathPortList.size(); i++) {
+                                if (pathPortList.get(i).getNodeId().equals(surRP)) {
+                                    if (pathPortList.get(i).getPortId().getPortNumber() % 2 != 0) {
+                                        portSet.add(pathPortList.get(i).getPortId());
+                                    }
+                                }
                             }
                         }
                     }
                 }
+
+                rendezvousPoints.put(surRP, portSet);
+                tempRP.empty();
             }
-            rendezvousPoints.put(surRP, portSet);
-            tempRP.empty();
         }
+
         pathsList.add(nPath);
         return nPath;
     }

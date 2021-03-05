@@ -1943,7 +1943,7 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
             if (eth.getEtherType() == EthType.IPv4){
                 if (fetchMulticastGroupService.getmulticastInforTable().containsKey(((IPv4)eth.getPayload()).getDestinationAddress())) {
                     System.out.println("=============Break due to multicast destination detected");
-                    break;
+                    return Command.CONTINUE;
                 }
             }
                 if (cntx != null) {
