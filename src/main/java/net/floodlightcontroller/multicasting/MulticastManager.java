@@ -270,7 +270,7 @@ public class MulticastManager implements IOFMessageListener, IFloodlightModule, 
     }
     public boolean pushMulticastingRoute(Path route, Match match, OFPacketIn pi,
                              DatapathId pinSwitch, U64 cookie, FloodlightContext cntx,
-                             boolean requestFlowRemovedNotification, OFFlowModCommand flowModCommand, boolean packetOutSent) {
+                             boolean requestFlowRemovedNotification, OFFlowModCommand flowModCommand, MulticastRoutingDecision multicastRoutingDecision,boolean packetOutSent) {
 
         List<NodePortTuple> switchPortList = route.getPath();
 

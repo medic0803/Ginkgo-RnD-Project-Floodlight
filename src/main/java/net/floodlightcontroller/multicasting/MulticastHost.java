@@ -6,6 +6,7 @@ import org.projectfloodlight.openflow.protocol.OFFlowModCommand;
 import org.projectfloodlight.openflow.protocol.OFPacketIn;
 import org.projectfloodlight.openflow.protocol.match.Match;
 import org.projectfloodlight.openflow.types.DatapathId;
+import org.projectfloodlight.openflow.types.OFGroup;
 import org.projectfloodlight.openflow.types.U64;
 
 public class MulticastHost {
@@ -20,5 +21,4 @@ public class MulticastHost {
     private boolean requestFlowRemoveNotification;
     private OFFlowModCommand flowModCommand;
     private boolean packetOutSent;
-
 }
