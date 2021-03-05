@@ -53,8 +53,9 @@ public class MulticastManager implements IOFMessageListener, IFloodlightModule, 
     protected static final U64 DEFAULT_FORWARDING_COOKIE = AppCookie.makeCookie(FORWARDING_APP_ID, 0);
 
     protected IRoutingService routingService;
+    //zzy
     List<Path> pathsList;
-    Set<DatapathId> rendezvousPoints;
+    Map<DatapathId, Set<OFPort>> rendezvousPoints;
 
     public static int FLOWMOD_DEFAULT_IDLE_TIMEOUT = 5; // in seconds
     public static int FLOWMOD_DEFAULT_HARD_TIMEOUT = 0; // infinite
@@ -688,8 +689,9 @@ public class MulticastManager implements IOFMessageListener, IFloodlightModule, 
     public MulticastInfoTable getmulticastInforTable() {
         return this.multicastInfoTable;
     }
-
-    private Path getMulticastRoutingDecision(DatapathId src, DatapathId dst){
+    private Path getMulticastRoutingDecision(DatapathId src,
+                                                DatapathId dst){
+        Set<OFPort> portSet = null;
         Stack<DatapathId> tempRP = new Stack<>();
         Path nPath = routingService.getPath(src, dst);
         for(Path nextPath : pathsList){
@@ -700,7 +702,20 @@ public class MulticastManager implements IOFMessageListener, IFloodlightModule, 
                     }
                 }
             }
-            rendezvousPoints.add(tempRP.peek());
+            DatapathId surRP = tempRP.peek();
+            for(Path p : pathsList){
+                List<NodePortTuple> pathPortList = p.getPath();
+                if (pathPortList.contains(surRP)) {
+                    for (int i = 0; i < pathPortList.size(); i++) {
+                        if (pathPortList.get(i).getNodeId().equals(surRP)) {
+                            if (pathPortList.get(i).getPortId().getPortNumber() % 2 != 0) {
+                                portSet.add(pathPortList.get(i).getPortId());
+                            }
+                        }
+                    }
+                }
+            }
+            rendezvousPoints.put(surRP, portSet);
             tempRP.empty();
         }
         pathsList.add(nPath);
