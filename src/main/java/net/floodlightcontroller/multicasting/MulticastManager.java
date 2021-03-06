@@ -224,7 +224,6 @@ public class MulticastManager implements IOFMessageListener, IFloodlightModule, 
                 newMulticastGroup.add(hostIPAddress);
                 multicastInfoTable.put(multicastGroupIPAddress, newMulticastGroup);
 
-
                 // A new host join, add it's match item
                 pinSwitchIPv4AddressMatchMap.put(hostIPAddress, sw.getId());
             } else{ // non-empty table
@@ -700,6 +699,7 @@ public class MulticastManager implements IOFMessageListener, IFloodlightModule, 
         Set<OFPort> portSet = null;
         Stack<DatapathId> tempRP = new Stack<>();
         Path nPath = routingService.getPath(src, dst);
+
         if (!pathsList.isEmpty()){
             for(Path nextPath : pathsList){
                 for(int k = 0; k < nPath.getPath().size(); k += 2){
