@@ -5,6 +5,7 @@ import net.floodlightcontroller.core.IFloodlightProviderService;
 import net.floodlightcontroller.core.IOFMessageListener;
 import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.internal.IOFSwitchService;
+import net.floodlightcontroller.core.internal.OFSwitch;
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.module.FloodlightModuleException;
 import net.floodlightcontroller.core.module.IFloodlightModule;
@@ -309,6 +310,24 @@ public class MulticastManager implements IOFMessageListener, IFloodlightModule, 
 
         List<NodePortTuple> switchPortList = route.getPath();
 
+        // Compose a Group
+        ArrayList<OFBucket> bucketList = new ArrayList<OFBucket>();
+        OFSwitch rp = null;
+        bucketList.add(rp.getOFFactory().buildBucket()
+                .setWatchGroup(OFGroup.ANY)
+                .setWatchPort(OFPort.ANY)
+                .setActions(Collections.singletonList((OFAction) rp.getOFFactory().actions().buildOutput()
+                                .setMaxLen(0xffFFffFF)
+                                .setPort(link_dpid1_to_dpid2b.getSrcPort())
+                .build()
+        )));
+        OFGroupAdd addGroup = rp.getOFFactory().buildGroupAdd()
+                .setGroupType(OFGroupType.ALL)
+                .setGroup(OFGroup.of(50))
+                .setBuckets(bucketList)
+                .build();
+
+        rp.write(addGroup);
         for (int indx = switchPortList.size() - 1; indx > 0; indx -= 2) {
             // indx and indx-1 will always have the same switch DPID.
             DatapathId switchDPID = switchPortList.get(indx).getNodeId();
@@ -400,13 +419,13 @@ public class MulticastManager implements IOFMessageListener, IFloodlightModule, 
             }
 
             /* Push the packet out the first hop switch */
-            if (!packetOutSent && sw.getId().equals(pinSwitch) &&
-                    !fmb.getCommand().equals(OFFlowModCommand.DELETE) &&
-                    !fmb.getCommand().equals(OFFlowModCommand.DELETE_STRICT)) {
-                /* Use the buffered packet at the switch, if there's one stored */
-                log.debug("Push packet out the first hop switch");
-                pushPacket(sw, pi, outPort, true, cntx);
-            }
+//            if (!packetOutSent && sw.getId().equals(pinSwitch) &&
+//                    !fmb.getCommand().equals(OFFlowModCommand.DELETE) &&
+//                    !fmb.getCommand().equals(OFFlowModCommand.DELETE_STRICT)) {
+//                /* Use the buffered packet at the switch, if there's one stored */
+//                log.debug("Push packet out the first hop switch");
+//                pushPacket(sw, pi, outPort, true, cntx);
+//            }
 
         }
 
