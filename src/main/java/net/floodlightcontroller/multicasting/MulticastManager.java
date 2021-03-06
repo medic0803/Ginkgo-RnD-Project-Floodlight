@@ -13,10 +13,12 @@ import net.floodlightcontroller.core.types.NodePortTuple;
 import net.floodlightcontroller.core.util.AppCookie;
 import net.floodlightcontroller.forwarding.Forwarding;
 import net.floodlightcontroller.packet.*;
+import net.floodlightcontroller.qos.DSCPField;
 import net.floodlightcontroller.routing.IRoutingDecision;
 import net.floodlightcontroller.routing.IRoutingService;
 import net.floodlightcontroller.routing.Path;
 import net.floodlightcontroller.routing.RoutingDecision;
+import net.floodlightcontroller.topology.ITopologyService;
 import net.floodlightcontroller.util.*;
 import org.projectfloodlight.openflow.protocol.*;
 import org.projectfloodlight.openflow.protocol.action.OFAction;
@@ -26,6 +28,7 @@ import org.projectfloodlight.openflow.protocol.match.MatchField;
 import org.projectfloodlight.openflow.types.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import sun.misc.MessageUtils;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
@@ -37,10 +40,11 @@ public class MulticastManager implements IOFMessageListener, IFloodlightModule, 
     // Instance field
     protected IFloodlightProviderService floodlightProvider;
     protected IOFSwitchService switchService;
+    protected ITopologyService topologyService;
+
     protected static Logger log = LoggerFactory.getLogger(MulticastManager.class);
     private MulticastInfoTable multicastInfoTable = new MulticastInfoTable();
-    private HashMap<IPv4Address, DatapathId> pinSwitchIPv4AddressMatchMap = new HashMap<>();
-
+    private HashMap<IPv4Address, Map<DatapathId, OFPort>> pinSwitchIPv4AddressMatchMap = new HashMap<>();
     private static final short DECISION_BITS = 24;
     private static final short DECISION_SHIFT = 0;
     private static final long DECISION_MASK = ((1L << DECISION_BITS) - 1) << DECISION_SHIFT;
@@ -225,7 +229,12 @@ public class MulticastManager implements IOFMessageListener, IFloodlightModule, 
                 multicastInfoTable.put(multicastGroupIPAddress, newMulticastGroup);
 
                 // A new host join, add it's match item
-                pinSwitchIPv4AddressMatchMap.put(hostIPAddress, sw.getId());
+                if (topologyService.isEdge(sw.getId(), OFMessageUtils.getInPort(pi))){
+                    HashMap<DatapathId, OFPort> tempMap= new HashMap<DatapathId, OFPort>();
+                    tempMap.put(sw.getId(), OFMessageUtils.getInPort(pi));
+                    pinSwitchIPv4AddressMatchMap.put(hostIPAddress, tempMap);
+                }
+
             } else{ // non-empty table
                 if (multicastInfoTable.containsValue(multicastGroupIPAddress)){
                     if (multicastInfoTable.get(multicastGroupIPAddress).contains(hostIPAddress)){   // host already join the multicast group
@@ -233,7 +242,12 @@ public class MulticastManager implements IOFMessageListener, IFloodlightModule, 
                     } else {    // host has not joined the multicast group yes
                         multicastInfoTable.get(multicastGroupIPAddress).add(hostIPAddress);
                         // A new host join, add it's match item
-                        pinSwitchIPv4AddressMatchMap.put(hostIPAddress, sw.getId());
+                        if (topologyService.isEdge(sw.getId(), OFMessageUtils.getInPort(pi))){
+                            HashMap<DatapathId, OFPort> tempMap= new HashMap<DatapathId, OFPort>();
+                            tempMap.put(sw.getId(), OFMessageUtils.getInPort(pi));
+                            pinSwitchIPv4AddressMatchMap.put(hostIPAddress, tempMap);
+                        }
+
                         // TODO: use algorithm to analyse
                     }
                 } else {    // multicast group IP address do not exist
@@ -241,7 +255,12 @@ public class MulticastManager implements IOFMessageListener, IFloodlightModule, 
                     newMulticastGroup.add(hostIPAddress);
                     multicastInfoTable.put(multicastGroupIPAddress, newMulticastGroup);
                     // A new host join, add it's match item
-                    pinSwitchIPv4AddressMatchMap.put(hostIPAddress, sw.getId());
+                    if (topologyService.isEdge(sw.getId(), OFMessageUtils.getInPort(pi))){
+                        HashMap<DatapathId, OFPort> tempMap= new HashMap<DatapathId, OFPort>();
+                        tempMap.put(sw.getId(), OFMessageUtils.getInPort(pi));
+                        pinSwitchIPv4AddressMatchMap.put(hostIPAddress, tempMap);
+                    }
+
                 }
             }
         } else if (igmpPayload[32] == 3){
@@ -258,16 +277,27 @@ public class MulticastManager implements IOFMessageListener, IFloodlightModule, 
         IPv4Address destinationAddress = ((IPv4)eth.getPayload()).getDestinationAddress();
         IPv4Address streamingSourceIPAddress = ((IPv4)eth.getPayload()).getSourceAddress();
 
+        DatapathId srcId = sw.getId();
+        DatapathId dstId = null;
+        OFPort srcPort = OFMessageUtils.getInPort(pi);
+        OFPort dstPort = null;
+        DSCPField dscpField = DSCPField.Default;
         Path path = null;
+
+        if (!topologyService.isEdge(srcId, srcPort)){
+            System.out.println("Not a PACKET_IN from EDGE");
+            return Command.CONTINUE;
+        }
         for (IPv4Address hostAddress : multicastInfoTable.get(destinationAddress)){
-            path = getMulticastRoutingDecision(sw.getId(), pinSwitchIPv4AddressMatchMap.get(hostAddress));
+            dstId = (DatapathId) pinSwitchIPv4AddressMatchMap.get(hostAddress).keySet().toArray()[0];
+            dstPort = pinSwitchIPv4AddressMatchMap.get(hostAddress).get(dstId);
+            path = getMulticastRoutingDecision(srcId, srcPort, dstId, dstPort, dscpField);
         }
         // getMulticastRoutingDecision(streamingSourceIPAddress ,multicastInfoTable.keySet(multicastGroupIPAddress));
 
         U64 flowSetId = flowSetIdRegistry.generateFlowSetId();
         U64 cookie = makeForwardingCookie(RoutingDecision.rtStore.get(cntx, IRoutingDecision.CONTEXT_DECISION), flowSetId);
 
-        OFPort srcPort = OFMessageUtils.getInPort(pi);
 
         Match match = createMatchFromPacket(sw, srcPort, pi, cntx);
         pushMulticastingRoute(path, match, pi, sw.getId(), cookie, cntx, false, OFFlowModCommand.ADD, null, false);
@@ -678,6 +708,7 @@ public class MulticastManager implements IOFMessageListener, IFloodlightModule, 
         floodlightProvider = context.getServiceImpl(IFloodlightProviderService.class);
         switchService = context.getServiceImpl(IOFSwitchService.class);
         routingService = context.getServiceImpl(IRoutingService.class);
+        topologyService = context.getServiceImpl(ITopologyService.class);
         messageDamper = new OFMessageDamper(OFMESSAGE_DAMPER_CAPACITY,
                 EnumSet.of(OFType.FLOW_MOD),
                 OFMESSAGE_DAMPER_TIMEOUT);
@@ -694,11 +725,13 @@ public class MulticastManager implements IOFMessageListener, IFloodlightModule, 
     public MulticastInfoTable getmulticastInforTable() {
         return this.multicastInfoTable;
     }
-    private Path getMulticastRoutingDecision(DatapathId src,
-                                                DatapathId dst){
+    private Path getMulticastRoutingDecision(DatapathId src, OFPort srcPort,
+                                                DatapathId dst, OFPort dstPort,
+                                                DSCPField dscpField){
+
         Set<OFPort> portSet = null;
         Stack<DatapathId> tempRP = new Stack<>();
-        Path nPath = routingService.getPath(src, dst);
+        Path nPath = routingService.getPath(src, srcPort, dst, dstPort, dscpField);
 
         if (!pathsList.isEmpty()){
             for(Path nextPath : pathsList){
