@@ -22,7 +22,9 @@ import net.floodlightcontroller.core.types.NodePortTuple;
 import net.floodlightcontroller.linkdiscovery.Link;
 import net.floodlightcontroller.qos.DSCPField;
 import net.floodlightcontroller.qos.ResourceMonitor.Impl.MonitorDelayServiceImpl;
+import net.floodlightcontroller.qos.ResourceMonitor.QosResourceMonitor;
 import net.floodlightcontroller.qos.ResourceMonitor.pojo.LinkEntry;
+import net.floodlightcontroller.qos.ResourceMonitor.pojo.SwitchPortPkLoss;
 import net.floodlightcontroller.routing.BroadcastTree;
 import net.floodlightcontroller.routing.Path;
 import net.floodlightcontroller.routing.PathId;
@@ -85,6 +87,7 @@ public class TopologyInstance {
     private Map<PathId, List<Path>>             pathcache; /* contains computed paths ordered best to worst */
 
     private MonitorDelayServiceImpl monitorDelayService;
+    private QosResourceMonitor qosResourceMonitor;
 
     protected TopologyInstance(Map<DatapathId, Set<OFPort>> portsWithLinks,
             Set<NodePortTuple> portsBlocked,
@@ -661,10 +664,8 @@ public class TopologyInstance {
      */
     public Map<Link,Integer> initLinkCostMap() {
         Map<Link, Integer> linkCost = new HashMap<Link, Integer>();
-//        for(Link key : linkCost.keySet()){
-//            DatapathId src = key.getSrc();
-//            DatapathId dst = key.getDst();
-//        }
+        double normalization;
+        int pkloss = 0;
         int tunnel_weight = portsWithLinks.size() + 1;
 
         switch (TopologyManager.getPathMetricInternal()){
@@ -700,6 +701,7 @@ public class TopologyInstance {
 
         case LATENCY:
             log.debug("Using latency for path metrics");
+            Map<NodePortTuple, SwitchPortPkLoss> pkLossMap = qosResourceMonitor.getPkLoss();
             for (NodePortTuple npt : links.keySet()) {
                 if (links.get(npt) == null) {
                     continue;
@@ -712,7 +714,14 @@ public class TopologyInstance {
                             (int)link.getLatency().getValue() > MAX_LINK_WEIGHT) {
                         linkCost.put(link, MAX_LINK_WEIGHT);
                     } else {
-                        linkCost.put(link,(int)link.getLatency().getValue());
+                        for (NodePortTuple nodePortTuple : pkLossMap.keySet()){
+                            if (npt.equals(nodePortTuple)){
+                                pkloss = pkLossMap.get(nodePortTuple).getPkLossPerSec();
+                            }
+                        }
+                        int latency = (int)link.getLatency().getValue();
+                        normalization = (double) (latency/30 + pkloss/10)*100;
+                        linkCost.put(link,(int)normalization);
                     }
                 }
             }

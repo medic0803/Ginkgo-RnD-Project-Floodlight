@@ -59,7 +59,7 @@ public class MonitorPkLossServiceImpl implements IFloodlightModule,MonitorPkLoss
         //kwm: count the pkloss ratio base on the change data in a period
         private int getPkLossRatio(long rx, long rx_drop, long tx, long tx_drop){
             int ratio = 0;
-            ratio = (int)(rx_drop / rx);
+            ratio = (int)(rx_drop / rx * 100);
             ratio = ((tx_drop / tx)>ratio) ? (int)(rx_drop / rx) : ratio;
             return ratio;
         }
