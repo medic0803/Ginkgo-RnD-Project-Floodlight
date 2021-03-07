@@ -300,7 +300,12 @@ public class MulticastManager implements IOFMessageListener, IFloodlightModule, 
         U64 cookie = makeForwardingCookie(RoutingDecision.rtStore.get(cntx, IRoutingDecision.CONTEXT_DECISION), flowSetId);
 
 
-        Match match = createMatchFromPacket(sw, srcPort, pi, cntx);
+//        Match match = createMatchFromPacket(sw, srcPort, pi, cntx);
+        //wrf: Change the structure: Packet_In only from source switch !!!
+        Match match = sw.getOFFactory().buildMatch()
+                .setExact(MatchField.IN_PORT, srcPort)
+                .setExact(MatchField.IPV4_SRC, ((IPv4)eth.getPayload()).getSourceAddress())
+                .build();
         pushMulticastingRoute(path, match, pi, sw.getId(), cookie, cntx, false, OFFlowModCommand.ADD, null, false);
         return Command.CONTINUE;
     }
