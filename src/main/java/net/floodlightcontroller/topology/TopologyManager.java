@@ -16,6 +16,7 @@
 
 package net.floodlightcontroller.topology;
 
+import com.google.common.collect.ImmutableSet;
 import net.floodlightcontroller.core.*;
 import net.floodlightcontroller.core.internal.IOFSwitchService;
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
@@ -32,6 +33,7 @@ import net.floodlightcontroller.linkdiscovery.Link;
 import net.floodlightcontroller.packet.BSN;
 import net.floodlightcontroller.packet.Ethernet;
 import net.floodlightcontroller.packet.LLDP;
+import net.floodlightcontroller.qos.ResourceMonitor.QosResourceMonitor;
 import net.floodlightcontroller.restserver.IRestApiService;
 import net.floodlightcontroller.routing.IRoutingService.PATH_METRIC;
 import net.floodlightcontroller.routing.web.RoutingWebRoutable;
@@ -48,8 +50,6 @@ import org.projectfloodlight.openflow.types.OFPort;
 import org.projectfloodlight.openflow.types.U64;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import com.google.common.collect.ImmutableSet;
 
 import java.util.*;
 import java.util.concurrent.BlockingQueue;
@@ -111,6 +111,8 @@ ITopologyManagerBackend, ILinkDiscoveryListener, IOFMessageListener {
     protected static IRestApiService restApiService;
     protected static IDebugCounterService debugCounterService;
     protected static IStatisticsService statisticsService;
+    //zzy
+    protected static QosResourceMonitor qosResourceMonitor;
 
     // Modules that listen to our updates
     protected ArrayList<ITopologyListener> topologyAware;
@@ -589,6 +591,7 @@ ITopologyManagerBackend, ILinkDiscoveryListener, IOFMessageListener {
         l.add(IOFSwitchService.class);
         l.add(IDebugCounterService.class);
         l.add(IRestApiService.class);
+        l.add(QosResourceMonitor.class);
         return l;
     }
 
@@ -602,6 +605,7 @@ ITopologyManagerBackend, ILinkDiscoveryListener, IOFMessageListener {
         restApiService = context.getServiceImpl(IRestApiService.class);
         debugCounterService = context.getServiceImpl(IDebugCounterService.class);
         statisticsService = context.getServiceImpl(IStatisticsService.class);
+        qosResourceMonitor = context.getServiceImpl(QosResourceMonitor.class);
 
         switchPorts = new HashMap<DatapathId, Set<OFPort>>();
         switchPortLinks = new HashMap<NodePortTuple, Set<Link>>();
@@ -792,7 +796,7 @@ ITopologyManagerBackend, ILinkDiscoveryListener, IOFMessageListener {
      * openflowdomain.  Get all the switches in the same openflow
      * domain as the sw (disabling tunnels).  Then get all the
      * external switch ports and send these packets out.
-     * @param sw
+     * @param pinSwitch
      * @param pi
      * @param cntx
      */
@@ -1012,6 +1016,8 @@ ITopologyManagerBackend, ILinkDiscoveryListener, IOFMessageListener {
                 allPorts,
                 interClusterLinks);
 
+        //zzy
+        nt.set(qosResourceMonitor.getPkLoss());
         nt.compute();
 
         currentInstance = nt;
