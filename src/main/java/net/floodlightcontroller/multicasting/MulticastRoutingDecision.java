@@ -34,7 +34,6 @@ public class MulticastRoutingDecision {
 
     }
 
-
     public MulticastRoutingDecision(MulticastRoutingAction routingAction, Path uPath) {
         this.routingAction = routingAction;
         this.uPath = uPath;
