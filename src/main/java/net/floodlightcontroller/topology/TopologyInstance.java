@@ -21,9 +21,6 @@ import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.types.NodePortTuple;
 import net.floodlightcontroller.linkdiscovery.Link;
 import net.floodlightcontroller.qos.DSCPField;
-import net.floodlightcontroller.qos.ResourceMonitor.Impl.MonitorDelayServiceImpl;
-import net.floodlightcontroller.qos.ResourceMonitor.QosResourceMonitor;
-import net.floodlightcontroller.qos.ResourceMonitor.pojo.LinkEntry;
 import net.floodlightcontroller.qos.ResourceMonitor.pojo.SwitchPortPkLoss;
 import net.floodlightcontroller.routing.BroadcastTree;
 import net.floodlightcontroller.routing.Path;
@@ -86,8 +83,11 @@ public class TopologyInstance {
     private Map<DatapathId, Set<NodePortTuple>> portsBroadcastPerArchipelago; /* broadcast ports in each archipelago ID */
     private Map<PathId, List<Path>>             pathcache; /* contains computed paths ordered best to worst */
 
-    private MonitorDelayServiceImpl monitorDelayService;
-    private QosResourceMonitor qosResourceMonitor;
+    Map<NodePortTuple, SwitchPortPkLoss> pkLossMap;
+
+    protected void set(Map<NodePortTuple, SwitchPortPkLoss> map){
+        this.pkLossMap = map;
+    }
 
     protected TopologyInstance(Map<DatapathId, Set<OFPort>> portsWithLinks,
             Set<NodePortTuple> portsBlocked,
@@ -627,9 +627,10 @@ public class TopologyInstance {
                 if (seen.containsKey(neighbor)) continue;
 
                 if (linkCost == null || linkCost.get(link) == null) {
-                    LinkEntry<DatapathId, DatapathId> key = new LinkEntry<>(cnode,neighbor);
-                    w = monitorDelayService.getLinkDelay().get(key);
-                    System.out.println(w);
+//                    LinkEntry<DatapathId, DatapathId> key = new LinkEntry<>(cnode,neighbor);
+//                    w = monitorDelayService.getLinkDelay().get(key);
+//                    System.out.println(w);
+                    w = 1;
                 } else {
                     w = linkCost.get(link);
                 }
@@ -701,7 +702,6 @@ public class TopologyInstance {
 
         case LATENCY:
             log.debug("Using latency for path metrics");
-            Map<NodePortTuple, SwitchPortPkLoss> pkLossMap = qosResourceMonitor.getPkLoss();
             for (NodePortTuple npt : links.keySet()) {
                 if (links.get(npt) == null) {
                     continue;
