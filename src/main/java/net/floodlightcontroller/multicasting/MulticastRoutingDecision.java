@@ -34,6 +34,13 @@ public class MulticastRoutingDecision {
 
     }
 
+
+    public MulticastRoutingDecision(MulticastRoutingAction routingAction, Path uPath) {
+        this.routingAction = routingAction;
+        this.uPath = uPath;
+    }
+
+
     /**
      * JOIN_WITHOUT_RP:
      * JOIN_WITH_RP: cut the path need to be updated, and the path start from RP
