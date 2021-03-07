@@ -1,11 +1,10 @@
 package net.floodlightcontroller.multicasting;
 
-import net.floodlightcontroller.packet.IPacket;
 import org.projectfloodlight.openflow.types.IPv4Address;
 
-import java.util.HashMap;
-import java.util.Set;
+import java.util.Vector;
+import java.util.concurrent.ConcurrentHashMap;
 
-public class MulticastInfoTable extends HashMap<IPv4Address, Set<IPv4Address>>{
+public class MulticastInfoTable extends ConcurrentHashMap<IPv4Address, Vector<IPv4Address>>{
 
 }

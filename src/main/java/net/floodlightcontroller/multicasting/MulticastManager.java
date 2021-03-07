@@ -45,7 +45,7 @@ public class MulticastManager implements IOFMessageListener, IFloodlightModule, 
 
     protected static Logger log = LoggerFactory.getLogger(MulticastManager.class);
     private MulticastInfoTable multicastInfoTable = new MulticastInfoTable();
-    private HashMap<IPv4Address, Map<DatapathId, OFPort>> pinSwitchIPv4AddressMatchMap = new HashMap<>();
+    private ConcurrentHashMap<IPv4Address, ConcurrentHashMap<DatapathId, OFPort>> pinSwitchIPv4AddressMatchMap = new ConcurrentHashMap<>();
     private static final short DECISION_BITS = 24;
     private static final short DECISION_SHIFT = 0;
     private static final long DECISION_MASK = ((1L << DECISION_BITS) - 1) << DECISION_SHIFT;
@@ -60,7 +60,7 @@ public class MulticastManager implements IOFMessageListener, IFloodlightModule, 
 
     protected IRoutingService routingService;
     //zzy
-    List<Path> pathsList = new LinkedList<>();
+    Vector<Path> pathsList = new Vector<>();
     Map<DatapathId, Set<OFPort>> rendezvousPoints = new HashMap<>();
 
     public static int FLOWMOD_DEFAULT_IDLE_TIMEOUT = 5; // in seconds
@@ -225,13 +225,13 @@ public class MulticastManager implements IOFMessageListener, IFloodlightModule, 
         if (igmpPayload[32] == 4){
             System.out.println(igmpPayload + "IGMP join message");
             if (multicastInfoTable.isEmpty()){  // empty multicast information table
-                HashSet<IPv4Address> newMulticastGroup = new HashSet();
+                Vector<IPv4Address> newMulticastGroup = new Vector();
                 newMulticastGroup.add(hostIPAddress);
                 multicastInfoTable.put(multicastGroupIPAddress, newMulticastGroup);
 
                 // A new host join, add it's match item
                 if (topologyService.isEdge(sw.getId(), OFMessageUtils.getInPort(pi))){
-                    HashMap<DatapathId, OFPort> tempMap= new HashMap<DatapathId, OFPort>();
+                    ConcurrentHashMap<DatapathId, OFPort> tempMap= new ConcurrentHashMap<DatapathId, OFPort>();
                     tempMap.put(sw.getId(), OFMessageUtils.getInPort(pi));
                     pinSwitchIPv4AddressMatchMap.put(hostIPAddress, tempMap);
                 }
@@ -244,7 +244,7 @@ public class MulticastManager implements IOFMessageListener, IFloodlightModule, 
                         multicastInfoTable.get(multicastGroupIPAddress).add(hostIPAddress);
                         // A new host join, add it's match item
                         if (topologyService.isEdge(sw.getId(), OFMessageUtils.getInPort(pi))){
-                            HashMap<DatapathId, OFPort> tempMap= new HashMap<DatapathId, OFPort>();
+                            ConcurrentHashMap<DatapathId, OFPort> tempMap= new ConcurrentHashMap<DatapathId, OFPort>();
                             tempMap.put(sw.getId(), OFMessageUtils.getInPort(pi));
                             pinSwitchIPv4AddressMatchMap.put(hostIPAddress, tempMap);
                         }
@@ -252,12 +252,12 @@ public class MulticastManager implements IOFMessageListener, IFloodlightModule, 
                         // TODO: use algorithm to analyse
                     }
                 } else {    // multicast group IP address do not exist
-                    HashSet<IPv4Address> newMulticastGroup = new HashSet();
+                    Vector<IPv4Address> newMulticastGroup = new Vector();
                     newMulticastGroup.add(hostIPAddress);
                     multicastInfoTable.put(multicastGroupIPAddress, newMulticastGroup);
                     // A new host join, add it's match item
                     if (topologyService.isEdge(sw.getId(), OFMessageUtils.getInPort(pi))){
-                        HashMap<DatapathId, OFPort> tempMap= new HashMap<DatapathId, OFPort>();
+                        ConcurrentHashMap<DatapathId, OFPort> tempMap= new ConcurrentHashMap<DatapathId, OFPort>();
                         tempMap.put(sw.getId(), OFMessageUtils.getInPort(pi));
                         pinSwitchIPv4AddressMatchMap.put(hostIPAddress, tempMap);
                     }
@@ -313,14 +313,14 @@ public class MulticastManager implements IOFMessageListener, IFloodlightModule, 
         // Compose a Group
         ArrayList<OFBucket> bucketList = new ArrayList<OFBucket>();
         OFSwitch rp = null;
-        bucketList.add(rp.getOFFactory().buildBucket()
-                .setWatchGroup(OFGroup.ANY)
-                .setWatchPort(OFPort.ANY)
-                .setActions(Collections.singletonList((OFAction) rp.getOFFactory().actions().buildOutput()
-                                .setMaxLen(0xffFFffFF)
-                                .setPort(link_dpid1_to_dpid2b.getSrcPort())
-                .build()
-        )));
+//        bucketList.add(rp.getOFFactory().buildBucket()
+//                .setWatchGroup(OFGroup.ANY)
+//                .setWatchPort(OFPort.ANY)
+//                .setActions(Collections.singletonList((OFAction) rp.getOFFactory().actions().buildOutput()
+//                                .setMaxLen(0xffFFffFF)
+//                                .setPort(link_dpid1_to_dpid2b.getSrcPort())
+//                .build()
+//        )));
         OFGroupAdd addGroup = rp.getOFFactory().buildGroupAdd()
                 .setGroupType(OFGroupType.ALL)
                 .setGroup(OFGroup.of(50))
