@@ -511,13 +511,12 @@ public class MulticastManager implements IOFMessageListener, IFloodlightModule, 
                             .setGroup(OFGroup.of(50))
                             .setBuckets(bucketList)
                             .build();
-
                     rp.write(addGroup);
                     // --- end ----
 
                     FlowModUtils.setActions(fmb,
                             Collections.singletonList((OFAction) rp.getOFFactory().actions().buildGroup()
-                                    .setGroup(OFGroup.of(1))
+                                    .setGroup(OFGroup.of(50))
                                     .build()),
                             sw);
 
@@ -887,8 +886,8 @@ public class MulticastManager implements IOFMessageListener, IFloodlightModule, 
         Stack<DatapathId> tempRP = new Stack<>();
         Path nPath = routingService.getPath(src, srcPort, dst, dstPort, dscpField);
 
-        if (pathsList.size() > 1){
-            for(Path nextPath : pathsList){
+        if (!this.pathsList.isEmpty()){
+            for(Path nextPath : this.pathsList){
                 for(int k = 0; k < nPath.getPath().size(); k += 2){
                     for (int l = 0; l < nextPath.getPath().size(); l += 2) {
                         if(nPath.getPath().get(k).getNodeId().equals(nextPath.getPath().get(l).getNodeId())){
