@@ -513,12 +513,10 @@ public class MulticastManager implements IOFMessageListener, IFloodlightModule, 
                             .build();
                     rp.write(addGroup);
                     // --- end ----
-
-                    FlowModUtils.setActions(fmb,
-                            Collections.singletonList((OFAction) rp.getOFFactory().actions().buildGroup()
+                    //wrf: change to set pure group
+                    fmb.setActions(Collections.singletonList((OFAction) rp.getOFFactory().actions().buildGroup()
                                     .setGroup(OFGroup.of(50))
-                                    .build()),
-                            sw);
+                                    .build()));
 
                     /* Configure for particular switch pipeline */
                     if (sw.getOFFactory().getVersion().compareTo(OFVersion.OF_10) != 0) {
@@ -884,9 +882,11 @@ public class MulticastManager implements IOFMessageListener, IFloodlightModule, 
         DatapathId surRP = null;
         Vector<OFPort> portSet = new Vector<>();
         Stack<DatapathId> tempRP = new Stack<>();
+        Stack<DatapathId> possibleRP = new Stack<>();
         Path nPath = routingService.getPath(src, srcPort, dst, dstPort, dscpField);
 
-        if (!this.pathsList.isEmpty()){
+        //diff condition of pathList
+        if (this.pathsList.size() > 1){
             for(Path nextPath : this.pathsList){
                 for(int k = 0; k < nPath.getPath().size(); k += 2){
                     for (int l = 0; l < nextPath.getPath().size(); l += 2) {
@@ -896,29 +896,31 @@ public class MulticastManager implements IOFMessageListener, IFloodlightModule, 
                     }
                 }
                 if (!tempRP.isEmpty()) {
-                    surRP = tempRP.peek();
-                    for(Path p : pathsList){
-                        List<NodePortTuple> pathPortList = p.getPath();
-                        boolean ifHit = false;
-                        for (NodePortTuple npt : pathPortList) {
-                            if (surRP.equals(npt.getNodeId())) {
-                                ifHit = true;
-                            }
-                            if (ifHit) {
-                                portSet.add(npt.getPortId());
-                                break;
-                            }
-                        }
-                    }
+                    possibleRP.add(tempRP.peek());
                 }
-
-                rendezvousPoints.put(surRP, portSet);
                 tempRP.empty();
             }
-
+            List<NodePortTuple> nodePortTupleList = nPath.getPath();
+            for (int i = nodePortTupleList.size()-1; i >= 0; i--) {
+               if(possibleRP.contains(nodePortTupleList.get(i).getNodeId())){
+                   surRP = nodePortTupleList.get(i).getNodeId();
+               }
+            }
+            //find the ports for the RP point
+            pathsList.add(nPath);
+            for(Path p : pathsList){
+                List<NodePortTuple> pathPortList = p.getPath();
+                for (int  i = pathPortList.size()-1;  i >=0 ;  i--) {
+                    if (surRP.equals(pathPortList.get(i).getNodeId())) {
+                        portSet.add(pathPortList.get(i).getPortId());
+                        break;
+                    }
+                }
+            }
+            rendezvousPoints.put(surRP, portSet);
+        }else{
+            pathsList.add(nPath);
         }
-
-        pathsList.add(nPath);
         int i = rendezvousPoints.size();
         if (surRP == null){
             multicastRoutingDecision = new MulticastRoutingDecision(MulticastRoutingDecision.MulticastRoutingAction.JOIN_WITHOUT_RP, nPath);
