@@ -352,7 +352,15 @@ public class MulticastManager implements IOFMessageListener, IFloodlightModule, 
                                          DatapathId pinSwitch, U64 cookie, FloodlightContext cntx,
                                          boolean requestFlowRemovedNotification, OFFlowModCommand flowModCommand, boolean packetOutSent) {
 
-        List<NodePortTuple> switchPortList = route.getPath();
+        List<NodePortTuple> switchPortList = null;
+        switch (multicastRoutingDecision.getRoutingAction()) {
+            case JOIN_WITHOUT_RP:
+                switchPortList = route.getPath();
+                break;
+            case JOIN_WITH_RP:
+                switchPortList = multicastRoutingDecision.getuPath().getPath();
+                break;
+        }
 
         for (int indx = switchPortList.size() - 1; indx > 0; indx -= 2) {
             // indx and indx-1 will always have the same switch DPID.
@@ -394,49 +402,6 @@ public class MulticastManager implements IOFMessageListener, IFloodlightModule, 
             OFPort outPort = switchPortList.get(indx).getPortId();
             OFPort inPort = switchPortList.get(indx - 1).getPortId();
 
-            switch (multicastRoutingDecision.getRoutingAction()) {
-
-                case JOIN_WITHOUT_RP:
-                    if (indx == 1) {    // Process RP's actions as a group
-                        // Compose a Group
-                        ArrayList<OFBucket> bucketList = new ArrayList<OFBucket>();
-                        OFSwitch rp = (OFSwitch) switchService.getSwitch(multicastRoutingDecision.getrP());
-                        for (OFPort forwardPort : rendezvousPoints.get(multicastRoutingDecision.getrP())) {
-                            bucketList.add(rp.getOFFactory().buildBucket()
-                                    .setWatchGroup(OFGroup.ANY)
-                                    .setWatchPort(OFPort.ANY)
-                                    .setActions(Collections.singletonList((OFAction) rp.getOFFactory().actions().buildOutput()
-                                            .setMaxLen(0xffFFffFF)
-                                            .setPort(forwardPort)
-                                            .build()))
-                                    .build());
-                        }
-
-                        OFGroupAdd addGroup = rp.getOFFactory().buildGroupAdd()
-                                .setGroupType(OFGroupType.ALL)
-                                .setGroup(OFGroup.of(50))
-                                .setBuckets(bucketList)
-                                .build();
-                        rp.write(addGroup);
-                        // --- end ----
-                        //wrf: change to set pure group
-                        fmb.setActions(Collections.singletonList((OFAction) rp.getOFFactory().actions().buildGroup()
-                                .setGroup(OFGroup.of(50))
-                                .build()));
-                        break;
-                    }
-                case JOIN_WITH_RP:
-                    OFActionOutput.Builder aob = sw.getOFFactory().actions().buildOutput();
-                    List<OFAction> actions = new ArrayList<>();
-                    aob.setPort(outPort);
-                    aob.setMaxLen(Integer.MAX_VALUE);
-                    actions.add(aob.build());
-                    FlowModUtils.setActions(fmb, actions, sw);
-                    break;
-
-            }
-
-
             if (FLOWMOD_DEFAULT_MATCH_IN_PORT) {
                 mb.setExact(MatchField.IN_PORT, inPort);
             }
@@ -456,6 +421,50 @@ public class MulticastManager implements IOFMessageListener, IFloodlightModule, 
                     .setOutPort(outPort)
                     .setPriority(FLOWMOD_DEFAULT_PRIORITY);
 
+            switch (multicastRoutingDecision.getRoutingAction()) {
+
+                case JOIN_WITH_RP:
+                    if (indx == 1) {    // Process RP's actions as a group
+                        // Compose a Group
+                        ArrayList<OFBucket> bucketList = new ArrayList<OFBucket>();
+                        OFSwitch rp = (OFSwitch) switchService.getSwitch(multicastRoutingDecision.getrP());
+
+                        // add all out ports as buckets
+                        for (OFPort forwardPort : rendezvousPoints.get(multicastRoutingDecision.getrP())) {
+                            bucketList.add(rp.getOFFactory().buildBucket()
+                                    .setWatchGroup(OFGroup.ANY)
+                                    .setWatchPort(OFPort.ANY)
+                                    .setActions(Collections.singletonList((OFAction) rp.getOFFactory().actions().buildOutput()
+                                            .setMaxLen(0xffFFffFF)
+                                            .setPort(forwardPort)
+                                            .build()))
+                                    .build());
+                        }
+
+                        OFGroupAdd addGroup = rp.getOFFactory().buildGroupAdd()
+                                .setGroupType(OFGroupType.ALL)
+                                .setGroup(OFGroup.of(50))
+                                .setBuckets(bucketList)
+                                .build();
+
+                        rp.write(addGroup);
+
+                        //wrf: change to set pure group
+                        fmb.setActions(Collections.singletonList((OFAction) rp.getOFFactory().actions().buildGroup()
+                                .setGroup(OFGroup.of(50))
+                                .build()));
+                        break;
+                    }
+                case JOIN_WITHOUT_RP:
+                    OFActionOutput.Builder aob = sw.getOFFactory().actions().buildOutput();
+                    List<OFAction> actions = new ArrayList<>();
+                    aob.setPort(outPort);
+                    aob.setMaxLen(Integer.MAX_VALUE);
+                    actions.add(aob.build());
+                    FlowModUtils.setActions(fmb, actions, sw);
+                    break;
+
+            }
 
 
             /* Configure for particular switch pipeline */
@@ -484,14 +493,6 @@ public class MulticastManager implements IOFMessageListener, IFloodlightModule, 
                 messageDamper.write(sw, fmb.build());
             }
 
-            /* Push the packet out the first hop switch */
-//            if (!packetOutSent && sw.getId().equals(pinSwitch) &&
-//                    !fmb.getCommand().equals(OFFlowModCommand.DELETE) &&
-//                    !fmb.getCommand().equals(OFFlowModCommand.DELETE_STRICT)) {
-//                /* Use the buffered packet at the switch, if there's one stored */
-//                log.debug("Push packet out the first hop switch");
-//                pushPacket(sw, pi, outPort, true, cntx);
-//            }
 
         }
 
