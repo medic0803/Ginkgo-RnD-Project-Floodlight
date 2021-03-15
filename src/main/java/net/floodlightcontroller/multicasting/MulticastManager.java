@@ -193,13 +193,16 @@ public class MulticastManager implements IOFMessageListener, IFloodlightModule, 
             case PACKET_IN:
                 OFPacketIn pi = (OFPacketIn) msg;
                     if (eth.getEtherType() == EthType.IPv4){
+
+                        //  Process IGMP Message
                         if (((IPv4)eth.getPayload()).getProtocol() == IpProtocol.IGMP){
                             processIGMPMessage(sw, pi, cntx);
 
-                        } else if (multicastInfoTable.containsKey(((IPv4)eth.getPayload()).getDestinationAddress())){
+                        } else if (multicastInfoTable.containsKey(((IPv4)eth.getPayload()).getDestinationAddress())){   // Process steam video packet
                             if (!receivedMatch.contains(pi.getMatch())){
+                                // TODO: delete print
                                 System.out.println(((IPv4)eth.getPayload()).getSourceAddress());
-                            System.out.println(((IPv4)eth.getPayload()).getProtocol());
+                                System.out.println(((IPv4)eth.getPayload()).getProtocol());
                                 receivedMatch.add(pi.getMatch());
                                 processMulticastPacketInMessage(sw, pi, null, cntx);
                             }
@@ -209,10 +212,21 @@ public class MulticastManager implements IOFMessageListener, IFloodlightModule, 
 
         return Command.CONTINUE;
     }
+
+    /**
+     * The method to process IGMP join or leave message,
+     * and maintain multicast information table <K: Multicast address, V: Set of host address>,
+     * and pin switch IPv4 address mapping map <K: Ipv4 address, V: Map<DatapthID, Inport>>, the inprot here is used as the Outport in the routing path
+     *
+     * @param sw the attachment point of host
+     * @param pi
+     * @param cntx
+     * @return
+     */
     public Command processIGMPMessage(IOFSwitch sw, OFPacketIn pi, FloodlightContext cntx){
         Ethernet eth = IFloodlightProviderService.bcStore.get(cntx, IFloodlightProviderService.CONTEXT_PI_PAYLOAD);
 
-        // TODO: Delete
+        // TODO: Delete the print
         System.out.println("-----------receive igmp packet ----------------");
         System.out.println("Source Address is: " + ((IPv4)eth.getPayload()).getSourceAddress());
         System.out.println("Switch ID is " + sw.getId());
@@ -253,8 +267,6 @@ public class MulticastManager implements IOFMessageListener, IFloodlightModule, 
                             tempMap.put(sw.getId(), OFMessageUtils.getInPort(pi));
                             pinSwitchIPv4AddressMatchMap.put(hostIPAddress, tempMap);
                         }
-
-                        // TODO: use algorithm to analyse
                     }
                 } else {    // multicast group IP address do not exist
                     Vector<IPv4Address> newMulticastGroup = new Vector();
@@ -270,6 +282,7 @@ public class MulticastManager implements IOFMessageListener, IFloodlightModule, 
                 }
             }
         } else if (igmpPayload[32] == 3){
+            // TODO: delete print and replace it with log
             System.out.println(igmpPayload + "IGMP leave message");
 
             // host leave, delete the match item
@@ -318,6 +331,22 @@ public class MulticastManager implements IOFMessageListener, IFloodlightModule, 
 
         return Command.CONTINUE;
     }
+
+    /**
+     * This method is used for writing the flow table item to each switches on the route,
+     * and write the table table to RP switch which determined by routing decision
+     *
+     * @param route QoS route calculated by routing decision algorithm
+     * @param match
+     * @param pi
+     * @param pinSwitch the attachment point of multicast source
+     * @param cookie
+     * @param cntx
+     * @param requestFlowRemovedNotification default is false
+     * @param flowModCommand default is OFFlowMod.ADD
+     * @param packetOutSent default is false
+     * @return
+     */
     public boolean pushMulticastingRoute(Path route, Match match, OFPacketIn pi,
                              DatapathId pinSwitch, U64 cookie, FloodlightContext cntx,
                              boolean requestFlowRemovedNotification, OFFlowModCommand flowModCommand, boolean packetOutSent) {
@@ -472,7 +501,6 @@ public class MulticastManager implements IOFMessageListener, IFloodlightModule, 
                     if (FLOWMOD_DEFAULT_MATCH_IN_PORT) {
                         mb.setExact(MatchField.IN_PORT, inPort);
                     }
-
 
                     if (FLOWMOD_DEFAULT_SET_SEND_FLOW_REM_FLAG || requestFlowRemovedNotification) {
                         Set<OFFlowModFlags> flags = new HashSet<>();
