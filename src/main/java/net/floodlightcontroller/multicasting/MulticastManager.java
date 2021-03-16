@@ -12,7 +12,6 @@ import net.floodlightcontroller.core.module.IFloodlightModule;
 import net.floodlightcontroller.core.module.IFloodlightService;
 import net.floodlightcontroller.core.types.NodePortTuple;
 import net.floodlightcontroller.core.util.AppCookie;
-import net.floodlightcontroller.forwarding.Forwarding;
 import net.floodlightcontroller.packet.*;
 import net.floodlightcontroller.qos.DSCPField;
 import net.floodlightcontroller.routing.IRoutingDecision;
@@ -29,7 +28,6 @@ import org.projectfloodlight.openflow.protocol.match.MatchField;
 import org.projectfloodlight.openflow.types.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import sun.misc.MessageUtils;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
@@ -47,7 +45,9 @@ public class MulticastManager implements IOFMessageListener, IFloodlightModule, 
     protected HashSet<Match> receivedMatch;
     protected static Logger log = LoggerFactory.getLogger(MulticastManager.class);
     private MulticastInfoTable multicastInfoTable = new MulticastInfoTable();
-    private ConcurrentHashMap<IPv4Address, ConcurrentHashMap<DatapathId, OFPort>> pinSwitchIPv4AddressMatchMap = new ConcurrentHashMap<>();
+    private PinSwitchInfoTable pinSwitchInfoMap = new PinSwitchInfoTable();
+    private MulticastSourceInfoTable multicastSourceInfoTable = new MulticastSourceInfoTable();
+
     private static final short DECISION_BITS = 24;
     private static final short DECISION_SHIFT = 0;
     private static final long DECISION_MASK = ((1L << DECISION_BITS) - 1) << DECISION_SHIFT;
@@ -194,18 +194,42 @@ public class MulticastManager implements IOFMessageListener, IFloodlightModule, 
             case PACKET_IN:
                 OFPacketIn pi = (OFPacketIn) msg;
                 if (eth.getEtherType() == EthType.IPv4) {
-
+                    IPv4Address sourceAddress = ((IPv4) eth.getPayload()).getSourceAddress();
+                    IPv4Address destinationAddress = ((IPv4) eth.getPayload()).getDestinationAddress();
                     //  Process IGMP Message
                     if (((IPv4) eth.getPayload()).getProtocol() == IpProtocol.IGMP) {
                         processIGMPMessage(sw, pi, cntx);
 
-                    } else if (multicastInfoTable.containsKey(((IPv4) eth.getPayload()).getDestinationAddress())) {   // Process steam video packet
-                        if (!receivedMatch.contains(pi.getMatch())) {
-                            // TODO: delete print
-                            System.out.println(((IPv4) eth.getPayload()).getSourceAddress());
-                            System.out.println(((IPv4) eth.getPayload()).getProtocol());
-                            receivedMatch.add(pi.getMatch());
-                            processMulticastPacketInMessage(sw, pi, null, cntx);
+                    } else if (eth.isMulticast()) {
+                        if (multicastInfoTable.containsKey(destinationAddress)) {   // There is/are host/hosts which waits/wait for receiving packet from a source
+                            // TODO: if this statement is needed?
+                            if (!receivedMatch.contains(pi.getMatch())) {   // only receive one packet_in for streaming on wait list
+                                // TODO: delete print
+                                System.out.println(destinationAddress);
+                                System.out.println(((IPv4) eth.getPayload()).getProtocol());
+                                receivedMatch.add(pi.getMatch());
+                                processMulticastPacketInMessage(sw, pi, null, cntx);
+                            }
+                        } else {    // no host waits for receiving streaming
+                            U64 flowSetId = flowSetIdRegistry.generateFlowSetId();
+                            U64 cookie = makeForwardingCookie(RoutingDecision.rtStore.get(cntx, IRoutingDecision.CONTEXT_DECISION), flowSetId);
+                            OFPort srcPort = OFMessageUtils.getInPort(pi);
+                            //wrf: Change the structure: Packet_In only from source switch !!!
+                            Match match = sw.getOFFactory().buildMatch()
+                                    .setExact(MatchField.IN_PORT, srcPort)
+                                    .setExact(MatchField.IPV4_SRC, ((IPv4) eth.getPayload()).getSourceAddress())
+                                    .build();
+                            MulticastSource newMulticastSource = new MulticastSource(sw.getId(), srcPort, cookie, match, cntx, pi, sourceAddress);
+                            if (multicastSourceInfoTable.containsKey(destinationAddress)) {
+                                multicastSourceInfoTable.get(destinationAddress).add(newMulticastSource);
+                            } else{ // new multicast address with a new source
+                                Vector<MulticastSource> tempMulticastSourceInfoRegister= new Vector();
+                                // TODO: add what infor?
+                                tempMulticastSourceInfoRegister.add(newMulticastSource);
+                                multicastSourceInfoTable.put(destinationAddress, tempMulticastSourceInfoRegister);
+                            }
+
+
                         }
                     }
                 }
@@ -233,61 +257,79 @@ public class MulticastManager implements IOFMessageListener, IFloodlightModule, 
         System.out.println("Switch ID is " + sw.getId());
 
         byte[] igmpPayload = eth.getPayload().serialize();
-        byte[] multicastAddress = new byte[4];
-        System.arraycopy(igmpPayload, 36, multicastAddress, 0, 4);
-        IPv4Address multicastGroupIPAddress = IPv4Address.of(multicastAddress);
+        byte[] rawMulticastAddress = new byte[4];
+        System.arraycopy(igmpPayload, 36, rawMulticastAddress, 0, 4);
+        IPv4Address multicastAddress = IPv4Address.of(rawMulticastAddress);
         IPv4Address hostIPAddress = ((IPv4) eth.getPayload()).getSourceAddress();
 
-        System.out.println("Destination Address is: " + multicastGroupIPAddress);
+        System.out.println("Destination Address is: " + multicastAddress);
         System.out.println("Payload length = " + igmpPayload.length);
 
-        // the total lengeth of this packet is 54, the previous 14(0-13) is for header, the rest 40 is for paylod, and the 46/32 is for record type
+        // the total length of this packet is 54, the previous 14(0-13) is for header, the rest 40 is for paylod, and the 46/32 is for record type
         if (igmpPayload[32] == 4) {
             System.out.println(igmpPayload + "IGMP join message");
+            boolean ifExist = false;
             if (multicastInfoTable.isEmpty()) {  // empty multicast information table
                 Vector<IPv4Address> newMulticastGroup = new Vector();
                 newMulticastGroup.add(hostIPAddress);
-                multicastInfoTable.put(multicastGroupIPAddress, newMulticastGroup);
+                multicastInfoTable.put(multicastAddress, newMulticastGroup);
 
                 // A new host join, add it's match item
                 if (topologyService.isEdge(sw.getId(), OFMessageUtils.getInPort(pi))) {
                     ConcurrentHashMap<DatapathId, OFPort> tempMap = new ConcurrentHashMap<DatapathId, OFPort>();
                     tempMap.put(sw.getId(), OFMessageUtils.getInPort(pi));
-                    pinSwitchIPv4AddressMatchMap.put(hostIPAddress, tempMap);
+                    pinSwitchInfoMap.put(hostIPAddress, tempMap);
                 }
 
             } else { // non-empty table
-                if (multicastInfoTable.containsKey(multicastGroupIPAddress)) {
-                    if (multicastInfoTable.get(multicastGroupIPAddress).contains(hostIPAddress)) {   // host already join the multicast group
-                        // nothing happen
+                if (multicastInfoTable.containsKey(multicastAddress)) {
+                    if (multicastInfoTable.get(multicastAddress).contains(hostIPAddress)) {   // host already join the multicast group
+                        // already exist, no need for route push
+                        ifExist = true;
                     } else {    // host has not joined the multicast group yes
-                        multicastInfoTable.get(multicastGroupIPAddress).add(hostIPAddress);
+                        multicastInfoTable.get(multicastAddress).add(hostIPAddress);
                         // A new host join, add it's match item
                         if (topologyService.isEdge(sw.getId(), OFMessageUtils.getInPort(pi))) {
                             ConcurrentHashMap<DatapathId, OFPort> tempMap = new ConcurrentHashMap<DatapathId, OFPort>();
                             tempMap.put(sw.getId(), OFMessageUtils.getInPort(pi));
-                            pinSwitchIPv4AddressMatchMap.put(hostIPAddress, tempMap);
+                            pinSwitchInfoMap.put(hostIPAddress, tempMap);
                         }
                     }
                 } else {    // multicast group IP address do not exist
                     Vector<IPv4Address> newMulticastGroup = new Vector();
                     newMulticastGroup.add(hostIPAddress);
-                    multicastInfoTable.put(multicastGroupIPAddress, newMulticastGroup);
+                    multicastInfoTable.put(multicastAddress, newMulticastGroup);
                     // A new host join, add it's match item
                     if (topologyService.isEdge(sw.getId(), OFMessageUtils.getInPort(pi))) {
                         ConcurrentHashMap<DatapathId, OFPort> tempMap = new ConcurrentHashMap<DatapathId, OFPort>();
                         tempMap.put(sw.getId(), OFMessageUtils.getInPort(pi));
-                        pinSwitchIPv4AddressMatchMap.put(hostIPAddress, tempMap);
+                        pinSwitchInfoMap.put(hostIPAddress, tempMap);
                     }
 
                 }
+            }
+            if (ifExist == false && !multicastSourceInfoTable.get(multicastAddress).isEmpty()){
+                //wrf: push Route
+                DSCPField dscpField = DSCPField.Default;
+                DatapathId dstId = sw.getId();
+                OFPort dstPort = OFMessageUtils.getInPort(pi);
+
+                for (MulticastSource multicastSource : multicastSourceInfoTable.get(multicastAddress)) {
+                    DatapathId srcId = multicastSource.getSrcId();
+                    OFPort srcPort = multicastSource.getSrcPort();
+
+                    Path path = getMulticastRoutingDecision(srcId, srcPort, dstId, dstPort, dscpField);
+                    System.out.println("----------------------------------" + path.getPath().get(path.getPath().size() - 1));
+                    pushMulticastingRoute(path, multicastSource.getMatch(), multicastSource.getPi(), multicastSource.getCookie(), multicastSource.getCntx(), false, OFFlowModCommand.ADD, false);
+                }
+
             }
         } else if (igmpPayload[32] == 3) {
             // TODO: delete print and replace it with log
             System.out.println(igmpPayload + "IGMP leave message");
 
             // host leave, delete the match item
-            pinSwitchIPv4AddressMatchMap.remove(hostIPAddress);
+            pinSwitchInfoMap.remove(hostIPAddress);
         }
         return Command.CONTINUE;
     }
@@ -321,14 +363,12 @@ public class MulticastManager implements IOFMessageListener, IFloodlightModule, 
                 .build();
 
         for (IPv4Address hostAddress : multicastInfoTable.get(destinationAddress)) {
-            dstId = (DatapathId) pinSwitchIPv4AddressMatchMap.get(hostAddress).keySet().toArray()[0];
-            dstPort = pinSwitchIPv4AddressMatchMap.get(hostAddress).get(dstId);
+            dstId = (DatapathId) pinSwitchInfoMap.get(hostAddress).keySet().toArray()[0];
+            dstPort = pinSwitchInfoMap.get(hostAddress).get(dstId);
             path = getMulticastRoutingDecision(srcId, srcPort, dstId, dstPort, dscpField);
             System.out.println("----------------------------------" + path.getPath().get(path.getPath().size() - 1));
-            pushMulticastingRoute(path, match, pi, sw.getId(), cookie, cntx, false, OFFlowModCommand.ADD, false);
+            pushMulticastingRoute(path, match, pi, cookie, cntx, false, OFFlowModCommand.ADD, false);
         }
-        // getMulticastRoutingDecision(streamingSourceIPAddress ,multicastInfoTable.keySet(multicastGroupIPAddress));
-
 
         return Command.CONTINUE;
     }
@@ -340,7 +380,6 @@ public class MulticastManager implements IOFMessageListener, IFloodlightModule, 
      * @param route                          QoS route calculated by routing decision algorithm
      * @param match
      * @param pi
-     * @param pinSwitch                      the attachment point of multicast source
      * @param cookie
      * @param cntx
      * @param requestFlowRemovedNotification default is false
@@ -348,8 +387,7 @@ public class MulticastManager implements IOFMessageListener, IFloodlightModule, 
      * @param packetOutSent                  default is false
      * @return
      */
-    public boolean pushMulticastingRoute(Path route, Match match, OFPacketIn pi,
-                                         DatapathId pinSwitch, U64 cookie, FloodlightContext cntx,
+    public boolean pushMulticastingRoute(Path route, Match match, OFPacketIn pi, U64 cookie, FloodlightContext cntx,
                                          boolean requestFlowRemovedNotification, OFFlowModCommand flowModCommand, boolean packetOutSent) {
 
         List<NodePortTuple> switchPortList = null;
@@ -809,7 +847,7 @@ public class MulticastManager implements IOFMessageListener, IFloodlightModule, 
     }
 
     @Override
-    public MulticastInfoTable getmulticastInforTable() {
+    public MulticastInfoTable getMulticastInfoTable() {
         return this.multicastInfoTable;
     }
 
