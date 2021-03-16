@@ -47,6 +47,7 @@ public class MulticastManager implements IOFMessageListener, IFloodlightModule, 
     private MulticastInfoTable multicastInfoTable = new MulticastInfoTable();
     private PinSwitchInfoTable pinSwitchInfoMap = new PinSwitchInfoTable();
     private MulticastSourceInfoTable multicastSourceInfoTable = new MulticastSourceInfoTable();
+    protected static int groupNumber =  1;
 
     private static final short DECISION_BITS = 24;
     private static final short DECISION_SHIFT = 0;
@@ -194,42 +195,46 @@ public class MulticastManager implements IOFMessageListener, IFloodlightModule, 
             case PACKET_IN:
                 OFPacketIn pi = (OFPacketIn) msg;
                 if (eth.getEtherType() == EthType.IPv4) {
-                    IPv4Address sourceAddress = ((IPv4) eth.getPayload()).getSourceAddress();
-                    IPv4Address destinationAddress = ((IPv4) eth.getPayload()).getDestinationAddress();
+                    IPv4Address srcAddress = ((IPv4) eth.getPayload()).getSourceAddress();
+                    IPv4Address destAddress = ((IPv4) eth.getPayload()).getDestinationAddress();
+
                     //  Process IGMP Message
                     if (((IPv4) eth.getPayload()).getProtocol() == IpProtocol.IGMP) {
+//                            if (!receivedMatch.contains(pi.getMatch())) {   // only receive one packet_in for streaming on wait list
+//                                receivedMatch.add(pi.getMatch());
                         processIGMPMessage(sw, pi, cntx);
+//                            }
 
                     } else if (eth.isMulticast()) {
-                        if (multicastInfoTable.containsKey(destinationAddress)) {   // There is/are host/hosts which waits/wait for receiving packet from a source
+                        // register multicast source
+                        U64 flowSetId = flowSetIdRegistry.generateFlowSetId();
+                        U64 cookie = makeForwardingCookie(RoutingDecision.rtStore.get(cntx, IRoutingDecision.CONTEXT_DECISION), flowSetId);
+                        OFPort srcPort = OFMessageUtils.getInPort(pi);
+                        //wrf: Change the structure: Packet_In only from source switch !!!
+                        Match match = sw.getOFFactory().buildMatch()
+                                .setExact(MatchField.IN_PORT, srcPort)
+                                .setExact(MatchField.IPV4_SRC, ((IPv4) eth.getPayload()).getSourceAddress())
+                                .build();
+                        MulticastSource newMulticastSource = new MulticastSource(sw.getId(), srcPort, cookie, match, cntx, pi, srcAddress);
+                        if (multicastSourceInfoTable.containsKey(destAddress) && !multicastSourceInfoTable.get(destAddress).containsKey(srcAddress)) {
+                            multicastSourceInfoTable.get(destAddress).put(srcAddress, newMulticastSource);
+                        } else if (!multicastSourceInfoTable.containsKey(destAddress)){ // new multicast address with a new source
+                            ConcurrentHashMap<IPv4Address, MulticastSource> tempMulticastSourceInfoRegister = new ConcurrentHashMap<>();
+                            // TODO: add what infor?
+                            tempMulticastSourceInfoRegister.put(srcAddress, newMulticastSource);
+                            multicastSourceInfoTable.put(destAddress, tempMulticastSourceInfoRegister);
+                        }
+
+                        // There is/are host/hosts which waits/wait for receiving packet from a source
+                        if (multicastInfoTable.containsKey(destAddress)) {
                             // TODO: if this statement is needed?
                             if (!receivedMatch.contains(pi.getMatch())) {   // only receive one packet_in for streaming on wait list
                                 // TODO: delete print
-                                System.out.println(destinationAddress);
+                                System.out.println(destAddress);
                                 System.out.println(((IPv4) eth.getPayload()).getProtocol());
                                 receivedMatch.add(pi.getMatch());
                                 processMulticastPacketInMessage(sw, pi, null, cntx);
                             }
-                        } else {    // no host waits for receiving streaming
-                            U64 flowSetId = flowSetIdRegistry.generateFlowSetId();
-                            U64 cookie = makeForwardingCookie(RoutingDecision.rtStore.get(cntx, IRoutingDecision.CONTEXT_DECISION), flowSetId);
-                            OFPort srcPort = OFMessageUtils.getInPort(pi);
-                            //wrf: Change the structure: Packet_In only from source switch !!!
-                            Match match = sw.getOFFactory().buildMatch()
-                                    .setExact(MatchField.IN_PORT, srcPort)
-                                    .setExact(MatchField.IPV4_SRC, ((IPv4) eth.getPayload()).getSourceAddress())
-                                    .build();
-                            MulticastSource newMulticastSource = new MulticastSource(sw.getId(), srcPort, cookie, match, cntx, pi, sourceAddress);
-                            if (multicastSourceInfoTable.containsKey(destinationAddress)) {
-                                multicastSourceInfoTable.get(destinationAddress).add(newMulticastSource);
-                            } else{ // new multicast address with a new source
-                                Vector<MulticastSource> tempMulticastSourceInfoRegister= new Vector();
-                                // TODO: add what infor?
-                                tempMulticastSourceInfoRegister.add(newMulticastSource);
-                                multicastSourceInfoTable.put(destinationAddress, tempMulticastSourceInfoRegister);
-                            }
-
-
                         }
                     }
                 }
@@ -308,13 +313,13 @@ public class MulticastManager implements IOFMessageListener, IFloodlightModule, 
 
                 }
             }
-            if (ifExist == false && !multicastSourceInfoTable.get(multicastAddress).isEmpty()){
+            if (!ifExist && !multicastSourceInfoTable.isEmpty() && !multicastSourceInfoTable.get(multicastAddress).isEmpty()) {
                 //wrf: push Route
                 DSCPField dscpField = DSCPField.Default;
                 DatapathId dstId = sw.getId();
                 OFPort dstPort = OFMessageUtils.getInPort(pi);
 
-                for (MulticastSource multicastSource : multicastSourceInfoTable.get(multicastAddress)) {
+                for (MulticastSource multicastSource : multicastSourceInfoTable.get(multicastAddress).values()) {
                     DatapathId srcId = multicastSource.getSrcId();
                     OFPort srcPort = multicastSource.getSrcPort();
 
@@ -481,7 +486,7 @@ public class MulticastManager implements IOFMessageListener, IFloodlightModule, 
 
                         OFGroupAdd addGroup = rp.getOFFactory().buildGroupAdd()
                                 .setGroupType(OFGroupType.ALL)
-                                .setGroup(OFGroup.of(50))
+                                .setGroup(OFGroup.of(groupNumber))
                                 .setBuckets(bucketList)
                                 .build();
 
@@ -489,7 +494,7 @@ public class MulticastManager implements IOFMessageListener, IFloodlightModule, 
 
                         //wrf: change to set pure group
                         fmb.setActions(Collections.singletonList((OFAction) rp.getOFFactory().actions().buildGroup()
-                                .setGroup(OFGroup.of(50))
+                                .setGroup(OFGroup.of(groupNumber++))
                                 .build()));
                         break;
                     }

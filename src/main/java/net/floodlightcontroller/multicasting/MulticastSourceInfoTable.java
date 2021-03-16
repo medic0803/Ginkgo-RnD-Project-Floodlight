@@ -6,5 +6,5 @@ import java.util.Set;
 import java.util.Vector;
 import java.util.concurrent.ConcurrentHashMap;
 
-public class MulticastSourceInfoTable extends ConcurrentHashMap<IPv4Address, Vector<MulticastSource>> {
+public class MulticastSourceInfoTable extends ConcurrentHashMap<IPv4Address, ConcurrentHashMap<IPv4Address, MulticastSource>> {
 }
