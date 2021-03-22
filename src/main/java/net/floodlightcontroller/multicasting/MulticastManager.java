@@ -329,12 +329,13 @@ public class MulticastManager implements IOFMessageListener, IFloodlightModule, 
                 }
 
             }
-        } else if (igmpPayload[32] == 3) {
+        } else if (igmpPayload[32] == 3) {  // leave message
             // TODO: delete print and replace it with log
             System.out.println(igmpPayload + "IGMP leave message");
 
             // host leave, delete the match item
             pinSwitchInfoMap.remove(hostIPAddress);
+            multicastInfoTable.get(multicastAddress).remove(hostIPAddress);
         }
         return Command.CONTINUE;
     }
