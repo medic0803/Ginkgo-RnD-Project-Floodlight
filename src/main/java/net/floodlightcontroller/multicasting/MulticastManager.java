@@ -41,12 +41,14 @@ public class MulticastManager implements IOFMessageListener, IFloodlightModule, 
     protected IOFSwitchService switchService;
     protected ITopologyService topologyService;
 
+    private ConcurrentHashMap<IPv4Address, MulticastGroup> multicastGroupInfoTable = new ConcurrentHashMap<>();
+
     protected MulticastRoutingDecision multicastRoutingDecision;
     protected HashSet<Match> receivedMatch;
     protected static Logger log = LoggerFactory.getLogger(MulticastManager.class);
-    private MulticastInfoTable multicastInfoTable = new MulticastInfoTable();
+//    private MulticastInfoTable multicastInfoTable = new MulticastInfoTable();
     private PinSwitchInfoTable pinSwitchInfoMap = new PinSwitchInfoTable();
-    private MulticastSourceInfoTable multicastSourceInfoTable = new MulticastSourceInfoTable();
+//    private MulticastSourceInfoTable multicastSourceInfoTable = new MulticastSourceInfoTable();
     protected static int groupNumber =  1;
 
     private static final short DECISION_BITS = 24;
@@ -274,10 +276,8 @@ public class MulticastManager implements IOFMessageListener, IFloodlightModule, 
         if (igmpPayload[32] == 4) {
             System.out.println(igmpPayload + "IGMP join message");
             boolean ifExist = false;
-            if (multicastInfoTable.isEmpty()) {  // empty multicast information table
-                Vector<IPv4Address> newMulticastGroup = new Vector();
-                newMulticastGroup.add(hostIPAddress);
-                multicastInfoTable.put(multicastAddress, newMulticastGroup);
+            if (multicastGroupInfoTable.isEmpty()) {    // no multicast group registerd
+                multicastGroupInfoTable.put(multicastAddress, new MulticastGroup(multicastAddress, hostIPAddress));
 
                 // A new host join, add it's match item
                 if (topologyService.isEdge(sw.getId(), OFMessageUtils.getInPort(pi))) {
@@ -285,14 +285,13 @@ public class MulticastManager implements IOFMessageListener, IFloodlightModule, 
                     tempMap.put(sw.getId(), OFMessageUtils.getInPort(pi));
                     pinSwitchInfoMap.put(hostIPAddress, tempMap);
                 }
-
-            } else { // non-empty table
-                if (multicastInfoTable.containsKey(multicastAddress)) {
-                    if (multicastInfoTable.get(multicastAddress).contains(hostIPAddress)) {   // host already join the multicast group
+            } else {    // non-empty table
+                if (multicastGroupInfoTable.containsKey(multicastAddress)) {
+                    if (multicastGroupInfoTable.get(multicastAddress).getMulticastHosts().contains(hostIPAddress)) {   // host already join the multicast group
                         // already exist, no need for route push
                         ifExist = true;
                     } else {    // host has not joined the multicast group yes
-                        multicastInfoTable.get(multicastAddress).add(hostIPAddress);
+                            multicastGroupInfoTable.get(multicastAddress).getMulticastHosts().add(hostIPAddress);
                         // A new host join, add it's match item
                         if (topologyService.isEdge(sw.getId(), OFMessageUtils.getInPort(pi))) {
                             ConcurrentHashMap<DatapathId, OFPort> tempMap = new ConcurrentHashMap<DatapathId, OFPort>();
@@ -301,25 +300,24 @@ public class MulticastManager implements IOFMessageListener, IFloodlightModule, 
                         }
                     }
                 } else {    // multicast group IP address do not exist
-                    Vector<IPv4Address> newMulticastGroup = new Vector();
-                    newMulticastGroup.add(hostIPAddress);
-                    multicastInfoTable.put(multicastAddress, newMulticastGroup);
+                    multicastGroupInfoTable.put(multicastAddress, new MulticastGroup(multicastAddress, hostIPAddress));
+
                     // A new host join, add it's match item
                     if (topologyService.isEdge(sw.getId(), OFMessageUtils.getInPort(pi))) {
                         ConcurrentHashMap<DatapathId, OFPort> tempMap = new ConcurrentHashMap<DatapathId, OFPort>();
                         tempMap.put(sw.getId(), OFMessageUtils.getInPort(pi));
                         pinSwitchInfoMap.put(hostIPAddress, tempMap);
                     }
-
                 }
+
             }
-            if (!ifExist && !multicastSourceInfoTable.isEmpty() && !multicastSourceInfoTable.get(multicastAddress).isEmpty()) {
+            if (!ifExist && !multicastGroupInfoTable.isEmpty() && !multicastGroupInfoTable.get(multicastAddress).getMulticastHosts().isEmpty()) {
                 //wrf: push Route
                 DSCPField dscpField = DSCPField.Default;
                 DatapathId dstId = sw.getId();
                 OFPort dstPort = OFMessageUtils.getInPort(pi);
 
-                for (MulticastSource multicastSource : multicastSourceInfoTable.get(multicastAddress).values()) {
+                for (MulticastSource multicastSource : multicastGroupInfoTable.get(multicastAddress).getMulticastSources().values()) {
                     DatapathId srcId = multicastSource.getSrcId();
                     OFPort srcPort = multicastSource.getSrcPort();
 
@@ -327,15 +325,15 @@ public class MulticastManager implements IOFMessageListener, IFloodlightModule, 
                     System.out.println("----------------------------------" + path.getPath().get(path.getPath().size() - 1));
                     pushMulticastingRoute(path, multicastSource.getMatch(), multicastSource.getPi(), multicastSource.getCookie(), multicastSource.getCntx(), false, OFFlowModCommand.ADD, false);
                 }
-
             }
+
         } else if (igmpPayload[32] == 3) {  // leave message
             // TODO: delete print and replace it with log
             System.out.println(igmpPayload + "IGMP leave message");
 
             // host leave, delete the match item
             pinSwitchInfoMap.remove(hostIPAddress);
-            multicastInfoTable.get(multicastAddress).remove(hostIPAddress);
+            multicastGroupInfoTable.get(multicastAddress).getMulticastHosts().remove(hostIPAddress);
         }
         return Command.CONTINUE;
     }

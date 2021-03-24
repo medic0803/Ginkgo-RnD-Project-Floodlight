@@ -16,16 +16,8 @@ public class PinSwitch {
     public DatapathId getPinSwitchId() {
         return pinSwitchId;
     }
-
-    public void setPinSwitchId(DatapathId pinSwitchId) {
-        this.pinSwitchId = pinSwitchId;
-    }
-
     public DatapathId getPinSwitchInPort() {
         return pinSwitchInPort;
     }
 
-    public void setPinSwitchInPort(DatapathId pinSwitchInPort) {
-        this.pinSwitchInPort = pinSwitchInPort;
-    }
 }
