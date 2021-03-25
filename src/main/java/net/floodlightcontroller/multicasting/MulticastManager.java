@@ -5,7 +5,6 @@ import net.floodlightcontroller.core.IFloodlightProviderService;
 import net.floodlightcontroller.core.IOFMessageListener;
 import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.internal.IOFSwitchService;
-import net.floodlightcontroller.core.internal.OFSwitch;
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.module.FloodlightModuleException;
 import net.floodlightcontroller.core.module.IFloodlightModule;
@@ -43,7 +42,7 @@ public class MulticastManager implements IOFMessageListener, IFloodlightModule, 
 
     private ConcurrentHashMap<IPv4Address, MulticastGroup> multicastGroupInfoTable = new ConcurrentHashMap<>();
 
-    protected MulticastRoutingDecision multicastRoutingDecision;
+    //    protected MulticastRoutingDecision multicastRoutingDecision;
     protected HashSet<Match> receivedMatch;
     protected static Logger log = LoggerFactory.getLogger(MulticastManager.class);
     //    private MulticastInfoTable multicastInfoTable = new MulticastInfoTable();
@@ -65,8 +64,8 @@ public class MulticastManager implements IOFMessageListener, IFloodlightModule, 
 
     protected IRoutingService routingService;
     //zzy
-    Vector<Path> pathsList = new Vector<>();
-    ConcurrentHashMap<DatapathId, Vector<OFPort>> rendezvousPoints = new ConcurrentHashMap<>();
+//    Vector<Path> pathsList = new Vector<>();
+//    ConcurrentHashMap<DatapathId, Vector<OFPort>> rendezvousPoints = new ConcurrentHashMap<>();
 
     public static int FLOWMOD_DEFAULT_IDLE_TIMEOUT = 5; // in seconds
     public static int FLOWMOD_DEFAULT_HARD_TIMEOUT = 0; // infinite
@@ -218,7 +217,7 @@ public class MulticastManager implements IOFMessageListener, IFloodlightModule, 
                                 .setExact(MatchField.IPV4_SRC, ((IPv4) eth.getPayload()).getSourceAddress())
                                 .build();
                         MulticastSource newMulticastSource = new MulticastSource(sw.getId(), srcPort, cookie, match, cntx, pi, srcAddress);
-                        if (!multicastGroupInfoTable.containsKey(dstAddress)){  // new multicast address register
+                        if (!multicastGroupInfoTable.containsKey(dstAddress)) {  // new multicast address register
                             multicastGroupInfoTable.put(dstAddress, new MulticastGroup(dstAddress, srcAddress, newMulticastSource));
                         } else {    // multicast addres already exist
                             MulticastGroup tempMulticastGroup = multicastGroupInfoTable.get(dstAddress);
@@ -275,72 +274,156 @@ public class MulticastManager implements IOFMessageListener, IFloodlightModule, 
         // the total length of this packet is 54, the previous 14(0-13) is for header, the rest 40 is for paylod, and the 46/32 is for record type
         if (igmpPayload[32] == 4) {
             System.out.println(igmpPayload + "IGMP join message");
-            boolean ifExist = false;
+            processIGMPJoinMsg(multicastAddress, hostIPAddress, sw, pi);
 
-            //  process IGMP message sender host
-            if (multicastGroupInfoTable.isEmpty()) {    // no multicast group registerd
+        } else if (igmpPayload[32] == 3) {  // leave message
+            // TODO: delete print and replace it with log
+            System.out.println(igmpPayload + "IGMP leave message");
+            processIGMPLeaveMsg(multicastAddress, hostIPAddress);
+
+        }
+        return Command.CONTINUE;
+    }
+
+
+    private void processIGMPJoinMsg(IPv4Address multicastAddress, IPv4Address hostIPAddress, IOFSwitch sw, OFPacketIn pi){
+        boolean ifExist = false;
+
+        //  process IGMP message sender host
+        if (multicastGroupInfoTable.isEmpty()) {    // no multicast group registerd
+            multicastGroupInfoTable.put(multicastAddress, new MulticastGroup(multicastAddress, hostIPAddress));
+
+            // A new host join, add it's match item
+            if (topologyService.isEdge(sw.getId(), OFMessageUtils.getInPort(pi))) {
+                pinSwitchInfoMap.put(hostIPAddress, new PinSwitch(sw.getId(), OFMessageUtils.getInPort(pi)));
+            }
+        } else {    // non-empty table
+            if (multicastGroupInfoTable.containsKey(multicastAddress)) {
+                MulticastGroup tempMulticastGroup = multicastGroupInfoTable.get(multicastAddress);
+                if (tempMulticastGroup.getMulticastHosts().contains(hostIPAddress)) {   // host already join the multicast group
+                    // already exist, no need for route push
+                    ifExist = true;
+                } else {    // host has not joined the multicast group yes
+                    tempMulticastGroup.getMulticastHosts().add(hostIPAddress);
+                    // A new host join, add it's match item
+                    if (topologyService.isEdge(sw.getId(), OFMessageUtils.getInPort(pi))) {
+                        pinSwitchInfoMap.put(hostIPAddress, new PinSwitch(sw.getId(), OFMessageUtils.getInPort(pi)));
+                    }
+                }
+            } else {    // multicast group IP address do not exist
                 multicastGroupInfoTable.put(multicastAddress, new MulticastGroup(multicastAddress, hostIPAddress));
 
                 // A new host join, add it's match item
                 if (topologyService.isEdge(sw.getId(), OFMessageUtils.getInPort(pi))) {
                     pinSwitchInfoMap.put(hostIPAddress, new PinSwitch(sw.getId(), OFMessageUtils.getInPort(pi)));
                 }
-            } else {    // non-empty table
-                if (multicastGroupInfoTable.containsKey(multicastAddress)) {
-                    MulticastGroup tempMulticastGroup = multicastGroupInfoTable.get(multicastAddress);
-                    if (tempMulticastGroup.getMulticastHosts().contains(hostIPAddress)) {   // host already join the multicast group
-                        // already exist, no need for route push
-                        ifExist = true;
-                    } else {    // host has not joined the multicast group yes
-                        tempMulticastGroup.getMulticastHosts().add(hostIPAddress);
-                        // A new host join, add it's match item
-                        if (topologyService.isEdge(sw.getId(), OFMessageUtils.getInPort(pi))) {
-                            pinSwitchInfoMap.put(hostIPAddress, new PinSwitch(sw.getId(), OFMessageUtils.getInPort(pi)));
-                        }
-                    }
-                } else {    // multicast group IP address do not exist
-                    multicastGroupInfoTable.put(multicastAddress, new MulticastGroup(multicastAddress, hostIPAddress));
-
-                    // A new host join, add it's match item
-                    if (topologyService.isEdge(sw.getId(), OFMessageUtils.getInPort(pi))) {
-                        pinSwitchInfoMap.put(hostIPAddress, new PinSwitch(sw.getId(), OFMessageUtils.getInPort(pi)));
-                    }
-                }
             }
-
-            // determine the need for pushing route
-            // Not exist before && Already has source/sources
-            if (!ifExist && !multicastGroupInfoTable.get(multicastAddress).getMulticastSources().isEmpty()) {
-                //wrf: push Route
-                DSCPField dscpField = DSCPField.Default;
-                DatapathId dstId = sw.getId();
-                OFPort dstPort = OFMessageUtils.getInPort(pi);
-
-                for (MulticastSource multicastSource : multicastGroupInfoTable.get(multicastAddress).getMulticastSources().values()) {
-                    DatapathId srcId = multicastSource.getSrcId();
-                    OFPort srcPort = multicastSource.getSrcPort();
-
-                    Path path = getMulticastRoutingDecision(srcId, srcPort, dstId, dstPort, dscpField);
-                    System.out.println("----------------------------------" + path.getPath().get(path.getPath().size() - 1));
-                    pushMulticastingRoute(path, multicastSource.getMatch(), multicastSource.getPi(), multicastSource.getCookie(), multicastSource.getCntx(), false, OFFlowModCommand.ADD, false);
-                }
-            }
-
-        } else if (igmpPayload[32] == 3) {  // leave message
-            // TODO: delete print and replace it with log
-            System.out.println(igmpPayload + "IGMP leave message");
-
-            // host leave, delete the match item
-            pinSwitchInfoMap.remove(hostIPAddress);
-            multicastGroupInfoTable.get(multicastAddress).getMulticastHosts().remove(hostIPAddress);
         }
-        return Command.CONTINUE;
+
+        // determine the need for pushing route
+        // Not exist before && Already has source/sources
+        if (!ifExist && !multicastGroupInfoTable.get(multicastAddress).getMulticastSources().isEmpty()) {
+            //wrf: push Route
+            DSCPField dscpField = DSCPField.Default;
+            DatapathId dstId = sw.getId();
+            OFPort dstPort = OFMessageUtils.getInPort(pi);
+
+            for (MulticastSource multicastSource : multicastGroupInfoTable.get(multicastAddress).getMulticastSources().values()) {
+                DatapathId srcId = multicastSource.getSrcId();
+                OFPort srcPort = multicastSource.getSrcPort();
+
+                Path path = getMulticastRoutingDecision(srcId, srcPort, dstId, dstPort, dscpField);
+                System.out.println("----------------------------------" + path.getPath().get(path.getPath().size() - 1));
+                pushMulticastingRoute(path, multicastSource.getMatch(), multicastSource.getCookie(), multicastGroupInfoTable.get(multicastAddress).getMulticastTreeInfoTable().get(multicastSource.getSrcAddress()).getAltBPRegister(), false, OFFlowModCommand.ADD);
+            }
+        }
     }
 
+    private void processIGMPLeaveMsg(IPv4Address multicastAddress, IPv4Address hostIPAddress) {
+        MulticastGroup tempMulticastGroup = multicastGroupInfoTable.get(multicastAddress);
+
+        // host leave, delete the match item
+        pinSwitchInfoMap.remove(hostIPAddress);
+        tempMulticastGroup.getMulticastHosts().remove(hostIPAddress);
+        for (MulticastTree multicastTree : tempMulticastGroup.getMulticastTreeInfoTable().values()) {
+            List<NodePortTuple> switchPortList = multicastTree.getPathList().get(hostIPAddress).getPath();
+
+            // iterate over the path, re-compose the action of altBP
+            for (int indx = switchPortList.size() - 1; indx > 0; indx -= 2) {
+                // indx and indx-1 will always have the same switch DPID.
+                DatapathId altBPDPID = switchPortList.get(indx).getNodeId();
+                IOFSwitch altBPSwitch = switchService.getSwitch(altBPDPID);
+
+                AltBP tempAltBP = multicastTree.getAltBPRegister().get(altBPDPID);
+
+                OFPort outPort = switchPortList.get(indx).getPortId();
+                OFPort inPort = switchPortList.get(indx - 1).getPortId();
+
+                // remove BP's outport from the outportSet
+                tempAltBP.getOutPortSet().remove(outPort);
+
+                // clone a temp fmb to build the OFFlowMod
+                OFFlowMod.Builder tempFMB = tempAltBP.getFmb();
+
+                // compose the flow table action
+                if (tempAltBP.getOutPortSet().size() > 1) { // still have 1+ outporst, compose a new bucket
+                    ArrayList<OFBucket> bucketList = new ArrayList<OFBucket>();
+
+                    // add all out ports as buckets
+                    for (OFPort forwardPort : tempAltBP.getOutPortSet()) {
+                        bucketList.add(altBPSwitch.getOFFactory().buildBucket()
+                                .setWatchGroup(OFGroup.ANY)
+                                .setWatchPort(OFPort.ANY)
+                                .setActions(Collections.singletonList((OFAction) altBPSwitch.getOFFactory().actions().buildOutput()
+                                        .setMaxLen(0xffFFffFF)
+                                        .setPort(forwardPort)
+                                        .build()))
+                                .build());
+                    }
+
+                    OFGroupAdd addGroup = altBPSwitch.getOFFactory().buildGroupAdd()
+                            .setGroupType(OFGroupType.ALL)
+                            .setGroup(OFGroup.of(tempAltBP.getGroupNumber()))
+                            .setBuckets(bucketList)
+                            .build();
+
+
+                    altBPSwitch.write(addGroup);
+                    //wrf: change to set pure group
+                    tempFMB.setActions(Collections.singletonList((OFAction) altBPSwitch.getOFFactory().actions().buildGroup()
+                            .setGroup(OFGroup.of(tempAltBP.getGroupNumber()))
+                            .build()));
+
+                } else if (tempAltBP.getOutPortSet().size() == 1){    // compose a normal forwarding action
+                    OFActionOutput.Builder aob = altBPSwitch.getOFFactory().actions().buildOutput();
+                    List<OFAction> actions = new ArrayList<>();
+                    aob.setPort((OFPort) tempAltBP.getOutPortSet().toArray()[0]);
+                    aob.setMaxLen(Integer.MAX_VALUE);
+                    actions.add(aob.build());
+                    FlowModUtils.setActions(tempFMB, actions, altBPSwitch);
+                } else { // no out port, remove the alternate branch point
+                    multicastTree.getAltBPRegister().remove(altBPDPID);
+                }
+                /* Configure for particular switch pipeline */
+                if (altBPSwitch.getOFFactory().getVersion().compareTo(OFVersion.OF_10) != 0) {
+                    tempFMB.setTableId(FLOWMOD_DEFAULT_TABLE_ID);
+                }
+                messageDamper.write(altBPSwitch, tempFMB.build());
+            }
+
+            // In the end, remove this path
+            multicastTree.getPathList().remove(hostIPAddress);
+
+        }
+        if (tempMulticastGroup.getMulticastHosts().isEmpty() && tempMulticastGroup.getMulticastSources().isEmpty()) {    // no hosts, no sources, this multicast group should be removed
+            multicastGroupInfoTable.remove(multicastAddress);
+        }
+    }
     public Command processSourcePacketInMessage(IOFSwitch sw, OFPacketIn pi, FloodlightContext cntx) {
         Ethernet eth = IFloodlightProviderService.bcStore.get(cntx, IFloodlightProviderService.CONTEXT_PI_PAYLOAD);
 
         IPv4Address multicastAddress = ((IPv4) eth.getPayload()).getDestinationAddress();
+        IPv4Address sourceAddress = ((IPv4) eth.getPayload()).getSourceAddress();
 
         DatapathId srcId = sw.getId();
         DatapathId dstId = null;
@@ -369,7 +452,7 @@ public class MulticastManager implements IOFMessageListener, IFloodlightModule, 
             dstPort = pinSwitchInfoMap.get(hostAddress).getPinSwitchInPort();
             path = getMulticastRoutingDecision(srcId, srcPort, dstId, dstPort, dscpField);
             System.out.println("----------------------------------" + path.getPath().get(path.getPath().size() - 1));
-            pushMulticastingRoute(path, match, pi, cookie, cntx, false, OFFlowModCommand.ADD, false);
+            pushMulticastingRoute(path, match, cookie, multicastGroupInfoTable.get(multicastAddress).getMulticastTreeInfoTable().get(sourceAddress).getAltBPRegister(), false, OFFlowModCommand.ADD);
         }
 
         return Command.CONTINUE;
@@ -381,27 +464,24 @@ public class MulticastManager implements IOFMessageListener, IFloodlightModule, 
      *
      * @param route                          QoS route calculated by routing decision algorithm
      * @param match
-     * @param pi
      * @param cookie
-     * @param cntx
      * @param requestFlowRemovedNotification default is false
      * @param flowModCommand                 default is OFFlowMod.ADD
-     * @param packetOutSent                  default is false
      * @return
      */
-    public boolean pushMulticastingRoute(Path route, Match match, OFPacketIn pi, U64 cookie, FloodlightContext cntx,
-                                         boolean requestFlowRemovedNotification, OFFlowModCommand flowModCommand, boolean packetOutSent) {
+    public boolean pushMulticastingRoute(Path route, Match match, U64 cookie, HashMap<DatapathId, AltBP> currentAltBPSet,
+                                         boolean requestFlowRemovedNotification, OFFlowModCommand flowModCommand) {
 
-        List<NodePortTuple> switchPortList = null;
-        switch (multicastRoutingDecision.getRoutingAction()) {
-            case JOIN_WITHOUT_RP:
-                switchPortList = route.getPath();
-                break;
-            case JOIN_WITH_RP:
-                switchPortList = multicastRoutingDecision.getuPath().getPath();
-                break;
-        }
-
+//        List<NodePortTuple> switchPortList = null;
+//        switch (multicastRoutingDecision.getRoutingAction()) {
+//            case JOIN_WITHOUT_RP:
+//                switchPortList = route.getPath();
+//                break;
+//            case JOIN_WITH_RP:
+//                switchPortList = multicastRoutingDecision.getuPath().getPath();
+//                break;
+//        }
+        List<NodePortTuple> switchPortList = route.getPath();
         for (int indx = switchPortList.size() - 1; indx > 0; indx -= 2) {
             // indx and indx-1 will always have the same switch DPID.
             DatapathId switchDPID = switchPortList.get(indx).getNodeId();
@@ -461,51 +541,53 @@ public class MulticastManager implements IOFMessageListener, IFloodlightModule, 
                     .setOutPort(outPort)
                     .setPriority(FLOWMOD_DEFAULT_PRIORITY);
 
-            switch (multicastRoutingDecision.getRoutingAction()) {
-
-                case JOIN_WITH_RP:
-                    if (indx == 1) {    // Process RP's actions as a group
-                        // Compose a Group
-                        ArrayList<OFBucket> bucketList = new ArrayList<OFBucket>();
-                        OFSwitch rp = (OFSwitch) switchService.getSwitch(multicastRoutingDecision.getrP());
-
-                        // add all out ports as buckets
-                        for (OFPort forwardPort : rendezvousPoints.get(multicastRoutingDecision.getrP())) {
-                            bucketList.add(rp.getOFFactory().buildBucket()
-                                    .setWatchGroup(OFGroup.ANY)
-                                    .setWatchPort(OFPort.ANY)
-                                    .setActions(Collections.singletonList((OFAction) rp.getOFFactory().actions().buildOutput()
-                                            .setMaxLen(0xffFFffFF)
-                                            .setPort(forwardPort)
-                                            .build()))
-                                    .build());
-                        }
-
-                        OFGroupAdd addGroup = rp.getOFFactory().buildGroupAdd()
-                                .setGroupType(OFGroupType.ALL)
-                                .setGroup(OFGroup.of(groupNumber))
-                                .setBuckets(bucketList)
-                                .build();
-
-                        rp.write(addGroup);
-
-                        //wrf: change to set pure group
-                        fmb.setActions(Collections.singletonList((OFAction) rp.getOFFactory().actions().buildGroup()
-                                .setGroup(OFGroup.of(groupNumber++))
-                                .build()));
-                        break;
-                    }
-                case JOIN_WITHOUT_RP:
-                    OFActionOutput.Builder aob = sw.getOFFactory().actions().buildOutput();
-                    List<OFAction> actions = new ArrayList<>();
-                    aob.setPort(outPort);
-                    aob.setMaxLen(Integer.MAX_VALUE);
-                    actions.add(aob.build());
-                    FlowModUtils.setActions(fmb, actions, sw);
-                    break;
-
+            // register out port
+            if (!currentAltBPSet.containsKey(switchDPID)) {   // register a new switch
+                currentAltBPSet.put(switchDPID, new AltBP(outPort));
             }
 
+            // save current state of fmb for leaving
+            currentAltBPSet.get(switchDPID).setFmb(fmb);
+
+            // compose the flow table action
+            if (currentAltBPSet.get(switchDPID).getOutPortSet().size() > 1) { // compose a bucket
+                ArrayList<OFBucket> bucketList = new ArrayList<OFBucket>();
+
+                // add all out ports as buckets
+                for (OFPort forwardPort : currentAltBPSet.get(switchDPID).getOutPortSet()) {
+                    bucketList.add(sw.getOFFactory().buildBucket()
+                            .setWatchGroup(OFGroup.ANY)
+                            .setWatchPort(OFPort.ANY)
+                            .setActions(Collections.singletonList((OFAction) sw.getOFFactory().actions().buildOutput()
+                                    .setMaxLen(0xffFFffFF)
+                                    .setPort(forwardPort)
+                                    .build()))
+                            .build());
+                }
+
+                OFGroupAdd addGroup = sw.getOFFactory().buildGroupAdd()
+                        .setGroupType(OFGroupType.ALL)
+                        .setGroup(OFGroup.of(groupNumber))
+                        .setBuckets(bucketList)
+                        .build();
+
+                currentAltBPSet.get(switchDPID).setGroupNumber(groupNumber);
+
+                sw.write(addGroup);
+
+                //wrf: change to set pure group
+                fmb.setActions(Collections.singletonList((OFAction) sw.getOFFactory().actions().buildGroup()
+                        .setGroup(OFGroup.of(groupNumber++))
+                        .build()));
+
+            } else {    // compose a normal forwarding action
+                OFActionOutput.Builder aob = sw.getOFFactory().actions().buildOutput();
+                List<OFAction> actions = new ArrayList<>();
+                aob.setPort(outPort);
+                aob.setMaxLen(Integer.MAX_VALUE);
+                actions.add(aob.build());
+                FlowModUtils.setActions(fmb, actions, sw);
+            }
 
             /* Configure for particular switch pipeline */
             if (sw.getOFFactory().getVersion().compareTo(OFVersion.OF_10) != 0) {
@@ -532,7 +614,6 @@ public class MulticastManager implements IOFMessageListener, IFloodlightModule, 
             } else {
                 messageDamper.write(sw, fmb.build());
             }
-
 
         }
 
