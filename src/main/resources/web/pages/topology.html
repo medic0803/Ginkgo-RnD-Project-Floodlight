@@ -133,6 +133,8 @@
 
 <script src="../js/jquery.cookie.js"></script>
 
+<!--kwm: check the custom logical of this function here-->
+
 <!-- Custom scripts to load in HTML -->
 <script src="../js/navbar.js"></script>
 <script>
@@ -182,6 +184,7 @@
         network = new vis.Network(container, data, options);
 //        network.fit({scale: 4.0});
 
+        //kwm: the showPopup function is here, find the data usage.
         network.on("showPopup", function (params) {
             if (params.charAt(0) == 's') {
                 var id = params.substring(1);
@@ -292,6 +295,7 @@
     }
 
 
+    //kwm: Get switches start
     function loadSwitches() {
         $.ajax({
             url: "http://" + ipaddress + ":" + restport + "/wm/core/controller/switches/json",
