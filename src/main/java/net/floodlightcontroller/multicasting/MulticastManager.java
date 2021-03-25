@@ -394,6 +394,13 @@ public class MulticastManager implements IOFMessageListener, IFloodlightModule, 
                             .setGroup(OFGroup.of(tempAltBP.getGroupNumber()))
                             .build()));
 
+                    /* Configure for particular switch pipeline */
+                    if (altBPSwitch.getOFFactory().getVersion().compareTo(OFVersion.OF_10) != 0) {
+                        tempFMB.setTableId(FLOWMOD_DEFAULT_TABLE_ID);
+                    }
+                    messageDamper.write(altBPSwitch, tempFMB.build());
+                    break;
+
                 } else if (tempAltBP.getOutPortSet().size() == 1){    // compose a normal forwarding action
                     OFActionOutput.Builder aob = altBPSwitch.getOFFactory().actions().buildOutput();
                     List<OFAction> actions = new ArrayList<>();
@@ -401,14 +408,15 @@ public class MulticastManager implements IOFMessageListener, IFloodlightModule, 
                     aob.setMaxLen(Integer.MAX_VALUE);
                     actions.add(aob.build());
                     FlowModUtils.setActions(tempFMB, actions, altBPSwitch);
-                } else { // no out port, remove the alternate branch point
-                    multicastTree.getAltBPRegister().remove(altBPDPID);
+
+                    /* Configure for particular switch pipeline */
+                    if (altBPSwitch.getOFFactory().getVersion().compareTo(OFVersion.OF_10) != 0) {
+                        tempFMB.setTableId(FLOWMOD_DEFAULT_TABLE_ID);
+                    }
+                    messageDamper.write(altBPSwitch, tempFMB.build());
+                    break;
                 }
-                /* Configure for particular switch pipeline */
-                if (altBPSwitch.getOFFactory().getVersion().compareTo(OFVersion.OF_10) != 0) {
-                    tempFMB.setTableId(FLOWMOD_DEFAULT_TABLE_ID);
-                }
-                messageDamper.write(altBPSwitch, tempFMB.build());
+
             }
 
             // In the end, remove this path
@@ -544,6 +552,8 @@ public class MulticastManager implements IOFMessageListener, IFloodlightModule, 
             // register out port
             if (!currentAltBPSet.containsKey(switchDPID)) {   // register a new switch
                 currentAltBPSet.put(switchDPID, new AltBP(outPort));
+            } else{
+                currentAltBPSet.get(switchDPID).getOutPortSet().add(outPort);
             }
 
             // save current state of fmb for leaving
@@ -575,7 +585,6 @@ public class MulticastManager implements IOFMessageListener, IFloodlightModule, 
 
                 sw.write(addGroup);
 
-                //wrf: change to set pure group
                 fmb.setActions(Collections.singletonList((OFAction) sw.getOFFactory().actions().buildGroup()
                         .setGroup(OFGroup.of(groupNumber++))
                         .build()));
