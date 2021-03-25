@@ -198,7 +198,7 @@ public class MulticastManager implements IOFMessageListener, IFloodlightModule, 
                 OFPacketIn pi = (OFPacketIn) msg;
                 if (eth.getEtherType() == EthType.IPv4) {
                     IPv4Address srcAddress = ((IPv4) eth.getPayload()).getSourceAddress();
-                    IPv4Address destAddress = ((IPv4) eth.getPayload()).getDestinationAddress();
+                    IPv4Address dstAddress = ((IPv4) eth.getPayload()).getDestinationAddress();
 
                     //  Process IGMP Message
                     if (((IPv4) eth.getPayload()).getProtocol() == IpProtocol.IGMP) {
@@ -218,24 +218,24 @@ public class MulticastManager implements IOFMessageListener, IFloodlightModule, 
                                 .setExact(MatchField.IPV4_SRC, ((IPv4) eth.getPayload()).getSourceAddress())
                                 .build();
                         MulticastSource newMulticastSource = new MulticastSource(sw.getId(), srcPort, cookie, match, cntx, pi, srcAddress);
-                        if (multicastSourceInfoTable.containsKey(destAddress) && !multicastSourceInfoTable.get(destAddress).containsKey(srcAddress)) {
-                            multicastSourceInfoTable.get(destAddress).put(srcAddress, newMulticastSource);
-                        } else if (!multicastSourceInfoTable.containsKey(destAddress)) { // new multicast address with a new source
-                            ConcurrentHashMap<IPv4Address, MulticastSource> tempMulticastSourceInfoRegister = new ConcurrentHashMap<>();
-                            // TODO: add what infor?
-                            tempMulticastSourceInfoRegister.put(srcAddress, newMulticastSource);
-                            multicastSourceInfoTable.put(destAddress, tempMulticastSourceInfoRegister);
+                        if (!multicastGroupInfoTable.containsKey(dstAddress)){  // new multicast address register
+                            multicastGroupInfoTable.put(dstAddress, new MulticastGroup(dstAddress, srcAddress, newMulticastSource));
+                        } else {    // multicast addres already exist
+                            MulticastGroup tempMulticastGroup = multicastGroupInfoTable.get(dstAddress);
+                            if (!tempMulticastGroup.getMulticastSources().containsKey(srcAddress)) {
+                                tempMulticastGroup.addNewMulticastSource(srcAddress, newMulticastSource);
+                            }
                         }
 
                         // There is/are host/hosts which waits/wait for receiving packet from a source
-                        if (multicastInfoTable.containsKey(destAddress)) {
+                        if (!multicastGroupInfoTable.get(dstAddress).getMulticastHosts().isEmpty()) {
                             // TODO: if this statement is needed?
                             if (!receivedMatch.contains(pi.getMatch())) {   // only receive one packet_in for streaming on wait list
                                 // TODO: delete print
-                                System.out.println(destAddress);
+                                System.out.println(dstAddress);
                                 System.out.println(((IPv4) eth.getPayload()).getProtocol());
                                 receivedMatch.add(pi.getMatch());
-                                processMulticastPacketInMessage(sw, pi, null, cntx);
+                                processSourcePacketInMessage(sw, pi, cntx);
                             }
                         }
                     }
@@ -337,11 +337,10 @@ public class MulticastManager implements IOFMessageListener, IFloodlightModule, 
         return Command.CONTINUE;
     }
 
-    public Command processMulticastPacketInMessage(IOFSwitch sw, OFPacketIn pi, IRoutingDecision decision, FloodlightContext cntx) {
+    public Command processSourcePacketInMessage(IOFSwitch sw, OFPacketIn pi, FloodlightContext cntx) {
         Ethernet eth = IFloodlightProviderService.bcStore.get(cntx, IFloodlightProviderService.CONTEXT_PI_PAYLOAD);
 
-        IPv4Address destinationAddress = ((IPv4) eth.getPayload()).getDestinationAddress();
-        IPv4Address streamingSourceIPAddress = ((IPv4) eth.getPayload()).getSourceAddress();
+        IPv4Address multicastAddress = ((IPv4) eth.getPayload()).getDestinationAddress();
 
         DatapathId srcId = sw.getId();
         DatapathId dstId = null;
@@ -365,9 +364,9 @@ public class MulticastManager implements IOFMessageListener, IFloodlightModule, 
                 .setExact(MatchField.IPV4_SRC, ((IPv4) eth.getPayload()).getSourceAddress())
                 .build();
 
-        for (IPv4Address hostAddress : multicastInfoTable.get(destinationAddress)) {
-            dstId = (DatapathId) pinSwitchInfoMap.get(hostAddress).keySet().toArray()[0];
-            dstPort = pinSwitchInfoMap.get(hostAddress).get(dstId);
+        for (IPv4Address hostAddress : multicastGroupInfoTable.get(multicastAddress).getMulticastHosts()) {
+            dstId = pinSwitchInfoMap.get(hostAddress).getPinSwitchId();
+            dstPort = pinSwitchInfoMap.get(hostAddress).getPinSwitchInPort();
             path = getMulticastRoutingDecision(srcId, srcPort, dstId, dstPort, dscpField);
             System.out.println("----------------------------------" + path.getPath().get(path.getPath().size() - 1));
             pushMulticastingRoute(path, match, pi, cookie, cntx, false, OFFlowModCommand.ADD, false);
@@ -850,8 +849,8 @@ public class MulticastManager implements IOFMessageListener, IFloodlightModule, 
     }
 
     @Override
-    public MulticastInfoTable getMulticastInfoTable() {
-        return this.multicastInfoTable;
+    public boolean ifMulticastAddressExist(IPv4Address dstAddress) {
+        return this.multicastGroupInfoTable.containsKey(dstAddress);
     }
 
     private Path getMulticastRoutingDecision(DatapathId src, OFPort srcPort,

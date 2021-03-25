@@ -11,6 +11,8 @@ public class MulticastGroup {
     private IPv4Address multicastAddress;
 
     private HashSet<IPv4Address> multicastHosts; // Hosts IPv4 Address Set
+
+    // TODO: use port + multicast address as the identifier of a multicast source
     private HashMap<IPv4Address, MulticastSource> multicastSources; // Sources objects map
     private HashMap<IPv4Address, MulticastTree> multicastTreeInfoTable; // MulticastTree objects map
 
@@ -30,9 +32,15 @@ public class MulticastGroup {
         this.multicastSources = new HashMap<>();
         this.multicastTreeInfoTable = new HashMap<>();
 
-        this.multicastSources.put(sourceAddress, multicastSource);
+        addNewMulticastSource(sourceAddress, multicastSource);
     }
 
+    public void addNewMulticastSource(IPv4Address sourceAddress, MulticastSource multicastSource){
+        this.multicastSources.put(sourceAddress, multicastSource);
+        this.multicastTreeInfoTable.put(sourceAddress, new MulticastTree());
+    }
+
+    // Getters
     public IPv4Address getMulticastAddress() {
         return multicastAddress;
     }
