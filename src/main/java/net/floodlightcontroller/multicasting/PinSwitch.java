@@ -1,14 +1,15 @@
 package net.floodlightcontroller.multicasting;
 
 import org.projectfloodlight.openflow.types.DatapathId;
+import org.projectfloodlight.openflow.types.OFPort;
 
 public class PinSwitch {
 
     // instance field
     private DatapathId pinSwitchId;
-    private DatapathId pinSwitchInPort;
+    private OFPort pinSwitchInPort;
 
-    public PinSwitch(DatapathId pinSwitchId, DatapathId pinSwitchInPort) {
+    public PinSwitch(DatapathId pinSwitchId, OFPort pinSwitchInPort) {
         this.pinSwitchId = pinSwitchId;
         this.pinSwitchInPort = pinSwitchInPort;
     }
@@ -16,7 +17,7 @@ public class PinSwitch {
     public DatapathId getPinSwitchId() {
         return pinSwitchId;
     }
-    public DatapathId getPinSwitchInPort() {
+    public OFPort getPinSwitchInPort() {
         return pinSwitchInPort;
     }
 
