@@ -943,7 +943,7 @@ public class MulticastManager implements IOFMessageListener, IFloodlightModule, 
     private Path getMulticastRoutingDecision(DatapathId src, OFPort srcPort,
                                              DatapathId dst, OFPort dstPort,
                                              DSCPField dscpField,
-                                             IPv4Address iPv4Address) {
+                                             IPv4Address hostAddress) {
         //new
         DatapathId bp = null;
         Stack<DatapathId> tempBP = new Stack<>();
@@ -951,7 +951,7 @@ public class MulticastManager implements IOFMessageListener, IFloodlightModule, 
         MulticastTree multicastTree = new MulticastTree();
         Path newPath = routingService.getPath(src, srcPort, dst, dstPort, dscpField);
         if(multicastTree.getPathList().isEmpty()){
-            multicastTree.getPathList().put(iPv4Address, newPath);
+            multicastTree.getPathList().put(hostAddress, newPath);
         }else{
             //calculate BP and the rest part of the path
             //Then store into pathList
@@ -989,7 +989,7 @@ public class MulticastManager implements IOFMessageListener, IFloodlightModule, 
             }
             PathId id = new PathId(nodePortTupleList.get(0).getNodeId(), nodePortTupleList.get(nodePortTupleList.size()-1).getNodeId());
             Path ansPath = new Path(id,ansList);
-            multicastTree.getPathList().put(iPv4Address, ansPath);
+            multicastTree.getPathList().put(hostAddress, ansPath);
         }
         return newPath;
 
