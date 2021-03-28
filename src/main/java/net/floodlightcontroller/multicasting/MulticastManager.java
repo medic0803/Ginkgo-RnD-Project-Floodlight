@@ -13,10 +13,7 @@ import net.floodlightcontroller.core.types.NodePortTuple;
 import net.floodlightcontroller.core.util.AppCookie;
 import net.floodlightcontroller.packet.*;
 import net.floodlightcontroller.qos.DSCPField;
-import net.floodlightcontroller.routing.IRoutingDecision;
-import net.floodlightcontroller.routing.IRoutingService;
-import net.floodlightcontroller.routing.Path;
-import net.floodlightcontroller.routing.RoutingDecision;
+import net.floodlightcontroller.routing.*;
 import net.floodlightcontroller.topology.ITopologyService;
 import net.floodlightcontroller.util.*;
 import org.projectfloodlight.openflow.protocol.*;
@@ -945,55 +942,104 @@ public class MulticastManager implements IOFMessageListener, IFloodlightModule, 
 
     private Path getMulticastRoutingDecision(DatapathId src, OFPort srcPort,
                                              DatapathId dst, OFPort dstPort,
-                                             DSCPField dscpField) {
-
-        DatapathId surRP = null;
-        Vector<OFPort> portSet = new Vector<>();
-        Stack<DatapathId> tempRP = new Stack<>();
-        Stack<DatapathId> possibleRP = new Stack<>();
-        Path nPath = routingService.getPath(src, srcPort, dst, dstPort, dscpField);
-
-        //diff condition of pathList
-        if (!this.pathsList.isEmpty()) {
-            for (Path nextPath : this.pathsList) {
-                for (int k = 0; k < nPath.getPath().size(); k += 2) {
-                    for (int l = 0; l < nextPath.getPath().size(); l += 2) {
-                        if (nPath.getPath().get(k).getNodeId().equals(nextPath.getPath().get(l).getNodeId())) {
-                            tempRP.push(nPath.getPath().get(k).getNodeId());
+                                             DSCPField dscpField,
+                                             IPv4Address hostAddress) {
+        //new
+        DatapathId bp = null;
+        Stack<DatapathId> tempBP = new Stack<>();
+        Stack<DatapathId> possibleBP = new Stack<>();
+        MulticastTree multicastTree = new MulticastTree();
+        Path newPath = routingService.getPath(src, srcPort, dst, dstPort, dscpField);
+        if(multicastTree.getPathList().isEmpty()){
+            multicastTree.getPathList().put(hostAddress, newPath);
+        }else{
+            //calculate BP and the rest part of the path
+            //Then store into pathList
+            for (Path nextPath : multicastTree.getPathList().values()){
+                for(int k = 0; k < newPath.getPath().size(); k += 2){
+                    for (int l = 0; l < nextPath.getPath().size(); l += 2){
+                        if (newPath.getPath().get(k).getNodeId().equals(nextPath.getPath().get(l).getNodeId())){
+                            tempBP.push(newPath.getPath().get(k).getNodeId());
                         }
                     }
                 }
-                if (!tempRP.isEmpty()) {
-                    possibleRP.add(tempRP.peek());
+                if (!tempBP.isEmpty()){
+                    possibleBP.add(tempBP.peek());
                 }
-                tempRP.empty();
+                tempBP.empty();
             }
-            List<NodePortTuple> nodePortTupleList = nPath.getPath();
-            for (int i = nodePortTupleList.size() - 1; i >= 0; i--) {
-                if (possibleRP.contains(nodePortTupleList.get(i).getNodeId())) {
-                    surRP = nodePortTupleList.get(i).getNodeId();
-                }
-            }
-            //find the ports for the RP point
-            pathsList.add(nPath);
-            for (Path p : pathsList) {
-                List<NodePortTuple> pathPortList = p.getPath();
-                for (int i = pathPortList.size() - 1; i >= 0; i--) {
-                    if (surRP.equals(pathPortList.get(i).getNodeId())) {
-                        portSet.add(pathPortList.get(i).getPortId());
-                        break;
-                    }
+            List<NodePortTuple> nodePortTuples = newPath.getPath();
+            for (int i = nodePortTuples.size() - 1; i >= 0; i--){
+                if (possibleBP.contains(nodePortTuples.get(i).getNodeId())){
+                    bp = nodePortTuples.get(i).getNodeId();
                 }
             }
-            rendezvousPoints.put(surRP, portSet);
-        } else {
-            pathsList.add(nPath);
+            //get Path from BP
+            List<NodePortTuple> nodePortTupleList = newPath.getPath();
+            List<NodePortTuple> ansList = new ArrayList<>();
+            boolean ready2getPath = false;
+            for (int i = 0; i < nodePortTupleList.size(); i++) {
+                nptList.get(i);
+                if (nodePortTupleList.get(i).getNodeId().equals(bp)){
+                    ready2getPath = true;
+                };
+                if (ready2getPath){
+                    ansList.add(nodePortTupleList.get(i));
+                }
+            }
+            PathId id = new PathId(nodePortTupleList.get(0).getNodeId(), nodePortTupleList.get(nodePortTupleList.size()-1).getNodeId());
+            Path ansPath = new Path(id,ansList);
+            multicastTree.getPathList().put(hostAddress, ansPath);
         }
-        if (surRP == null) {
-            multicastRoutingDecision = new MulticastRoutingDecision(MulticastRoutingDecision.MulticastRoutingAction.JOIN_WITHOUT_RP, nPath);
-        } else {
-            multicastRoutingDecision = new MulticastRoutingDecision(MulticastRoutingDecision.MulticastRoutingAction.JOIN_WITH_RP, nPath, surRP);
-        }
-        return nPath;
+        return newPath;
+
+//        DatapathId surRP = null;
+//        Vector<OFPort> portSet = new Vector<>();
+//        Stack<DatapathId> tempRP = new Stack<>();
+//        Stack<DatapathId> possibleRP = new Stack<>();
+//        Path nPath = routingService.getPath(src, srcPort, dst, dstPort, dscpField);
+//
+//        //diff condition of pathList
+//        if (!this.pathsList.isEmpty()) {
+//            for (Path nextPath : this.pathsList) {
+//                for (int k = 0; k < nPath.getPath().size(); k += 2) {
+//                    for (int l = 0; l < nextPath.getPath().size(); l += 2) {
+//                        if (nPath.getPath().get(k).getNodeId().equals(nextPath.getPath().get(l).getNodeId())) {
+//                            tempRP.push(nPath.getPath().get(k).getNodeId());
+//                        }
+//                    }
+//                }
+//                if (!tempRP.isEmpty()) {
+//                    possibleRP.add(tempRP.peek());
+//                }
+//                tempRP.empty();
+//            }
+//            List<NodePortTuple> nodePortTupleList = nPath.getPath();
+//            for (int i = nodePortTupleList.size() - 1; i >= 0; i--) {
+//                if (possibleRP.contains(nodePortTupleList.get(i).getNodeId())) {
+//                    surRP = nodePortTupleList.get(i).getNodeId();
+//                }
+//            }
+//            //find the ports for the RP point
+//            pathsList.add(nPath);
+//            for (Path p : pathsList) {
+//                List<NodePortTuple> pathPortList = p.getPath();
+//                for (int i = pathPortList.size() - 1; i >= 0; i--) {
+//                    if (surRP.equals(pathPortList.get(i).getNodeId())) {
+//                        portSet.add(pathPortList.get(i).getPortId());
+//                        break;
+//                    }
+//                }
+//            }
+//            rendezvousPoints.put(surRP, portSet);
+//        } else {
+//            pathsList.add(nPath);
+//        }
+//        if (surRP == null) {
+//            multicastRoutingDecision = new MulticastRoutingDecision(MulticastRoutingDecision.MulticastRoutingAction.JOIN_WITHOUT_RP, nPath);
+//        } else {
+//            multicastRoutingDecision = new MulticastRoutingDecision(MulticastRoutingDecision.MulticastRoutingAction.JOIN_WITH_RP, nPath, surRP);
+//        }
+//        return nPath;
     }
 }
