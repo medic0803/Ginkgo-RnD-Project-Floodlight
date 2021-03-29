@@ -18,9 +18,10 @@ public interface QosResourceMonitor extends IFloodlightService{
     /**
      * use the Floodlight method (send request to Switch) collect the switch stats, there is the bandwith
      * use example: switchPortBand.getBitsPerSecondRx().getValue()/(8*1024) + switchPortBand.getBitsPerSecondTx().getValue()/(8*1024)
+     * unit: txBytesCounted.getValue() * BITS_PER_BYTE) / timeDifSec
+     * Unit should be B/s
      */
     public Map<NodePortTuple, SwitchPortBandwidth> getBandwidthMap();
-
     //set the function to open or close the bandwith Collection module
     public void setBandwidthCollection (boolean collect);
 
