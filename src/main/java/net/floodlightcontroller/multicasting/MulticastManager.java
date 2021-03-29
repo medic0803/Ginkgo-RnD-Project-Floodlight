@@ -32,6 +32,7 @@ import static net.floodlightcontroller.routing.ForwardingBase.FORWARDING_APP_ID;
 
 public class MulticastManager implements IOFMessageListener, IFloodlightModule, IFetchMulticastGroupService {
 
+    private int count = 0;
     // Instance field
     protected IFloodlightProviderService floodlightProvider;
     protected IOFSwitchService switchService;
@@ -283,7 +284,7 @@ public class MulticastManager implements IOFMessageListener, IFloodlightModule, 
     }
 
 
-    private void processIGMPJoinMsg(IPv4Address multicastAddress, IPv4Address hostIPAddress, IOFSwitch sw, OFPacketIn pi){
+    private void processIGMPJoinMsg(IPv4Address multicastAddress, IPv4Address hostIPAddress, IOFSwitch sw, OFPacketIn pi) {
         boolean ifExist = false;
 
         //  process IGMP message sender host
@@ -329,9 +330,10 @@ public class MulticastManager implements IOFMessageListener, IFloodlightModule, 
                 DatapathId srcId = multicastSource.getSrcId();
                 OFPort srcPort = multicastSource.getSrcPort();
 
-                Path path = getMulticastRoutingDecision(srcId, srcPort, dstId, dstPort, dscpField);
+                MulticastTree tempMulticastTree = multicastGroupInfoTable.get(multicastAddress).getMulticastTreeInfoTable().get(multicastSource.getSrcAddress());
+                Path path = getMulticastRoutingDecision(srcId, srcPort, dstId, dstPort, dscpField, hostIPAddress, tempMulticastTree);
                 System.out.println("----------------------------------" + path.getPath().get(path.getPath().size() - 1));
-                pushMulticastingRoute(path, multicastSource.getMatch(), multicastSource.getCookie(), multicastGroupInfoTable.get(multicastAddress).getMulticastTreeInfoTable().get(multicastSource.getSrcAddress()).getAltBPRegister(), false, OFFlowModCommand.ADD);
+                pushMulticastingRoute(path, multicastSource.getMatch(), multicastSource.getCookie(), tempMulticastTree.getAltBPRegister(), false, OFFlowModCommand.ADD);
             }
         }
     }
@@ -363,7 +365,7 @@ public class MulticastManager implements IOFMessageListener, IFloodlightModule, 
                 OFFlowMod.Builder tempFMB = tempAltBP.getFmb();
 
                 // compose the flow table action
-                if (tempAltBP.getOutPortSet().size() > 1) { // still have 1+ outporst, compose a new bucket
+                if (tempAltBP.getOutPortSet().size() > 1) { // still have 1+ outports, compose a new bucket
                     ArrayList<OFBucket> bucketList = new ArrayList<OFBucket>();
 
                     // add all out ports as buckets
@@ -398,7 +400,7 @@ public class MulticastManager implements IOFMessageListener, IFloodlightModule, 
                     messageDamper.write(altBPSwitch, tempFMB.build());
                     break;
 
-                } else if (tempAltBP.getOutPortSet().size() == 1){    // compose a normal forwarding action
+                } else if (tempAltBP.getOutPortSet().size() == 1) {    // compose a normal forwarding action
                     OFActionOutput.Builder aob = altBPSwitch.getOFFactory().actions().buildOutput();
                     List<OFAction> actions = new ArrayList<>();
                     aob.setPort((OFPort) tempAltBP.getOutPortSet().toArray()[0]);
@@ -424,6 +426,7 @@ public class MulticastManager implements IOFMessageListener, IFloodlightModule, 
             multicastGroupInfoTable.remove(multicastAddress);
         }
     }
+
     public Command processSourcePacketInMessage(IOFSwitch sw, OFPacketIn pi, FloodlightContext cntx) {
         Ethernet eth = IFloodlightProviderService.bcStore.get(cntx, IFloodlightProviderService.CONTEXT_PI_PAYLOAD);
 
@@ -455,7 +458,7 @@ public class MulticastManager implements IOFMessageListener, IFloodlightModule, 
         for (IPv4Address hostAddress : multicastGroupInfoTable.get(multicastAddress).getMulticastHosts()) {
             dstId = pinSwitchInfoMap.get(hostAddress).getPinSwitchId();
             dstPort = pinSwitchInfoMap.get(hostAddress).getPinSwitchInPort();
-            path = getMulticastRoutingDecision(srcId, srcPort, dstId, dstPort, dscpField);
+            path = getMulticastRoutingDecision(srcId, srcPort, dstId, dstPort, dscpField, hostAddress, multicastGroupInfoTable.get(multicastAddress).getMulticastTreeInfoTable().get(sourceAddress));
             System.out.println("----------------------------------" + path.getPath().get(path.getPath().size() - 1));
             pushMulticastingRoute(path, match, cookie, multicastGroupInfoTable.get(multicastAddress).getMulticastTreeInfoTable().get(sourceAddress).getAltBPRegister(), false, OFFlowModCommand.ADD);
         }
@@ -546,10 +549,10 @@ public class MulticastManager implements IOFMessageListener, IFloodlightModule, 
                     .setOutPort(outPort)
                     .setPriority(FLOWMOD_DEFAULT_PRIORITY);
 
-            // register out port
+            // register a new out port
             if (!currentAltBPSet.containsKey(switchDPID)) {   // register a new switch
                 currentAltBPSet.put(switchDPID, new AltBP(outPort));
-            } else{
+            } else {
                 currentAltBPSet.get(switchDPID).getOutPortSet().add(outPort);
             }
 
@@ -571,20 +574,25 @@ public class MulticastManager implements IOFMessageListener, IFloodlightModule, 
                                     .build()))
                             .build());
                 }
-
-                OFGroupAdd addGroup = sw.getOFFactory().buildGroupAdd()
-                        .setGroupType(OFGroupType.ALL)
-                        .setGroup(OFGroup.of(groupNumber))
-                        .setBuckets(bucketList)
-                        .build();
-
-                currentAltBPSet.get(switchDPID).setGroupNumber(groupNumber);
-
-                sw.write(addGroup);
-
-                fmb.setActions(Collections.singletonList((OFAction) sw.getOFFactory().actions().buildGroup()
-                        .setGroup(OFGroup.of(groupNumber++))
-                        .build()));
+                if (currentAltBPSet.get(switchDPID).getOutPortSet().size() > 2) {
+                    OFGroupAdd addGroup = sw.getOFFactory().buildGroupAdd()
+                            .setGroupType(OFGroupType.ALL)
+                            .setGroup(OFGroup.of(currentAltBPSet.get(switchDPID).getGroupNumber()))
+                            .setBuckets(bucketList)
+                            .build();
+                    sw.write(addGroup);
+                } else { // a new BP transformed from altBP who has two out ports, size = 2
+                    OFGroupAdd addGroup = sw.getOFFactory().buildGroupAdd()
+                            .setGroupType(OFGroupType.ALL)
+                            .setGroup(OFGroup.of(groupNumber))
+                            .setBuckets(bucketList)
+                            .build();
+                    currentAltBPSet.get(switchDPID).setGroupNumber(groupNumber);
+                    sw.write(addGroup);
+                    fmb.setActions(Collections.singletonList((OFAction) sw.getOFFactory().actions().buildGroup()
+                            .setGroup(OFGroup.of(groupNumber++))
+                            .build()));
+                }
 
             } else {    // compose a normal forwarding action
                 OFActionOutput.Builder aob = sw.getOFFactory().actions().buildOutput();
@@ -618,7 +626,11 @@ public class MulticastManager implements IOFMessageListener, IFloodlightModule, 
                         null, // TODO how to determine output VLAN for lookup of L2 interface group
                         outPort);
             } else {
-                messageDamper.write(sw, fmb.build());
+
+                //TODO: determine if the new flow table item is needed
+                if (currentAltBPSet.get(switchDPID).getOutPortSet().size() < 3) {
+                    messageDamper.write(sw, fmb.build());
+                }
             }
 
         }
@@ -943,34 +955,38 @@ public class MulticastManager implements IOFMessageListener, IFloodlightModule, 
     private Path getMulticastRoutingDecision(DatapathId src, OFPort srcPort,
                                              DatapathId dst, OFPort dstPort,
                                              DSCPField dscpField,
-                                             IPv4Address hostAddress) {
+                                             IPv4Address hostAddress, MulticastTree multicastTree) {
+        if(count++ == 2){
+            System.out.println("hahahah");
+        }
+
         //new
         DatapathId bp = null;
         Stack<DatapathId> tempBP = new Stack<>();
         Stack<DatapathId> possibleBP = new Stack<>();
-        MulticastTree multicastTree = new MulticastTree();
         Path newPath = routingService.getPath(src, srcPort, dst, dstPort, dscpField);
-        if(multicastTree.getPathList().isEmpty()){
+
+        if (multicastTree.getPathList().isEmpty()) {
             multicastTree.getPathList().put(hostAddress, newPath);
-        }else{
+        } else {
             //calculate BP and the rest part of the path
             //Then store into pathList
-            for (Path nextPath : multicastTree.getPathList().values()){
-                for(int k = 0; k < newPath.getPath().size(); k += 2){
-                    for (int l = 0; l < nextPath.getPath().size(); l += 2){
-                        if (newPath.getPath().get(k).getNodeId().equals(nextPath.getPath().get(l).getNodeId())){
+            for (Path nextPath : multicastTree.getPathList().values()) {
+                for (int k = 0; k < newPath.getPath().size(); k += 2) {
+                    for (int l = 0; l < nextPath.getPath().size(); l += 2) {
+                        if (newPath.getPath().get(k).getNodeId().equals(nextPath.getPath().get(l).getNodeId())) {
                             tempBP.push(newPath.getPath().get(k).getNodeId());
                         }
                     }
                 }
-                if (!tempBP.isEmpty()){
+                if (!tempBP.isEmpty()) {
                     possibleBP.add(tempBP.peek());
                 }
                 tempBP.empty();
             }
             List<NodePortTuple> nodePortTuples = newPath.getPath();
-            for (int i = nodePortTuples.size() - 1; i >= 0; i--){
-                if (possibleBP.contains(nodePortTuples.get(i).getNodeId())){
+            for (int i = nodePortTuples.size() - 1; i >= 0; i--) {
+                if (possibleBP.contains(nodePortTuples.get(i).getNodeId())) {
                     bp = nodePortTuples.get(i).getNodeId();
                 }
             }
@@ -979,67 +995,19 @@ public class MulticastManager implements IOFMessageListener, IFloodlightModule, 
             List<NodePortTuple> ansList = new ArrayList<>();
             boolean ready2getPath = false;
             for (int i = 0; i < nodePortTupleList.size(); i++) {
-                nptList.get(i);
-                if (nodePortTupleList.get(i).getNodeId().equals(bp)){
+                nodePortTupleList.get(i);
+                if (nodePortTupleList.get(i).getNodeId().equals(bp)) {
                     ready2getPath = true;
-                };
-                if (ready2getPath){
+                }
+                ;
+                if (ready2getPath) {
                     ansList.add(nodePortTupleList.get(i));
                 }
             }
-            PathId id = new PathId(nodePortTupleList.get(0).getNodeId(), nodePortTupleList.get(nodePortTupleList.size()-1).getNodeId());
-            Path ansPath = new Path(id,ansList);
+            PathId id = new PathId(nodePortTupleList.get(0).getNodeId(), nodePortTupleList.get(nodePortTupleList.size() - 1).getNodeId());
+            Path ansPath = new Path(id, ansList);
             multicastTree.getPathList().put(hostAddress, ansPath);
         }
         return newPath;
-
-//        DatapathId surRP = null;
-//        Vector<OFPort> portSet = new Vector<>();
-//        Stack<DatapathId> tempRP = new Stack<>();
-//        Stack<DatapathId> possibleRP = new Stack<>();
-//        Path nPath = routingService.getPath(src, srcPort, dst, dstPort, dscpField);
-//
-//        //diff condition of pathList
-//        if (!this.pathsList.isEmpty()) {
-//            for (Path nextPath : this.pathsList) {
-//                for (int k = 0; k < nPath.getPath().size(); k += 2) {
-//                    for (int l = 0; l < nextPath.getPath().size(); l += 2) {
-//                        if (nPath.getPath().get(k).getNodeId().equals(nextPath.getPath().get(l).getNodeId())) {
-//                            tempRP.push(nPath.getPath().get(k).getNodeId());
-//                        }
-//                    }
-//                }
-//                if (!tempRP.isEmpty()) {
-//                    possibleRP.add(tempRP.peek());
-//                }
-//                tempRP.empty();
-//            }
-//            List<NodePortTuple> nodePortTupleList = nPath.getPath();
-//            for (int i = nodePortTupleList.size() - 1; i >= 0; i--) {
-//                if (possibleRP.contains(nodePortTupleList.get(i).getNodeId())) {
-//                    surRP = nodePortTupleList.get(i).getNodeId();
-//                }
-//            }
-//            //find the ports for the RP point
-//            pathsList.add(nPath);
-//            for (Path p : pathsList) {
-//                List<NodePortTuple> pathPortList = p.getPath();
-//                for (int i = pathPortList.size() - 1; i >= 0; i--) {
-//                    if (surRP.equals(pathPortList.get(i).getNodeId())) {
-//                        portSet.add(pathPortList.get(i).getPortId());
-//                        break;
-//                    }
-//                }
-//            }
-//            rendezvousPoints.put(surRP, portSet);
-//        } else {
-//            pathsList.add(nPath);
-//        }
-//        if (surRP == null) {
-//            multicastRoutingDecision = new MulticastRoutingDecision(MulticastRoutingDecision.MulticastRoutingAction.JOIN_WITHOUT_RP, nPath);
-//        } else {
-//            multicastRoutingDecision = new MulticastRoutingDecision(MulticastRoutingDecision.MulticastRoutingAction.JOIN_WITH_RP, nPath, surRP);
-//        }
-//        return nPath;
     }
 }
