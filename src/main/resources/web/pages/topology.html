@@ -133,7 +133,6 @@
 
 <script src="../js/jquery.cookie.js"></script>
 
-<!--kwm: check the custom logical of this function here-->
 
 <!-- Custom scripts to load in HTML -->
 <script src="../js/navbar.js"></script>
@@ -184,8 +183,9 @@
         network = new vis.Network(container, data, options);
 //        network.fit({scale: 4.0});
 
-        //kwm: the showPopup function is here, find the data usage.
+
         network.on("showPopup", function (params) {
+            //kwm: the showPopup function is here, and start with "S"
             if (params.charAt(0) == 's') {
                 var id = params.substring(1);
                 network["body"]["nodes"][params]["options"]["title"] = parseFlows(id);
@@ -302,6 +302,7 @@
             success: function (data) {
 
                 for (var i = 0; i < data.length; i++) {
+                    //kwm: there is a "s"
                     var id = "s" + data[i]["switchDPID"];
                     var label = "s" + data[i]["switchDPID"];
                     nodes.push({
