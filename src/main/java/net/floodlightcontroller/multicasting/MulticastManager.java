@@ -275,10 +275,11 @@ public class MulticastManager implements IOFMessageListener, IFloodlightModule, 
             processIGMPJoinMsg(multicastAddress, hostIPAddress, sw, pi);
 
         } else if (igmpPayload[32] == 3) {  // leave message
-            // TODO: delete print and replace it with log
-            System.out.println(igmpPayload + "IGMP leave message");
-            processIGMPLeaveMsg(multicastAddress, hostIPAddress);
-
+            // wrftodo: delete print and replace it with log
+            if (multicastGroupInfoTable.get(multicastAddress).getMulticastHosts().contains(hostIPAddress)){
+                System.out.println(igmpPayload + "IGMP leave message");
+                processIGMPLeaveMsg(multicastAddress, hostIPAddress);
+            }
         }
         return Command.CONTINUE;
     }
