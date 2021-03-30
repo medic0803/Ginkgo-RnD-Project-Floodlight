@@ -37,6 +37,7 @@ import org.slf4j.LoggerFactory;
 
 import java.util.*;
 import java.util.Map.Entry;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 /**
@@ -138,7 +139,8 @@ public class TopologyInstance {
         this.portsBroadcastAll= new HashSet<NodePortTuple>();
         this.portsBroadcastPerSwitch = new HashMap<DatapathId,Set<OFPort>>();
 
-        this.pathcache = new HashMap<PathId, List<Path>>();
+//        this.pathcache = new HashMap<PathId, List<Path>>();
+        this.pathcache = new ConcurrentHashMap<PathId, List<Path>>();
 
         this.portsBroadcastPerArchipelago = new HashMap<DatapathId, Set<NodePortTuple>>();
 
@@ -1220,6 +1222,8 @@ public class TopologyInstance {
     public Path getPath(DatapathId srcId, OFPort srcPort,
                         DatapathId dstId, OFPort dstPort, DSCPField dscpField) {
         Path r = getPath(srcId, dstId, dscpField);
+        System.out.println("大大大大大大大大大大");
+        System.out.println(r);
         
         /* Path cannot be null, but empty b/t 2 diff DPIDs -> not found */
         if (! srcId.equals(dstId) && r.getPath().isEmpty()) {
@@ -1235,6 +1239,8 @@ public class TopologyInstance {
 
         PathId id = new PathId(srcId, dstId);
         r = new Path(id, nptList);
+        System.out.println("后来的大大大大大大");
+        System.out.println(r);
         return r;
     }
 
@@ -1256,13 +1262,17 @@ public class TopologyInstance {
 
         Path result = null;
         // TODO: determine routing strategy based on dscpField, default or other?
-        try {
-            if (!pathcache.get(id).isEmpty()) {
-                result = pathcache.get(id).get(0);
-            }
-        } catch (Exception e) {
-            log.warn("Could not find route from {} to {}. If the path exists, wait for the topology to settle, and it will be detected", srcId, dstId);
-        }
+//        try {
+//            if (!pathcache.get(id).isEmpty()) {
+        System.out.println(dstId);
+        result = pathcache.get(id).get(0);
+        System.out.println(result);
+        System.out.println("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!~~~~~~~~~~~~~~~~~~~~~~~~~");
+        System.out.println(srcId);
+//            }
+//        } catch (Exception e) {
+//            log.warn("Could not find route from {} to {}. If the path exists, wait for the topology to settle, and it will be detected", srcId, dstId);
+//        }
 
         if (log.isTraceEnabled()) {
             log.trace("getPath: {} -> {}", id, result);

@@ -90,6 +90,8 @@ public class MulticastManager implements IOFMessageListener, IFloodlightModule, 
     private static int OFMESSAGE_DAMPER_CAPACITY = 10000;
     private static int OFMESSAGE_DAMPER_TIMEOUT = 250; // ms
 
+    MulticastTree multicastTree = new MulticastTree();
+
     protected static class FlowSetIdRegistry {
         private volatile Map<NodePortTuple, Set<U64>> nptToFlowSetIds;
         private volatile Map<U64, Set<NodePortTuple>> flowSetIdToNpts;
