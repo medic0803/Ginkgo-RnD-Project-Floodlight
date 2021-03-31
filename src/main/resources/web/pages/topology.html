@@ -184,11 +184,17 @@
 //        network.fit({scale: 4.0});
 
 
+        //kwm:set the showPopup function is there
         network.on("showPopup", function (params) {
-            //kwm: the showPopup function is here, and start with "S"
+            //kwm: the params in there is the s+mac or h+mac
+            //kwm: the substring(1) is the mac of the host or switch
             if (params.charAt(0) == 's') {
                 var id = params.substring(1);
                 network["body"]["nodes"][params]["options"]["title"] = parseFlows(id);
+            }
+            if(params.charAt(0) == 'h'){
+                var id = params.substring(1);
+                network["body"]["nodes"][params]["options"]["title"] = parseHosts(id);
             }
         });
 
@@ -271,6 +277,25 @@
         });
     }
 
+    //kwm: parseHost is here
+    function parseHosts(id){
+        var hostString = "Host info:";
+        $.ajax({
+            url:"http://" + ipaddress + ":" + restport + "/wm/device/",
+            async: false,
+            success: function (devicesobject) {
+                for (var i = 0; i < devicesobject["devices"].length; i++) {
+                    if (devicesobject["devices"][i]["mac"] == id){
+                        //kwm: assume that every host only have one port attached.
+                        hostString +="&nbsp;&nbsp;&nbsp;Using Port: " + JSON.stringify(devicesobject["devices"][i]["attachmentPoint"][0]["port"]);
+                        hostString += "<br>";
+                        break;
+                    }
+                }
+            }
+        });
+        return hostString;
+    }
     function parseFlows(id) {
         var flowString = "";
         $.ajax({
@@ -278,6 +303,13 @@
             async: false,
             success: function (flowobject) {
                 for (var i = 0; i < flowobject["flows"].length; i++) {
+                    //kwmtodo:shows flow stats in the popup
+                    //kwm the 变量必须存在, otherwise, it will not show in the page and stop!
+                    if (flowobject["flows"][i]["cookie"]!= "0"){
+                        console.log("there is the info of match "+flowobject["flows"][i]["match"]["in_port"]);
+                        console.log("there is the info of match "+flowobject["flows"][i]["match"]["eth_dst"]);
+                    }
+
                     flowString += "Flow " + i + ":";
                     flowString += "<br>&nbsp;&nbsp;&nbsp;Packet count: " + JSON.stringify(flowobject["flows"][i]["packet_count"]);
                     flowString += "<br>&nbsp;&nbsp;&nbsp;Matches: " + JSON.stringify(flowobject["flows"][i]["match"]);
@@ -295,14 +327,14 @@
     }
 
 
-    //kwm: Get switches start
+    //kwm: Load switches is there
     function loadSwitches() {
         $.ajax({
             url: "http://" + ipaddress + ":" + restport + "/wm/core/controller/switches/json",
             success: function (data) {
 
                 for (var i = 0; i < data.length; i++) {
-                    //kwm: there is a "s"
+                    //kwm: set the information of switch
                     var id = "s" + data[i]["switchDPID"];
                     var label = "s" + data[i]["switchDPID"];
                     nodes.push({
@@ -327,7 +359,6 @@
             url: "http://" + ipaddress + ":" + restport + "/wm/device/",
             success: function (hosts) {
                 hosts = hosts.devices;
-                console.log(hosts);
                 for (var i = 0; i < hosts.length; i++) {
 
                     if (hosts[i]["attachmentPoint"].length > 0) {
