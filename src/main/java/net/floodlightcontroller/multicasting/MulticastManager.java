@@ -994,20 +994,20 @@ public class MulticastManager implements IOFMessageListener, IFloodlightModule, 
                 }
             }
             //get Path from BP
-            List<NodePortTuple> nodePortTupleList = newPath.getPath();
+//            List<NodePortTuple> nodePortTuples = newPath.getPath();
             List<NodePortTuple> ansList = new ArrayList<>();
             boolean ready2getPath = false;
-            for (int i = 0; i < nodePortTupleList.size(); i++) {
-                nodePortTupleList.get(i);
-                if (nodePortTupleList.get(i).getNodeId().equals(bp)) {
+            for (int i = 0; i < nodePortTuples.size(); i++) {
+                nodePortTuples.get(i);
+                if (nodePortTuples.get(i).getNodeId().equals(bp)) {
                     ready2getPath = true;
                 }
                 ;
                 if (ready2getPath) {
-                    ansList.add(nodePortTupleList.get(i));
+                    ansList.add(nodePortTuples.get(i));
                 }
             }
-            PathId id = new PathId(nodePortTupleList.get(0).getNodeId(), nodePortTupleList.get(nodePortTupleList.size() - 1).getNodeId());
+            PathId id = new PathId(nodePortTuples.get(0).getNodeId(), nodePortTuples.get(nodePortTuples.size() - 1).getNodeId());
             Path ansPath = new Path(id, ansList);
             multicastTree.getPathList().put(hostAddress, ansPath);
         }
