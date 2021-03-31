@@ -383,14 +383,23 @@ public class MulticastManager implements IOFMessageListener, IFloodlightModule, 
                                 .build());
                     }
 
-                    OFGroupAdd addGroup = altBPSwitch.getOFFactory().buildGroupAdd()
+//                    OFGroupAdd addGroup = altBPSwitch.getOFFactory().buildGroupAdd()
+//                            .setGroupType(OFGroupType.ALL)
+//                            .setGroup(OFGroup.of(tempAltBP.getGroupNumber()))
+//                            .setBuckets(bucketList)
+//                            .build();
+//
+//
+//                    altBPSwitch.write(addGroup);
+
+                    OFGroupModify modifyGroup = altBPSwitch.getOFFactory().buildGroupModify()
                             .setGroupType(OFGroupType.ALL)
                             .setGroup(OFGroup.of(tempAltBP.getGroupNumber()))
                             .setBuckets(bucketList)
                             .build();
 
 
-                    altBPSwitch.write(addGroup);
+                    altBPSwitch.write(modifyGroup);
                     //wrf: change to set pure group
                     tempFMB.setActions(Collections.singletonList((OFAction) altBPSwitch.getOFFactory().actions().buildGroup()
                             .setGroup(OFGroup.of(tempAltBP.getGroupNumber()))
@@ -404,6 +413,14 @@ public class MulticastManager implements IOFMessageListener, IFloodlightModule, 
                     break;
 
                 } else if (tempAltBP.getOutPortSet().size() == 1) {    // compose a normal forwarding action
+
+                    OFGroupDelete deleteGroup = altBPSwitch.getOFFactory().buildGroupDelete()
+                            .setGroupType(OFGroupType.ALL)
+                            .setGroup(OFGroup.of(tempAltBP.getGroupNumber()))
+                            .build();
+
+                    altBPSwitch.write(deleteGroup);
+
                     OFActionOutput.Builder aob = altBPSwitch.getOFFactory().actions().buildOutput();
                     List<OFAction> actions = new ArrayList<>();
                     aob.setPort((OFPort) tempAltBP.getOutPortSet().toArray()[0]);
@@ -578,12 +595,19 @@ public class MulticastManager implements IOFMessageListener, IFloodlightModule, 
                             .build());
                 }
                 if (currentAltBPSet.get(switchDPID).getOutPortSet().size() > 2) {
-                    OFGroupAdd addGroup = sw.getOFFactory().buildGroupAdd()
+//                    OFGroupAdd addGroup = sw.getOFFactory().buildGroupAdd()
+//                            .setGroupType(OFGroupType.ALL)
+//                            .setGroup(OFGroup.of(currentAltBPSet.get(switchDPID).getGroupNumber()))
+//                            .setBuckets(bucketList)
+//                            .build();
+//                    sw.write(addGroup);
+
+                    OFGroupModify modifyGroup = sw.getOFFactory().buildGroupModify()
                             .setGroupType(OFGroupType.ALL)
                             .setGroup(OFGroup.of(currentAltBPSet.get(switchDPID).getGroupNumber()))
                             .setBuckets(bucketList)
                             .build();
-                    sw.write(addGroup);
+                    sw.write(modifyGroup);
                 } else { // a new BP transformed from altBP who has two out ports, size = 2
                     OFGroupAdd addGroup = sw.getOFFactory().buildGroupAdd()
                             .setGroupType(OFGroupType.ALL)
@@ -959,7 +983,7 @@ public class MulticastManager implements IOFMessageListener, IFloodlightModule, 
                                              DatapathId dst, OFPort dstPort,
                                              DSCPField dscpField,
                                              IPv4Address hostAddress, MulticastTree multicastTree) {
-        if(count++ == 2){
+        if(count++ == 3){
             System.out.println("hahahah");
         }
 
@@ -969,6 +993,10 @@ public class MulticastManager implements IOFMessageListener, IFloodlightModule, 
         Stack<DatapathId> possibleBP = new Stack<>();
         Path newPath = routingService.getPath(src, srcPort, dst, dstPort, dscpField);
 
+//        while (newPath.getPath().isEmpty()) {
+//            System.out.println("ssssssssssssssssssssssssssssssssssssbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb");
+//            newPath = routingService.getPath(src, srcPort, dst, dstPort, dscpField);
+//        }
         if (multicastTree.getPathList().isEmpty()) {
             multicastTree.getPathList().put(hostAddress, newPath);
         } else {
@@ -1010,6 +1038,8 @@ public class MulticastManager implements IOFMessageListener, IFloodlightModule, 
             PathId id = new PathId(nodePortTuples.get(0).getNodeId(), nodePortTuples.get(nodePortTuples.size() - 1).getNodeId());
             Path ansPath = new Path(id, ansList);
             multicastTree.getPathList().put(hostAddress, ansPath);
+            System.out.println(ansPath);
+            return ansPath;
         }
         return newPath;
     }
