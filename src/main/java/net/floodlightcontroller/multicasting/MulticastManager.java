@@ -993,10 +993,10 @@ public class MulticastManager implements IOFMessageListener, IFloodlightModule, 
         Stack<DatapathId> possibleBP = new Stack<>();
         Path newPath = routingService.getPath(src, srcPort, dst, dstPort, dscpField);
 
-//        while (newPath.getPath().isEmpty()) {
-//            System.out.println("ssssssssssssssssssssssssssssssssssssbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb");
-//            newPath = routingService.getPath(src, srcPort, dst, dstPort, dscpField);
-//        }
+        if (newPath.getPath().isEmpty()) {
+            System.out.println("ssssssssssssssssssssssssssssssssssssbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb");
+            newPath = routingService.getPath(src, srcPort, dst, dstPort, dscpField);
+        }
         if (multicastTree.getPathList().isEmpty()) {
             multicastTree.getPathList().put(hostAddress, newPath);
         } else {
