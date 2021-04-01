@@ -37,6 +37,7 @@ import org.slf4j.LoggerFactory;
 
 import java.util.*;
 import java.util.Map.Entry;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 /**
@@ -81,7 +82,7 @@ public class TopologyInstance {
     private List<Archipelago>                   archipelagos; /* connected clusters */
     private Map<Cluster, Archipelago>           archipelagoFromCluster;
     private Map<DatapathId, Set<NodePortTuple>> portsBroadcastPerArchipelago; /* broadcast ports in each archipelago ID */
-    private Map<PathId, List<Path>>             pathcache; /* contains computed paths ordered best to worst */
+    private ConcurrentHashMap<PathId, List<Path>>             pathcache; /* contains computed paths ordered best to worst */
 
     Map<NodePortTuple, SwitchPortPkLoss> pkLossMap;
 
@@ -138,7 +139,7 @@ public class TopologyInstance {
         this.portsBroadcastAll= new HashSet<NodePortTuple>();
         this.portsBroadcastPerSwitch = new HashMap<DatapathId,Set<OFPort>>();
 
-        this.pathcache = new HashMap<PathId, List<Path>>();
+        this.pathcache = new ConcurrentHashMap<PathId, List<Path>>();
 
         this.portsBroadcastPerArchipelago = new HashMap<DatapathId, Set<NodePortTuple>>();
 

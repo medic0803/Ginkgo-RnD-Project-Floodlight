@@ -72,8 +72,9 @@ ITopologyManagerBackend, ILinkDiscoveryListener, IOFMessageListener {
     /**
      * Maximum number of route entries stored in memory.
      */
-    private static volatile int maxPathsToCompute = 3;
-
+    //wrf:
+//    private static volatile int maxPathsToCompute = 3;
+    private static volatile int maxPathsToCompute = 5;
     /**
      * Role of the controller.
      */
