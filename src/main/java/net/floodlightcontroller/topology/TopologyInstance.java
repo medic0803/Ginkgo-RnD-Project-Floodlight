@@ -1244,7 +1244,7 @@ public class TopologyInstance {
         }
 
         Path result = null;
-        // TODO: determine routing strategy based on dscpField, default or other?
+
         try {
             if (!pathcache.get(id).isEmpty()) {
                 result = pathcache.get(id).get(0);
@@ -1252,6 +1252,7 @@ public class TopologyInstance {
         } catch (Exception e) {
             log.warn("Could not find route from {} to {}. If the path exists, wait for the topology to settle, and it will be detected", srcId, dstId);
         }
+
 
         if (log.isTraceEnabled()) {
             log.trace("getPath: {} -> {}", id, result);

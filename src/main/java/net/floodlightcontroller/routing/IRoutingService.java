@@ -159,7 +159,7 @@ public interface IRoutingService extends IFloodlightService {
      * @param dscpField specific PHB of DscpField
      * @return the lowest cost path
      */
-    Path getPath(DatapathId src, OFPort srcPort, DatapathId dst, OFPort dstPort, DSCPField dscpField);
+//    Path getPath(DatapathId src, OFPort srcPort, DatapathId dst, OFPort dstPort, DSCPField dscpField);
 
     /**
      * Return all possible paths up to quantity of the globally configured max.

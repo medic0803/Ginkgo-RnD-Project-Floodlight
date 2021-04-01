@@ -20,12 +20,12 @@ import net.floodlightcontroller.topology.ITopologyManagerBackend;
 import net.floodlightcontroller.topology.ITopologyService;
 
 /**
- * Separate path-finding and routing functionality from the 
+ * Separate path-finding and routing functionality from the
  * topology package. It makes sense to keep much of the core
  * code in the TopologyInstance, but the TopologyManger is
  * too confusing implementing so many interfaces and doing
  * so many tasks. This is a cleaner approach IMHO.
- * 
+ *
  * All routing and path-finding functionality is visible to
  * the rest of the controller via the IRoutingService implemented
  * by the RoutingManger (this). The RoutingManger performs
@@ -34,18 +34,18 @@ import net.floodlightcontroller.topology.ITopologyService;
  * current TopologyInstance (exposed via the ITopologyManagerBackend
  * interface) for tasks best performed by the topology
  * package, such as path-finding.
- * 
+ *
  * @author rizard
  */
 public class RoutingManager implements IFloodlightModule, IRoutingService {
     private Logger log = LoggerFactory.getLogger(RoutingManager.class);
-    
+
     private static ITopologyManagerBackend tm;
-    
+
     private List<IRoutingDecisionChangedListener> decisionChangedListeners;
 
     private static volatile boolean enableL3RoutingService = false;
-    
+
     @Override
     public Collection<Class<? extends IFloodlightService>> getModuleServices() {
         return ImmutableSet.of(IRoutingService.class);
@@ -128,27 +128,27 @@ public class RoutingManager implements IFloodlightModule, IRoutingService {
     public boolean pathExists(DatapathId src, DatapathId dst) {
         return tm.getCurrentTopologyInstance().pathExists(src, dst);
     }
-    
+
     @Override
     public boolean forceRecompute() {
         return tm.forceRecompute();
     }
 
-    /** 
+    /**
      * Registers an IRoutingDecisionChangedListener.
-     *   
+     *
      * @param listener
-     * @return 
+     * @return
      */
     @Override
     public void addRoutingDecisionChangedListener(IRoutingDecisionChangedListener listener) {
         decisionChangedListeners.add(listener);
     }
-    
-    /** 
+
+    /**
      * Deletes an IRoutingDecisionChangedListener.
-     *   
-     * @param listener 
+     *
+     * @param listener
      * @return
      */
     @Override
@@ -156,9 +156,9 @@ public class RoutingManager implements IFloodlightModule, IRoutingService {
         decisionChangedListeners.remove(listener);
     }
 
-    /** 
+    /**
      * Listens for the event to the IRoutingDecisionChanged listener and calls routingDecisionChanged().
-     *   
+     *
      * @param changedDecisions
      * @return
      */

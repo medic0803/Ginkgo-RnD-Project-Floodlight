@@ -737,8 +737,7 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
         Path path = routingEngineService.getPath(srcSw,
                 srcPort,
                 dstAp.getNodeId(),
-                dstAp.getPortId(),
-                dscpField);
+                dstAp.getPortId());
 
         Match m = createMatchFromPacket(sw, srcPort, pi, cntx);
 
