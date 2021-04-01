@@ -811,6 +811,13 @@ public class TopologyInstance {
                     log.debug("Adding paths {}", paths);
                 }
             }
+            //wrf:print patchcache every time it update
+            System.out.println("#########################################print pathcache###################################");
+            for (List<Path> list: pathcache.values()) {
+                for (Path path : list){
+                    System.out.println(path);
+                }
+            }
         }
     }
 
