@@ -258,6 +258,9 @@ public class MulticastManager implements IOFMessageListener, IFloodlightModule, 
         System.out.println("-----------receive igmp packet ----------------");
         System.out.println("Source Address is: " + ((IPv4) eth.getPayload()).getSourceAddress());
         System.out.println("Switch ID is " + sw.getId());
+        log.info("Source Address is: " + ((IPv4) eth.getPayload()).getSourceAddress());
+        log.info("Source Address is: " + ((IPv4) eth.getPayload()).getSourceAddress());
+        log.info("Switch ID is " + sw.getId());
 
         byte[] igmpPayload = eth.getPayload().serialize();
         byte[] rawMulticastAddress = new byte[4];
@@ -469,10 +472,7 @@ public class MulticastManager implements IOFMessageListener, IFloodlightModule, 
 
 //        Match match = createMatchFromPacket(sw, srcPort, pi, cntx);
         //wrf: Change the structure: Packet_In only from source switch !!!
-        Match match = sw.getOFFactory().buildMatch()
-                .setExact(MatchField.IN_PORT, srcPort)
-                .setExact(MatchField.IPV4_SRC, ((IPv4) eth.getPayload()).getSourceAddress())
-                .build();
+        Match match = createMatchFromPacket(sw, srcPort, pi, cntx);
 
         for (IPv4Address hostAddress : multicastGroupInfoTable.get(multicastAddress).getMulticastHosts()) {
             dstId = pinSwitchInfoMap.get(hostAddress).getPinSwitchId();
@@ -499,15 +499,6 @@ public class MulticastManager implements IOFMessageListener, IFloodlightModule, 
     public boolean pushMulticastingRoute(Path route, Match match, U64 cookie, HashMap<DatapathId, AltBP> currentAltBPSet,
                                          boolean requestFlowRemovedNotification, OFFlowModCommand flowModCommand) {
 
-//        List<NodePortTuple> switchPortList = null;
-//        switch (multicastRoutingDecision.getRoutingAction()) {
-//            case JOIN_WITHOUT_RP:
-//                switchPortList = route.getPath();
-//                break;
-//            case JOIN_WITH_RP:
-//                switchPortList = multicastRoutingDecision.getuPath().getPath();
-//                break;
-//        }
         List<NodePortTuple> switchPortList = route.getPath();
         for (int indx = switchPortList.size() - 1; indx > 0; indx -= 2) {
             // indx and indx-1 will always have the same switch DPID.
@@ -594,13 +585,6 @@ public class MulticastManager implements IOFMessageListener, IFloodlightModule, 
                             .build());
                 }
                 if (currentAltBPSet.get(switchDPID).getOutPortSet().size() > 2) {
-//                    OFGroupAdd addGroup = sw.getOFFactory().buildGroupAdd()
-//                            .setGroupType(OFGroupType.ALL)
-//                            .setGroup(OFGroup.of(currentAltBPSet.get(switchDPID).getGroupNumber()))
-//                            .setBuckets(bucketList)
-//                            .build();
-//                    sw.write(addGroup);
-
                     OFGroupModify modifyGroup = sw.getOFFactory().buildGroupModify()
                             .setGroupType(OFGroupType.ALL)
                             .setGroup(OFGroup.of(currentAltBPSet.get(switchDPID).getGroupNumber()))
@@ -652,11 +636,11 @@ public class MulticastManager implements IOFMessageListener, IFloodlightModule, 
                         null, // TODO how to determine output VLAN for lookup of L2 interface group
                         outPort);
             } else {
-
-                //TODO: determine if the new flow table item is needed
                 if (currentAltBPSet.get(switchDPID).getOutPortSet().size() < 3) {
                     fmb.setIdleTimeout(10);
                     messageDamper.write(sw, fmb.build());
+                    System.out.println("!!!!!!!!!!!!!!!!! Flow table item write downnnnnnnnnnnnnnnnnnnnnn");
+                    System.out.println("!!!!!!!!!! Write to " + switchDPID);
                 }
             }
 

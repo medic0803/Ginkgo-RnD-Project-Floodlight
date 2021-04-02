@@ -1941,7 +1941,10 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
                 // Destination IPv4Address was included in multicast group, skip the forwarding
             if (eth.getEtherType() == EthType.IPv4){
                 if (fetchMulticastGroupService.ifMulticastAddressExist(((IPv4)eth.getPayload()).getDestinationAddress())) {
-                    System.out.println("=============Source Packet_IN Detected==============");
+                    System.out.println("=============Forwarding Module receive source packet_in and skip==============");
+                    return Command.CONTINUE;
+                } else if (((IPv4) eth.getPayload()).getProtocol() == IpProtocol.IGMP) {
+                    System.out.println("====================Forwarding Module receive IGMP and skip");
                     return Command.CONTINUE;
                 }
             }

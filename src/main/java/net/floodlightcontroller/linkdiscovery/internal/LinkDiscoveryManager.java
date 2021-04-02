@@ -479,6 +479,7 @@ IFloodlightModule, IInfoProvider {
 		} else if (info.getMulticastValidTime() != null) {
 			return ILinkDiscovery.LinkType.MULTIHOP_LINK;
 		}
+		System.out.println("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! linkdiscoveryManager invalid link 482");
 		return ILinkDiscovery.LinkType.INVALID_LINK;
 	}
 
@@ -779,9 +780,9 @@ IFloodlightModule, IInfoProvider {
 				iofSwitch.getId(), inPort, latency);
 
 		if (!isLinkAllowed(lt.getSrc(), lt.getSrcPort(),
-				lt.getDst(), lt.getDstPort()))
+				lt.getDst(), lt.getDstPort())) {
 			return Command.STOP;
-
+		}
 		// Continue only if link is allowed.
 		Date lastLldpTime = null;
 		Date lastBddpTime = null;
@@ -793,11 +794,12 @@ IFloodlightModule, IInfoProvider {
 		} else {
 			lastBddpTime = new Date(firstSeenTime.getTime());
 		}
-
+		//wrf: Delte
+		if (lastLldpTime == null) {
+			System.out.println("))))))))))))))))))))))))))))))))))))))))))) +++++++++++++++++++ fldmanager find null lastlldpTime");
+		}
 		LinkInfo newLinkInfo = new LinkInfo(firstSeenTime, lastLldpTime, lastBddpTime);
-
 		addOrUpdateLink(lt, newLinkInfo);
-
 		// Check if reverse link exists.
 		// If it doesn't exist and if the forward link was seen
 		// first seen within a small interval, send probe on the
@@ -827,7 +829,6 @@ IFloodlightModule, IInfoProvider {
 			// srcPortState and dstPort state are reversed.
 			LinkInfo reverseInfo = new LinkInfo(firstSeenTime, lastLldpTime,
 					lastBddpTime);
-
 			addOrUpdateLink(reverseLink, reverseInfo);
 		}
 
@@ -922,6 +923,8 @@ IFloodlightModule, IInfoProvider {
 	protected void discoverLinks() {
 
 		// timeout known links.
+		// wrf
+//		System.out.println("*****************************time out links has been blocked LDManger 926");
 		timeoutLinks();
 
 		// increment LLDP clock
@@ -1231,7 +1234,6 @@ IFloodlightModule, IInfoProvider {
 
 	protected UpdateOperation getUpdateOperation(OFPortState srcPortState, OFPortState dstPortState) {
 		boolean added = ((srcPortState != OFPortState.STP_BLOCK) && (dstPortState != OFPortState.STP_BLOCK));
-
 		if (added) {
 			return UpdateOperation.LINK_UPDATED;
 		} else {
@@ -1345,7 +1347,13 @@ IFloodlightModule, IInfoProvider {
 		 * still valid.
 		 */
 		if (newInfo.getUnicastValidTime() != null) {
-			existingInfo.setUnicastValidTime(newInfo.getUnicastValidTime());
+			//wrf:
+			if (existingInfo.getUnicastValidTime() == null){
+				System.out.println("/////////////////////// unicast valid time existing info null");
+			} else if (existingInfo.getUnicastValidTime().equals(newInfo.getUnicastValidTime())) {
+				existingInfo.setUnicastValidTime(newInfo.getUnicastValidTime());	//别删掉
+				System.out.println("//////////////////////////////// unicast Vlid time do not change//////////////////////////////");
+			}
 		} else if (newInfo.getMulticastValidTime() != null) {
 			existingInfo.setMulticastValidTime(newInfo.getMulticastValidTime());
 		}	
@@ -1414,6 +1422,9 @@ IFloodlightModule, IInfoProvider {
 					log.debug("Inter-switch link detected: {}", lt);
 				}
 			} else {
+				System.out.println("(((((((((((((((((((((((((((((((((((((((( ldmanager 1471 link changed");
+				System.out.println(lt);
+
 				linkChanged = updateLink(lt, existingInfo, newInfo);
 				if (linkChanged) {
 					updateOperation = UpdateOperation.LINK_UPDATED;
@@ -1577,7 +1588,6 @@ IFloodlightModule, IInfoProvider {
 		List<Link> eraseList = new ArrayList<Link>();
 		Long curTime = System.currentTimeMillis();
 		boolean unicastTimedOut = false;
-		
 		/* Reentrant required here because deleteLink also write locks. */
 		lock.writeLock().lock();
 		try {
@@ -1590,9 +1600,11 @@ IFloodlightModule, IInfoProvider {
 				/* Timeout the unicast and multicast LLDP valid times independently. */
 				if ((info.getUnicastValidTime() != null)
 						&& (info.getUnicastValidTime().getTime()
-								+ (this.LINK_TIMEOUT * 1000) < curTime)) {
+								+ (this.LINK_TIMEOUT * 1000) < curTime)) {	// indicate that there are alreay 1000 LLDP packets not received
 					unicastTimedOut = true;
 					info.setUnicastValidTime(null);
+					//wrf:
+					System.out.println("$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$ 1596 set unicast valid Time$$$$$$$$$$$$$$$$$$$$$$$$");
 				}
 				if ((info.getMulticastValidTime() != null)
 						&& (info.getMulticastValidTime().getTime()
@@ -1620,6 +1632,7 @@ IFloodlightModule, IInfoProvider {
 
 			if (!eraseList.isEmpty()) {
 				deleteLinks(eraseList, "LLDP timeout");
+				System.out.println("######################## link discovery manager 1623 LLDP time out");
 			}
 		} finally {
 			lock.writeLock().unlock();

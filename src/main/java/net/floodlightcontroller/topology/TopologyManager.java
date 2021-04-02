@@ -72,9 +72,7 @@ ITopologyManagerBackend, ILinkDiscoveryListener, IOFMessageListener {
     /**
      * Maximum number of route entries stored in memory.
      */
-    //wrf:
-//    private static volatile int maxPathsToCompute = 3;
-    private static volatile int maxPathsToCompute = 5;
+    private static volatile int maxPathsToCompute = 3;
     /**
      * Role of the controller.
      */
@@ -906,6 +904,7 @@ ITopologyManagerBackend, ILinkDiscoveryListener, IOFMessageListener {
             case LINK_REMOVED:
                 removeLink(update.getSrc(), update.getSrcPort(),
                         update.getDst(), update.getDstPort());
+                System.out.println("#################????????????????????Topology Manager.907 link removed");
                 break;
             case SWITCH_UPDATED:
                 addOrUpdateSwitch(update.getSrc());
@@ -1255,6 +1254,8 @@ ITopologyManagerBackend, ILinkDiscoveryListener, IOFMessageListener {
     public void removeLink(DatapathId srcId, OFPort srcPort,
             DatapathId dstId, OFPort dstPort) {
         Link link = new Link(srcId, srcPort, dstId, dstPort, U64.ZERO /* does not matter for remove (not included in .equals() of Link) */);
+        System.out.println("````````````````````````````````````TopologyManager 1257 remove link");
+        System.out.println(link);
         removeLink(link);
     }
 
