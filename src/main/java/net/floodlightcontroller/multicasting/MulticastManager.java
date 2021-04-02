@@ -204,10 +204,13 @@ public class MulticastManager implements IOFMessageListener, IFloodlightModule, 
                         processIGMPMessage(sw, pi, cntx);
 //                            }
 
-                    } else if (eth.isMulticast()) {
-                        if (!receivedMatch.contains(pi.getMatch())) {   // if this source nerver send packet_in, then do the folowing processes
-                            receivedMatch.add(pi.getMatch());
+                    } else if (eth.isMulticast()) { // determine if it is a multicast source
+                        System.out.println("&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&& want to enter the source &&&&&&&&&&&&&&&&&&&&");
+                        if (!multicastGroupInfoTable.isEmpty() && multicastGroupInfoTable.containsKey(dstAddress) && !multicastGroupInfoTable.get(dstAddress).getMulticastHosts().isEmpty()) {   // only if the multicast hosts exist, process the packet_in from the multicast source
+//                            if (!receivedMatch.contains(pi.getMatch())) {   // if this source nerver send packet_in, then do the folowing processes
+//                            receivedMatch.add(pi.getMatch());
                             // register multicast source
+                            System.out.println("&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&& enter the source &&&&&&&&&&&&&&&&&&&&");
                             U64 flowSetId = flowSetIdRegistry.generateFlowSetId();
                             U64 cookie = makeForwardingCookie(RoutingDecision.rtStore.get(cntx, IRoutingDecision.CONTEXT_DECISION), flowSetId);
                             OFPort srcPort = OFMessageUtils.getInPort(pi);
@@ -226,14 +229,15 @@ public class MulticastManager implements IOFMessageListener, IFloodlightModule, 
                                 }
                             }
 
-                            // There is/are host/hosts which waits/wait for receiving packet from a source
-                            if (!multicastGroupInfoTable.get(dstAddress).getMulticastHosts().isEmpty()) {
-                                // TODO: delete print
-                                System.out.println(dstAddress);
-                                System.out.println(((IPv4) eth.getPayload()).getProtocol());
-                                processSourcePacketInMessage(sw, pi, cntx);
-                            }
+                            // TODO: delete print
+                            System.out.println(dstAddress);
+                            System.out.println(((IPv4) eth.getPayload()).getProtocol());
+                            processSourcePacketInMessage(sw, pi, cntx);
+//                            }
+                        } else {    // do not have host wait for mulitcasting, drop the packet_in from source
+                            return Command.STOP;
                         }
+
                     }
                 }
         }
@@ -325,7 +329,8 @@ public class MulticastManager implements IOFMessageListener, IFloodlightModule, 
 
         // determine the need for pushing route
         // Not exist before && Already has source/sources
-        if (!ifExist && !multicastGroupInfoTable.get(multicastAddress).getMulticastSources().isEmpty()) {
+        // And it is not the first host who really begins to receive the packet from source
+        if (!ifExist && !multicastGroupInfoTable.get(multicastAddress).getMulticastSources().isEmpty() && multicastGroupInfoTable.get(multicastAddress).getMulticastHosts().size() > 1) {
             //wrf: push Route
             DSCPField dscpField = DSCPField.Default;
             DatapathId dstId = sw.getId();
@@ -351,7 +356,7 @@ public class MulticastManager implements IOFMessageListener, IFloodlightModule, 
         tempMulticastGroup.getMulticastHosts().remove(hostIPAddress);
         for (MulticastTree multicastTree : tempMulticastGroup.getMulticastTreeInfoTable().values()) {
             List<NodePortTuple> switchPortList = multicastTree.getPathList().get(hostIPAddress).getPath();
-
+            boolean bpFlag = true;
             // iterate over the path, re-compose the action of altBP
             for (int indx = switchPortList.size() - 1; indx > 0; indx -= 2) {
                 // indx and indx-1 will always have the same switch DPID.
@@ -368,11 +373,11 @@ public class MulticastManager implements IOFMessageListener, IFloodlightModule, 
 
                 // clone a temp fmb to build the OFFlowMod
                 OFFlowMod.Builder tempFMB = tempAltBP.getFmb();
-
+                System.out.println("%%%%%%%%%%%%%%%%%%%%%% mcmanager 376 " + tempFMB.getMatch());
                 // compose the flow table action
-                if (tempAltBP.getOutPortSet().size() > 1) { // still have 1+ outports, compose a new bucket
+                if (tempAltBP.getOutPortSet().size() > 1 && bpFlag) { // still have 1+ outports, compose a new bucket
                     ArrayList<OFBucket> bucketList = new ArrayList<OFBucket>();
-
+                    bpFlag = false;
                     // add all out ports as buckets
                     for (OFPort forwardPort : tempAltBP.getOutPortSet()) {
                         bucketList.add(altBPSwitch.getOFFactory().buildBucket()
@@ -384,15 +389,6 @@ public class MulticastManager implements IOFMessageListener, IFloodlightModule, 
                                         .build()))
                                 .build());
                     }
-
-//                    OFGroupAdd addGroup = altBPSwitch.getOFFactory().buildGroupAdd()
-//                            .setGroupType(OFGroupType.ALL)
-//                            .setGroup(OFGroup.of(tempAltBP.getGroupNumber()))
-//                            .setBuckets(bucketList)
-//                            .build();
-//
-//
-//                    altBPSwitch.write(addGroup);
 
                     OFGroupModify modifyGroup = altBPSwitch.getOFFactory().buildGroupModify()
                             .setGroupType(OFGroupType.ALL)
@@ -412,10 +408,9 @@ public class MulticastManager implements IOFMessageListener, IFloodlightModule, 
                         tempFMB.setTableId(FLOWMOD_DEFAULT_TABLE_ID);
                     }
                     messageDamper.write(altBPSwitch, tempFMB.build());
-                    break;
 
-                } else if (tempAltBP.getOutPortSet().size() == 1) {    // compose a normal forwarding action
-
+                } else if (tempAltBP.getOutPortSet().size() == 1 && bpFlag) {    // compose a normal forwarding action
+                    bpFlag = false;
                     OFGroupDelete deleteGroup = altBPSwitch.getOFFactory().buildGroupDelete()
                             .setGroupType(OFGroupType.ALL)
                             .setGroup(OFGroup.of(tempAltBP.getGroupNumber()))
@@ -435,7 +430,20 @@ public class MulticastManager implements IOFMessageListener, IFloodlightModule, 
                         tempFMB.setTableId(FLOWMOD_DEFAULT_TABLE_ID);
                     }
                     messageDamper.write(altBPSwitch, tempFMB.build());
-                    break;
+                } else if (tempAltBP.getOutPortSet().size() == 0) { // delete previous forwarding action
+                    OFFlowMod.Builder deleteFmb = altBPSwitch.getOFFactory().buildFlowDelete();
+
+                    Set<OFFlowModFlags> flags = new HashSet<>();
+                    flags.add(OFFlowModFlags.SEND_FLOW_REM);
+                    deleteFmb.setFlags(flags);
+
+                    System.out.println(tempFMB.getMatch());
+                    deleteFmb.setMatch(tempFMB.getMatch());
+                    /* Configure for particular switch pipeline */
+                    if (altBPSwitch.getOFFactory().getVersion().compareTo(OFVersion.OF_10) != 0) {
+                        deleteFmb.setTableId(FLOWMOD_DEFAULT_TABLE_ID);
+                    }
+                    messageDamper.write(altBPSwitch, deleteFmb.build());
                 }
 
             }
@@ -559,8 +567,7 @@ public class MulticastManager implements IOFMessageListener, IFloodlightModule, 
                     .setOutPort(outPort)
                     .setPriority(FLOWMOD_DEFAULT_PRIORITY);
 
-
-
+            System.out.println("^^^^^^^^^^^^^^^^^^^^^^^^^^^^ mutlicast manater null match" + fmb.getMatch());
             // save current state of fmb for leaving
             currentAltBPSet.get(switchDPID).setFmb(fmb);
 
