@@ -372,10 +372,14 @@ public class MulticastManager implements IOFMessageListener, IFloodlightModule, 
                 tempAltBP.getOutPortSet().remove(outPort);
 
                 // clone a temp fmb to build the OFFlowMod
-                OFFlowMod.Builder tempFMB = tempAltBP.getFmb();
-                System.out.println("%%%%%%%%%%%%%%%%%%%%%% mcmanager 376 " + tempFMB.getMatch());
+//                OFFlowMod.Builder tempFMB = tempAltBP.getFmb();
+//                System.out.println("%%%%%%%%%%%%%%%%%%%%%% mcmanager 376 " + tempFMB.getMatch());
+                OFFlowMod.Builder tempFMB;
                 // compose the flow table action
                 if (tempAltBP.getOutPortSet().size() > 1 && bpFlag) { // still have 1+ outports, compose a new bucket
+                    tempFMB = altBPSwitch.getOFFactory().buildFlowModify();
+                    tempFMB.setMatch(tempAltBP.getMatch());
+
                     ArrayList<OFBucket> bucketList = new ArrayList<OFBucket>();
                     bpFlag = false;
                     // add all out ports as buckets
@@ -410,6 +414,9 @@ public class MulticastManager implements IOFMessageListener, IFloodlightModule, 
                     messageDamper.write(altBPSwitch, tempFMB.build());
 
                 } else if (tempAltBP.getOutPortSet().size() == 1 && bpFlag) {    // compose a normal forwarding action
+                    tempFMB = altBPSwitch.getOFFactory().buildFlowModify();
+                    tempFMB.setMatch(tempAltBP.getMatch());
+
                     bpFlag = false;
                     OFGroupDelete deleteGroup = altBPSwitch.getOFFactory().buildGroupDelete()
                             .setGroupType(OFGroupType.ALL)
@@ -431,19 +438,21 @@ public class MulticastManager implements IOFMessageListener, IFloodlightModule, 
                     }
                     messageDamper.write(altBPSwitch, tempFMB.build());
                 } else if (tempAltBP.getOutPortSet().size() == 0) { // delete previous forwarding action
-                    OFFlowMod.Builder deleteFmb = altBPSwitch.getOFFactory().buildFlowDelete();
+                    tempFMB = altBPSwitch.getOFFactory().buildFlowDelete();
+                    tempFMB.setMatch(tempAltBP.getMatch());
+
 
                     Set<OFFlowModFlags> flags = new HashSet<>();
                     flags.add(OFFlowModFlags.SEND_FLOW_REM);
-                    deleteFmb.setFlags(flags);
+                    tempFMB.setFlags(flags);
 
                     System.out.println(tempFMB.getMatch());
-                    deleteFmb.setMatch(tempFMB.getMatch());
+                    tempFMB.setMatch(tempFMB.getMatch());
                     /* Configure for particular switch pipeline */
                     if (altBPSwitch.getOFFactory().getVersion().compareTo(OFVersion.OF_10) != 0) {
-                        deleteFmb.setTableId(FLOWMOD_DEFAULT_TABLE_ID);
+                        tempFMB.setTableId(FLOWMOD_DEFAULT_TABLE_ID);
                     }
-                    messageDamper.write(altBPSwitch, deleteFmb.build());
+                    messageDamper.write(altBPSwitch, tempFMB.build());
                 }
 
             }

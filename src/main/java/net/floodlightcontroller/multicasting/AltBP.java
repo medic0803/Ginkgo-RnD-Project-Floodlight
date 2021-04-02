@@ -1,6 +1,7 @@
 package net.floodlightcontroller.multicasting;
 
 import org.projectfloodlight.openflow.protocol.OFFlowMod;
+import org.projectfloodlight.openflow.protocol.match.Match;
 import org.projectfloodlight.openflow.types.OFPort;
 
 import java.util.HashSet;
@@ -36,5 +37,9 @@ public class AltBP {    // Alternate Branch Point
 
     public void setGroupNumber(int groupNumber) {
         this.groupNumber = groupNumber;
+    }
+
+    public Match getMatch() {
+        return this.fmb.getMatch();
     }
 }
