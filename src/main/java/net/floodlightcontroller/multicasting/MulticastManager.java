@@ -338,7 +338,7 @@ public class MulticastManager implements IOFMessageListener, IFloodlightModule, 
                 MulticastTree tempMulticastTree = multicastGroupInfoTable.get(multicastAddress).getMulticastTreeInfoTable().get(multicastSource.getSrcAddress());
                 Path path = getMulticastRoutingDecision(srcId, srcPort, dstId, dstPort, dscpField, hostIPAddress, tempMulticastTree);
                 System.out.println("----------------------------------" + path.getPath().get(path.getPath().size() - 1));
-                pushMulticastingRoute(path, multicastSource.getMatch(), multicastSource.getCookie(), tempMulticastTree.getAltBPRegister(), false, OFFlowModCommand.ADD);
+                pushMulticastingRoute(path, multicastSource.getMatch(), multicastSource.getCookie(), tempMulticastTree.getAltBPRegister(), false);
             }
         }
     }
@@ -479,7 +479,7 @@ public class MulticastManager implements IOFMessageListener, IFloodlightModule, 
             dstPort = pinSwitchInfoMap.get(hostAddress).getPinSwitchInPort();
             path = getMulticastRoutingDecision(srcId, srcPort, dstId, dstPort, dscpField, hostAddress, multicastGroupInfoTable.get(multicastAddress).getMulticastTreeInfoTable().get(sourceAddress));
             System.out.println("----------------------------------" + path.getPath().get(path.getPath().size() - 1));
-            pushMulticastingRoute(path, match, cookie, multicastGroupInfoTable.get(multicastAddress).getMulticastTreeInfoTable().get(sourceAddress).getAltBPRegister(), false, OFFlowModCommand.ADD);
+            pushMulticastingRoute(path, match, cookie, multicastGroupInfoTable.get(multicastAddress).getMulticastTreeInfoTable().get(sourceAddress).getAltBPRegister(), false);
         }
 
         return Command.CONTINUE;
@@ -493,17 +493,20 @@ public class MulticastManager implements IOFMessageListener, IFloodlightModule, 
      * @param match
      * @param cookie
      * @param requestFlowRemovedNotification default is false
-     * @param flowModCommand                 default is OFFlowMod.ADD
      * @return
      */
     public boolean pushMulticastingRoute(Path route, Match match, U64 cookie, HashMap<DatapathId, AltBP> currentAltBPSet,
-                                         boolean requestFlowRemovedNotification, OFFlowModCommand flowModCommand) {
+                                         boolean requestFlowRemovedNotification) {
 
         List<NodePortTuple> switchPortList = route.getPath();
         for (int indx = switchPortList.size() - 1; indx > 0; indx -= 2) {
             // indx and indx-1 will always have the same switch DPID.
             DatapathId switchDPID = switchPortList.get(indx).getNodeId();
             IOFSwitch sw = switchService.getSwitch(switchDPID);
+
+            // set input and output ports on the switch
+            OFPort outPort = switchPortList.get(indx).getPortId();
+            OFPort inPort = switchPortList.get(indx - 1).getPortId();
 
             if (sw == null) {
                 if (log.isWarnEnabled()) {
@@ -512,33 +515,30 @@ public class MulticastManager implements IOFMessageListener, IFloodlightModule, 
                 return false;
             }
 
+            // register a new out port
+            if (!currentAltBPSet.containsKey(switchDPID)) {   // register a new switch
+                currentAltBPSet.put(switchDPID, new AltBP(outPort));
+            } else {
+                currentAltBPSet.get(switchDPID).getOutPortSet().add(outPort);
+            }
+
             // need to build flow mod based on what type it is. Cannot set command later
             OFFlowMod.Builder fmb;
-            switch (flowModCommand) {
-                case ADD:
+
+            switch (currentAltBPSet.get(switchDPID).getOutPortSet().size()) {
+                case 1: // single point, altBP
                     fmb = sw.getOFFactory().buildFlowAdd();
                     break;
-                case DELETE:
+                case 0: // do not have any port
                     fmb = sw.getOFFactory().buildFlowDelete();
                     break;
-                case DELETE_STRICT:
-                    fmb = sw.getOFFactory().buildFlowDeleteStrict();
-                    break;
-                case MODIFY:
+                default:    // BP, need to modify the flow table item
                     fmb = sw.getOFFactory().buildFlowModify();
-                    break;
-                default:
-                    log.error("Could not decode OFFlowModCommand. Using MODIFY_STRICT. (Should another be used as the default?)");
-                case MODIFY_STRICT:
-                    fmb = sw.getOFFactory().buildFlowModifyStrict();
+                    System.out.println("44444444444444444444444444 Flow table item has been modify44444444444444444444444444");
                     break;
             }
 
             Match.Builder mb = MatchUtils.convertToVersion(match, sw.getOFFactory().getVersion());
-
-            // set input and output ports on the switch
-            OFPort outPort = switchPortList.get(indx).getPortId();
-            OFPort inPort = switchPortList.get(indx - 1).getPortId();
 
             if (FLOWMOD_DEFAULT_MATCH_IN_PORT) {
                 mb.setExact(MatchField.IN_PORT, inPort);
@@ -559,12 +559,7 @@ public class MulticastManager implements IOFMessageListener, IFloodlightModule, 
                     .setOutPort(outPort)
                     .setPriority(FLOWMOD_DEFAULT_PRIORITY);
 
-            // register a new out port
-            if (!currentAltBPSet.containsKey(switchDPID)) {   // register a new switch
-                currentAltBPSet.put(switchDPID, new AltBP(outPort));
-            } else {
-                currentAltBPSet.get(switchDPID).getOutPortSet().add(outPort);
-            }
+
 
             // save current state of fmb for leaving
             currentAltBPSet.get(switchDPID).setFmb(fmb);
@@ -637,7 +632,6 @@ public class MulticastManager implements IOFMessageListener, IFloodlightModule, 
                         outPort);
             } else {
                 if (currentAltBPSet.get(switchDPID).getOutPortSet().size() < 3) {
-                    fmb.setIdleTimeout(10);
                     messageDamper.write(sw, fmb.build());
                     System.out.println("!!!!!!!!!!!!!!!!! Flow table item write downnnnnnnnnnnnnnnnnnnnnn");
                     System.out.println("!!!!!!!!!! Write to " + switchDPID);
