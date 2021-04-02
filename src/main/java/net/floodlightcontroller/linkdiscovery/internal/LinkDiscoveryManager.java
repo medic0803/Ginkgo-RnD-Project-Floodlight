@@ -479,7 +479,6 @@ IFloodlightModule, IInfoProvider {
 		} else if (info.getMulticastValidTime() != null) {
 			return ILinkDiscovery.LinkType.MULTIHOP_LINK;
 		}
-		System.out.println("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! linkdiscoveryManager invalid link 482");
 		return ILinkDiscovery.LinkType.INVALID_LINK;
 	}
 
@@ -796,7 +795,6 @@ IFloodlightModule, IInfoProvider {
 		}
 		//wrf: Delte
 		if (lastLldpTime == null) {
-			System.out.println("))))))))))))))))))))))))))))))))))))))))))) +++++++++++++++++++ fldmanager find null lastlldpTime");
 		}
 		LinkInfo newLinkInfo = new LinkInfo(firstSeenTime, lastLldpTime, lastBddpTime);
 		addOrUpdateLink(lt, newLinkInfo);
@@ -923,8 +921,6 @@ IFloodlightModule, IInfoProvider {
 	protected void discoverLinks() {
 
 		// timeout known links.
-		// wrf
-//		System.out.println("*****************************time out links has been blocked LDManger 926");
 		timeoutLinks();
 
 		// increment LLDP clock
@@ -1347,13 +1343,7 @@ IFloodlightModule, IInfoProvider {
 		 * still valid.
 		 */
 		if (newInfo.getUnicastValidTime() != null) {
-			//wrf:
-			if (existingInfo.getUnicastValidTime() == null){
-				System.out.println("/////////////////////// unicast valid time existing info null");
-			} else if (existingInfo.getUnicastValidTime().equals(newInfo.getUnicastValidTime())) {
-				existingInfo.setUnicastValidTime(newInfo.getUnicastValidTime());	//别删掉
-				System.out.println("//////////////////////////////// unicast Vlid time do not change//////////////////////////////");
-			}
+			existingInfo.setUnicastValidTime(newInfo.getUnicastValidTime());
 		} else if (newInfo.getMulticastValidTime() != null) {
 			existingInfo.setMulticastValidTime(newInfo.getMulticastValidTime());
 		}	
@@ -1422,9 +1412,6 @@ IFloodlightModule, IInfoProvider {
 					log.debug("Inter-switch link detected: {}", lt);
 				}
 			} else {
-				System.out.println("(((((((((((((((((((((((((((((((((((((((( ldmanager 1471 link changed");
-				System.out.println(lt);
-
 				linkChanged = updateLink(lt, existingInfo, newInfo);
 				if (linkChanged) {
 					updateOperation = UpdateOperation.LINK_UPDATED;
@@ -1603,8 +1590,6 @@ IFloodlightModule, IInfoProvider {
 								+ (this.LINK_TIMEOUT * 1000) < curTime)) {	// indicate that there are alreay 1000 LLDP packets not received
 					unicastTimedOut = true;
 					info.setUnicastValidTime(null);
-					//wrf:
-					System.out.println("$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$ 1596 set unicast valid Time$$$$$$$$$$$$$$$$$$$$$$$$");
 				}
 				if ((info.getMulticastValidTime() != null)
 						&& (info.getMulticastValidTime().getTime()
@@ -1632,7 +1617,6 @@ IFloodlightModule, IInfoProvider {
 
 			if (!eraseList.isEmpty()) {
 				deleteLinks(eraseList, "LLDP timeout");
-				System.out.println("######################## link discovery manager 1623 LLDP time out");
 			}
 		} finally {
 			lock.writeLock().unlock();

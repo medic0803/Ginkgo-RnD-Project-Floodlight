@@ -807,23 +807,10 @@ public class TopologyInstance {
                     log.debug("Calling Yens {} {}", src, dst);
                     paths = yens(src, dst, TopologyManager.getMaxPathsToComputeInternal(),
                             getArchipelago(src), getArchipelago(dst));
-                    if (paths.isEmpty()){
-                        System.out.println("##########################find an empty path########################");
-                    }
                     pathId = new PathId(src, dst);
                     pathcache.put(pathId, paths);
                     log.debug("Adding paths {}", paths);
                 }
-            }
-            //wrf:print patchcache every time it update
-            System.out.println("#########################################print pathcache###################################");
-            for (List<Path> list: pathcache.values()) {
-                for (Path path : list){
-                    System.out.println(path);
-                }
-            }
-            for (PathId pathId1: pathcache.keySet()) {
-                System.out.println(pathId1);
             }
         }
     }

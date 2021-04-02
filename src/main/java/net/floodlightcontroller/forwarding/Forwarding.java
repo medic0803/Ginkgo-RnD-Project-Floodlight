@@ -219,16 +219,12 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
                 case FORWARD_OR_FLOOD:
                 case FORWARD:
                     log.debug("detect forward action");
-                    System.out.println("detect forward action");
                     doL2ForwardFlow(eth, sw, pi, decision, cntx, false);
-                    System.out.println(((IPv4)eth.getPayload()).getProtocol());
                     return Command.CONTINUE;
 
                 case MULTICAST:
                     // treat as broadcast
                     log.debug("detect multicast");
-                    System.out.println("detect multicast transform");
-                    System.out.println(((IPv4)eth.getPayload()).getProtocol());
                     doFlood(sw, pi, decision, cntx);
                     return Command.CONTINUE;
 
@@ -725,11 +721,9 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
 
             // Non-QoS Flow
             if (dscpField.equals(DSCPField.Default)){
-                System.out.println(dscpField);
-                System.out.println("------------------Non-QoS Flow-----------------");
+                log.info("Receive a Non-Qos Flow with dscpField: " + dscpField);
             } else{ // QoS Flow
-                System.out.println(dscpField);
-                System.out.println("------------------Qos flow-----------------");
+                log.info("Receive a Qos Flow with dscpField: " + dscpField);
             }
 
         }
@@ -1941,10 +1935,10 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
                 // Destination IPv4Address was included in multicast group, skip the forwarding
             if (eth.getEtherType() == EthType.IPv4){
                 if (fetchMulticastGroupService.ifMulticastAddressExist(((IPv4)eth.getPayload()).getDestinationAddress())) {
-                    System.out.println("=============Forwarding Module receive source packet_in and skip==============");
+                    log.warn("Forwarding Module receive source packet_in and skip");
                     return Command.CONTINUE;
                 } else if (((IPv4) eth.getPayload()).getProtocol() == IpProtocol.IGMP) {
-                    System.out.println("====================Forwarding Module receive IGMP and skip");
+                    log.info("Forwarding Module receive IGMP and skip");
                     return Command.CONTINUE;
                 }
             }
