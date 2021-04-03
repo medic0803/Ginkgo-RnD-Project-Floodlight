@@ -32,7 +32,6 @@ import static net.floodlightcontroller.routing.ForwardingBase.FORWARDING_APP_ID;
 
 public class MulticastManager implements IOFMessageListener, IFloodlightModule, IFetchMulticastGroupService {
 
-    private int count = 0;
     // Instance field
     protected IFloodlightProviderService floodlightProvider;
     protected IOFSwitchService switchService;
@@ -40,13 +39,10 @@ public class MulticastManager implements IOFMessageListener, IFloodlightModule, 
 
     private ConcurrentHashMap<IPv4Address, MulticastGroup> multicastGroupInfoTable = new ConcurrentHashMap<>();
 
-    //    protected MulticastRoutingDecision multicastRoutingDecision;
     protected HashSet<Match> receivedMatch;
     protected static Logger log = LoggerFactory.getLogger(MulticastManager.class);
-    //    private MulticastInfoTable multicastInfoTable = new MulticastInfoTable();
     private ConcurrentHashMap<IPv4Address, PinSwitch> pinSwitchInfoMap = new ConcurrentHashMap<>();
-    //    private MulticastSourceInfoTable multicastSourceInfoTable = new MulticastSourceInfoTable();
-    protected static int groupNumber = 1;
+    protected static int groupNumber = 0;
 
     private static final short DECISION_BITS = 24;
     private static final short DECISION_SHIFT = 0;
@@ -205,25 +201,25 @@ public class MulticastManager implements IOFMessageListener, IFloodlightModule, 
                     } else if (eth.isMulticast()) { // determine if it is a multicast source
                         if (!multicastGroupInfoTable.isEmpty() && multicastGroupInfoTable.containsKey(dstAddress) && !multicastGroupInfoTable.get(dstAddress).getMulticastHosts().isEmpty()) {   // only if the multicast hosts exist, process the packet_in from the multicast source
 
-                            log.info("A new multicast source has been registered from " + srcAddress + ", and multicast address is " + dstAddress);
-                            U64 flowSetId = flowSetIdRegistry.generateFlowSetId();
-                            U64 cookie = makeForwardingCookie(RoutingDecision.rtStore.get(cntx, IRoutingDecision.CONTEXT_DECISION), flowSetId);
-                            OFPort srcPort = OFMessageUtils.getInPort(pi);
-                            Match match = sw.getOFFactory().buildMatch()
-                                    .setExact(MatchField.IN_PORT, srcPort)
-                                    .setExact(MatchField.IPV4_SRC, ((IPv4) eth.getPayload()).getSourceAddress())
-                                    .build();
-                            MulticastSource newMulticastSource = new MulticastSource(sw.getId(), srcPort, cookie, match, cntx, pi, srcAddress);
-//                            if (!multicastGroupInfoTable.containsKey(dstAddress)) {  // new multicast address register
-//                                multicastGroupInfoTable.put(dstAddress, new MulticastGroup(dstAddress, srcAddress, newMulticastSource));
-//                            } else {    // multicast address already exist
-                            MulticastGroup tempMulticastGroup = multicastGroupInfoTable.get(dstAddress);
-                            if (!tempMulticastGroup.getMulticastSources().containsKey(srcAddress)) {
-                                tempMulticastGroup.addNewMulticastSource(srcAddress, newMulticastSource);
+                            if (multicastGroupInfoTable.get(dstAddress).getMulticastSources().isEmpty() || !multicastGroupInfoTable.get(dstAddress).getMulticastSources().containsKey(srcAddress)) {    // only if the source do not exist, process the packet_in
+                                log.info("A new multicast source has been registered from " + srcAddress + ", and multicast address is " + dstAddress);
+                                U64 flowSetId = flowSetIdRegistry.generateFlowSetId();
+                                U64 cookie = makeForwardingCookie(RoutingDecision.rtStore.get(cntx, IRoutingDecision.CONTEXT_DECISION), flowSetId);
+                                OFPort srcPort = OFMessageUtils.getInPort(pi);
+                                Match match = sw.getOFFactory().buildMatch()
+                                        .setExact(MatchField.IN_PORT, srcPort)
+                                        .setExact(MatchField.IPV4_SRC, ((IPv4) eth.getPayload()).getSourceAddress())
+                                        .build();
+                                MulticastSource newMulticastSource = new MulticastSource(sw.getId(), srcPort, cookie, match, cntx, pi, srcAddress);
+                                MulticastGroup tempMulticastGroup = multicastGroupInfoTable.get(dstAddress);
+                                if (!tempMulticastGroup.getMulticastSources().containsKey(srcAddress)) {
+                                    tempMulticastGroup.addNewMulticastSource(srcAddress, newMulticastSource);
+                                }
+                                processSourcePacketInMessage(sw, pi, cntx);
+                            } else {    // source already exist, drop the packet_in
+                               return Command.STOP;
                             }
-//                            }
-                            processSourcePacketInMessage(sw, pi, cntx);
-//                            }
+
                         } else {    // do not have host wait for mulitcasting, drop the packet_in from source
                             return Command.STOP;
                         }
@@ -931,7 +927,6 @@ public class MulticastManager implements IOFMessageListener, IFloodlightModule, 
                                              DatapathId dst, OFPort dstPort,
                                              DSCPField dscpField,
                                              IPv4Address hostAddress, MulticastTree multicastTree) {
-        //new
         DatapathId bp = null;
         Stack<DatapathId> tempBP = new Stack<>();
         Stack<DatapathId> possibleBP = new Stack<>();
