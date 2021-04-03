@@ -37,7 +37,7 @@ public class MulticastGroup {
 
     public void addNewMulticastSource(IPv4Address sourceAddress, MulticastSource multicastSource){
         this.multicastSources.put(sourceAddress, multicastSource);
-        this.multicastTreeInfoTable.put(sourceAddress, new MulticastTree());
+        this.multicastTreeInfoTable.put(sourceAddress, new MulticastTree(sourceAddress));
     }
 
     // Getters

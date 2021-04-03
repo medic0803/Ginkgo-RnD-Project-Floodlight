@@ -11,9 +11,11 @@ import net.floodlightcontroller.core.module.IFloodlightModule;
 import net.floodlightcontroller.core.module.IFloodlightService;
 import net.floodlightcontroller.core.types.NodePortTuple;
 import net.floodlightcontroller.core.util.AppCookie;
+import net.floodlightcontroller.core.util.SingletonTask;
 import net.floodlightcontroller.packet.*;
 import net.floodlightcontroller.qos.DSCPField;
 import net.floodlightcontroller.routing.*;
+import net.floodlightcontroller.threadpool.IThreadPoolService;
 import net.floodlightcontroller.topology.ITopologyService;
 import net.floodlightcontroller.util.*;
 import org.projectfloodlight.openflow.protocol.*;
@@ -27,6 +29,8 @@ import org.slf4j.LoggerFactory;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 
 import static net.floodlightcontroller.routing.ForwardingBase.FORWARDING_APP_ID;
 
@@ -37,12 +41,17 @@ public class MulticastManager implements IOFMessageListener, IFloodlightModule, 
     protected IOFSwitchService switchService;
     protected ITopologyService topologyService;
 
+    // Multicast Data structure
     private ConcurrentHashMap<IPv4Address, MulticastGroup> multicastGroupInfoTable = new ConcurrentHashMap<>();
 
     protected HashSet<Match> receivedMatch;
     protected static Logger log = LoggerFactory.getLogger(MulticastManager.class);
     private ConcurrentHashMap<IPv4Address, PinSwitch> pinSwitchInfoMap = new ConcurrentHashMap<>();
     protected static int groupNumber = 0;
+
+    // SourceTimeout process
+    protected SingletonTask sourceTimeout;
+    protected IThreadPoolService threadPoolService;
 
     private static final short DECISION_BITS = 24;
     private static final short DECISION_SHIFT = 0;
@@ -199,6 +208,10 @@ public class MulticastManager implements IOFMessageListener, IFloodlightModule, 
                         }
 
                     } else if (eth.isMulticast()) { // determine if it is a multicast source
+                        if (!multicastGroupInfoTable.isEmpty() && multicastGroupInfoTable.containsKey(dstAddress) && !multicastGroupInfoTable.get(dstAddress).getMulticastSources().isEmpty() && multicastGroupInfoTable.get(dstAddress).getMulticastSources().containsKey(srcAddress)) {   // only if src address is exist, refresh it's invalid time
+                            // refresh the source valid Time
+                            multicastGroupInfoTable.get(dstAddress).getMulticastTreeInfoTable().get(srcAddress).setSourceValidTime();
+                        }
                         if (!multicastGroupInfoTable.isEmpty() && multicastGroupInfoTable.containsKey(dstAddress) && !multicastGroupInfoTable.get(dstAddress).getMulticastHosts().isEmpty()) {   // only if the multicast hosts exist, process the packet_in from the multicast source
 
                             if (multicastGroupInfoTable.get(dstAddress).getMulticastSources().isEmpty() || !multicastGroupInfoTable.get(dstAddress).getMulticastSources().containsKey(srcAddress)) {    // only if the source do not exist, process the packet_in
@@ -256,7 +269,7 @@ public class MulticastManager implements IOFMessageListener, IFloodlightModule, 
 
         } else if (igmpPayload[32] == 3) {  // leave message
             // only the host exist, process the leave message
-            if (multicastGroupInfoTable.get(multicastAddress).getMulticastHosts().contains(hostIPAddress)) {
+            if (!multicastGroupInfoTable.isEmpty() && multicastGroupInfoTable.get(multicastAddress).getMulticastHosts().contains(hostIPAddress)) {
                 log.info("Receive an IGMP Leave Message from " + sw.getId() + ": "+ hostIPAddress + ", and send to " + multicastAddress);
                 processIGMPLeaveMsg(multicastAddress, hostIPAddress);
             }
@@ -904,18 +917,41 @@ public class MulticastManager implements IOFMessageListener, IFloodlightModule, 
         switchService = context.getServiceImpl(IOFSwitchService.class);
         routingService = context.getServiceImpl(IRoutingService.class);
         topologyService = context.getServiceImpl(ITopologyService.class);
+        threadPoolService = context.getServiceImpl(IThreadPoolService.class);
         messageDamper = new OFMessageDamper(OFMESSAGE_DAMPER_CAPACITY,
                 EnumSet.of(OFType.FLOW_MOD),
                 OFMESSAGE_DAMPER_TIMEOUT);
 
         flowSetIdRegistry = FlowSetIdRegistry.getInstance();
-
-        receivedMatch = new HashSet<>();
     }
 
     @Override
     public void startUp(FloodlightModuleContext context) throws FloodlightModuleException {
         floodlightProvider.addOFMessageListener(OFType.PACKET_IN, this);
+        ScheduledExecutorService ses = threadPoolService.getScheduledExecutor();
+
+        sourceTimeout = new SingletonTask(ses, new Runnable() {
+            @Override
+            public void run() {
+                log.info("Routine source timeout check");
+                if (!multicastGroupInfoTable.isEmpty()) {
+                    for (MulticastGroup mcGroup : multicastGroupInfoTable.values()) {
+                        if (!mcGroup.getMulticastTreeInfoTable().isEmpty()) {
+                            for (MulticastTree mcTree : mcGroup.getMulticastTreeInfoTable().values()) {
+                                if (mcTree.getSourceValidTime() != null && (mcTree.getSourceValidTime().getTime() + 10000) < System.currentTimeMillis()) {
+                                    IPv4Address removedSource = mcTree.getSourceAddress();
+                                    mcGroup.getMulticastSources().remove(removedSource);
+                                    mcGroup.getMulticastTreeInfoTable().remove(removedSource);
+                                    log.info("Remove the invalid multicast source: " + removedSource);
+                                }
+                            }
+                        }
+                    }
+                }
+                sourceTimeout.reschedule(15, TimeUnit.SECONDS);
+            }
+        });
+        sourceTimeout.reschedule(1, TimeUnit.SECONDS);
     }
 
     @Override
