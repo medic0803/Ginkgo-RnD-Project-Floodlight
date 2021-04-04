@@ -948,7 +948,7 @@ public class MulticastManager implements IOFMessageListener, IFloodlightModule, 
                         }
                     }
                 }
-                sourceTimeout.reschedule(15, TimeUnit.SECONDS);
+                sourceTimeout.reschedule(5, TimeUnit.SECONDS);
             }
         });
         sourceTimeout.reschedule(1, TimeUnit.SECONDS);
