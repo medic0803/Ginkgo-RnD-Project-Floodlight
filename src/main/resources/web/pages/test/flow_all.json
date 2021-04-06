@@ -1,0 +1,424 @@
+{
+  "00:00:00:00:00:00:00:02": {
+    "flows": [
+      {
+        "version": "OF_10",
+        "cookie": "9007200513032192",
+        "table_id": "0x0",
+        "packet_count": "1",
+        "byte_count": "98",
+        "duration_sec": "4",
+        "duration_nsec": "162000000",
+        "priority": "1",
+        "idle_timeout_s": "5",
+        "hard_timeout_s": "0",
+        "match": {
+          "in_port": "4",
+          "eth_src": "ca:b8:2e:93:17:33",
+          "eth_dst": "92:43:32:ff:2b:86",
+          "eth_type": "0x800",
+          "ipv4_src": "10.0.0.3",
+          "ipv4_dst": "10.0.0.2"
+        },
+        "actions": {
+          "actions": "output=2"
+        }
+      },
+      {
+        "version": "OF_10",
+        "cookie": "9007200378814464",
+        "table_id": "0x0",
+        "packet_count": "1",
+        "byte_count": "98",
+        "duration_sec": "4",
+        "duration_nsec": "224000000",
+        "priority": "1",
+        "idle_timeout_s": "5",
+        "hard_timeout_s": "0",
+        "match": {
+          "in_port": "2",
+          "eth_src": "92:43:32:ff:2b:86",
+          "eth_dst": "26:24:c2:27:10:d6",
+          "eth_type": "0x800",
+          "ipv4_src": "10.0.0.2",
+          "ipv4_dst": "10.0.0.4"
+        },
+        "actions": {
+          "actions": "output=3"
+        }
+      },
+      {
+        "version": "OF_10",
+        "cookie": "9007200395591680",
+        "table_id": "0x0",
+        "packet_count": "1",
+        "byte_count": "98",
+        "duration_sec": "4",
+        "duration_nsec": "215000000",
+        "priority": "1",
+        "idle_timeout_s": "5",
+        "hard_timeout_s": "0",
+        "match": {
+          "in_port": "3",
+          "eth_src": "26:24:c2:27:10:d6",
+          "eth_dst": "ca:b8:2e:93:17:33",
+          "eth_type": "0x800",
+          "ipv4_src": "10.0.0.4",
+          "ipv4_dst": "10.0.0.3"
+        },
+        "actions": {
+          "actions": "output=4"
+        }
+      },
+      {
+        "version": "OF_10",
+        "cookie": "9007200496254976",
+        "table_id": "0x0",
+        "packet_count": "1",
+        "byte_count": "98",
+        "duration_sec": "4",
+        "duration_nsec": "164000000",
+        "priority": "1",
+        "idle_timeout_s": "5",
+        "hard_timeout_s": "0",
+        "match": {
+          "in_port": "2",
+          "eth_src": "92:43:32:ff:2b:86",
+          "eth_dst": "ca:b8:2e:93:17:33",
+          "eth_type": "0x800",
+          "ipv4_src": "10.0.0.2",
+          "ipv4_dst": "10.0.0.3"
+        },
+        "actions": {
+          "actions": "output=4"
+        }
+      },
+      {
+        "version": "OF_10",
+        "cookie": "9007200345260032",
+        "table_id": "0x0",
+        "packet_count": "2",
+        "byte_count": "196",
+        "duration_sec": "4",
+        "duration_nsec": "235000000",
+        "priority": "1",
+        "idle_timeout_s": "5",
+        "hard_timeout_s": "0",
+        "match": {
+          "in_port": "1",
+          "eth_src": "5e:c6:d3:6a:c2:31",
+          "eth_dst": "26:24:c2:27:10:d6",
+          "eth_type": "0x800",
+          "ipv4_src": "10.0.0.1",
+          "ipv4_dst": "10.0.0.4"
+        },
+        "actions": {
+          "actions": "output=3"
+        }
+      },
+      {
+        "version": "OF_10",
+        "cookie": "9007200362037248",
+        "table_id": "0x0",
+        "packet_count": "1",
+        "byte_count": "98",
+        "duration_sec": "4",
+        "duration_nsec": "227000000",
+        "priority": "1",
+        "idle_timeout_s": "5",
+        "hard_timeout_s": "0",
+        "match": {
+          "in_port": "3",
+          "eth_src": "26:24:c2:27:10:d6",
+          "eth_dst": "92:43:32:ff:2b:86",
+          "eth_type": "0x800",
+          "ipv4_src": "10.0.0.4",
+          "ipv4_dst": "10.0.0.2"
+        },
+        "actions": {
+          "actions": "output=2"
+        }
+      },
+      {
+        "version": "OF_10",
+        "cookie": "9007200412368896",
+        "table_id": "0x0",
+        "packet_count": "1",
+        "byte_count": "98",
+        "duration_sec": "4",
+        "duration_nsec": "213000000",
+        "priority": "1",
+        "idle_timeout_s": "5",
+        "hard_timeout_s": "0",
+        "match": {
+          "in_port": "4",
+          "eth_src": "ca:b8:2e:93:17:33",
+          "eth_dst": "26:24:c2:27:10:d6",
+          "eth_type": "0x800",
+          "ipv4_src": "10.0.0.3",
+          "ipv4_dst": "10.0.0.4"
+        },
+        "actions": {
+          "actions": "output=3"
+        }
+      },
+      {
+        "version": "OF_10",
+        "cookie": "9007200429146112",
+        "table_id": "0x0",
+        "packet_count": "2",
+        "byte_count": "196",
+        "duration_sec": "4",
+        "duration_nsec": "199000000",
+        "priority": "1",
+        "idle_timeout_s": "5",
+        "hard_timeout_s": "0",
+        "match": {
+          "in_port": "1",
+          "eth_src": "5e:c6:d3:6a:c2:31",
+          "eth_dst": "92:43:32:ff:2b:86",
+          "eth_type": "0x800",
+          "ipv4_src": "10.0.0.1",
+          "ipv4_dst": "10.0.0.2"
+        },
+        "actions": {
+          "actions": "output=2"
+        }
+      },
+      {
+        "version": "OF_10",
+        "cookie": "9007200445923328",
+        "table_id": "0x0",
+        "packet_count": "1",
+        "byte_count": "98",
+        "duration_sec": "4",
+        "duration_nsec": "195000000",
+        "priority": "1",
+        "idle_timeout_s": "5",
+        "hard_timeout_s": "0",
+        "match": {
+          "in_port": "2",
+          "eth_src": "92:43:32:ff:2b:86",
+          "eth_dst": "5e:c6:d3:6a:c2:31",
+          "eth_type": "0x800",
+          "ipv4_src": "10.0.0.2",
+          "ipv4_dst": "10.0.0.1"
+        },
+        "actions": {
+          "actions": "output=1"
+        }
+      },
+      {
+        "version": "OF_10",
+        "cookie": "9007200479477760",
+        "table_id": "0x0",
+        "packet_count": "1",
+        "byte_count": "98",
+        "duration_sec": "4",
+        "duration_nsec": "182000000",
+        "priority": "1",
+        "idle_timeout_s": "5",
+        "hard_timeout_s": "0",
+        "match": {
+          "in_port": "4",
+          "eth_src": "ca:b8:2e:93:17:33",
+          "eth_dst": "5e:c6:d3:6a:c2:31",
+          "eth_type": "0x800",
+          "ipv4_src": "10.0.0.3",
+          "ipv4_dst": "10.0.0.1"
+        },
+        "actions": {
+          "actions": "output=1"
+        }
+      },
+      {
+        "version": "OF_10",
+        "cookie": "9007200328482816",
+        "table_id": "0x0",
+        "packet_count": "1",
+        "byte_count": "98",
+        "duration_sec": "4",
+        "duration_nsec": "238000000",
+        "priority": "1",
+        "idle_timeout_s": "5",
+        "hard_timeout_s": "0",
+        "match": {
+          "in_port": "3",
+          "eth_src": "26:24:c2:27:10:d6",
+          "eth_dst": "5e:c6:d3:6a:c2:31",
+          "eth_type": "0x800",
+          "ipv4_src": "10.0.0.4",
+          "ipv4_dst": "10.0.0.1"
+        },
+        "actions": {
+          "actions": "output=1"
+        }
+      },
+      {
+        "version": "OF_10",
+        "cookie": "9007200462700544",
+        "table_id": "0x0",
+        "packet_count": "2",
+        "byte_count": "196",
+        "duration_sec": "4",
+        "duration_nsec": "184000000",
+        "priority": "1",
+        "idle_timeout_s": "5",
+        "hard_timeout_s": "0",
+        "match": {
+          "in_port": "1",
+          "eth_src": "5e:c6:d3:6a:c2:31",
+          "eth_dst": "ca:b8:2e:93:17:33",
+          "eth_type": "0x800",
+          "ipv4_src": "10.0.0.1",
+          "ipv4_dst": "10.0.0.3"
+        },
+        "actions": {
+          "actions": "output=4"
+        }
+      }
+    ]
+  },
+  "00:00:00:00:00:00:00:01": {
+    "flows": [
+      {
+        "version": "OF_10",
+        "cookie": "9007200479477760",
+        "table_id": "0x0",
+        "packet_count": "1",
+        "byte_count": "98",
+        "duration_sec": "4",
+        "duration_nsec": "181000000",
+        "priority": "1",
+        "idle_timeout_s": "5",
+        "hard_timeout_s": "0",
+        "match": {
+          "in_port": "2",
+          "eth_src": "ca:b8:2e:93:17:33",
+          "eth_dst": "5e:c6:d3:6a:c2:31",
+          "eth_type": "0x800",
+          "ipv4_src": "10.0.0.3",
+          "ipv4_dst": "10.0.0.1"
+        },
+        "actions": {
+          "actions": "output=1"
+        }
+      },
+      {
+        "version": "OF_10",
+        "cookie": "9007200445923328",
+        "table_id": "0x0",
+        "packet_count": "1",
+        "byte_count": "98",
+        "duration_sec": "4",
+        "duration_nsec": "194000000",
+        "priority": "1",
+        "idle_timeout_s": "5",
+        "hard_timeout_s": "0",
+        "match": {
+          "in_port": "2",
+          "eth_src": "92:43:32:ff:2b:86",
+          "eth_dst": "5e:c6:d3:6a:c2:31",
+          "eth_type": "0x800",
+          "ipv4_src": "10.0.0.2",
+          "ipv4_dst": "10.0.0.1"
+        },
+        "actions": {
+          "actions": "output=1"
+        }
+      },
+      {
+        "version": "OF_10",
+        "cookie": "9007200429146112",
+        "table_id": "0x0",
+        "packet_count": "1",
+        "byte_count": "98",
+        "duration_sec": "4",
+        "duration_nsec": "199000000",
+        "priority": "1",
+        "idle_timeout_s": "5",
+        "hard_timeout_s": "0",
+        "match": {
+          "in_port": "1",
+          "eth_src": "5e:c6:d3:6a:c2:31",
+          "eth_dst": "92:43:32:ff:2b:86",
+          "eth_type": "0x800",
+          "ipv4_src": "10.0.0.1",
+          "ipv4_dst": "10.0.0.2"
+        },
+        "actions": {
+          "actions": "output=2"
+        }
+      },
+      {
+        "version": "OF_10",
+        "cookie": "9007200462700544",
+        "table_id": "0x0",
+        "packet_count": "1",
+        "byte_count": "98",
+        "duration_sec": "4",
+        "duration_nsec": "184000000",
+        "priority": "1",
+        "idle_timeout_s": "5",
+        "hard_timeout_s": "0",
+        "match": {
+          "in_port": "1",
+          "eth_src": "5e:c6:d3:6a:c2:31",
+          "eth_dst": "ca:b8:2e:93:17:33",
+          "eth_type": "0x800",
+          "ipv4_src": "10.0.0.1",
+          "ipv4_dst": "10.0.0.3"
+        },
+        "actions": {
+          "actions": "output=2"
+        }
+      },
+      {
+        "version": "OF_10",
+        "cookie": "9007200328482816",
+        "table_id": "0x0",
+        "packet_count": "2",
+        "byte_count": "196",
+        "duration_sec": "4",
+        "duration_nsec": "238000000",
+        "priority": "1",
+        "idle_timeout_s": "5",
+        "hard_timeout_s": "0",
+        "match": {
+          "in_port": "2",
+          "eth_src": "26:24:c2:27:10:d6",
+          "eth_dst": "5e:c6:d3:6a:c2:31",
+          "eth_type": "0x800",
+          "ipv4_src": "10.0.0.4",
+          "ipv4_dst": "10.0.0.1"
+        },
+        "actions": {
+          "actions": "output=1"
+        }
+      },
+      {
+        "version": "OF_10",
+        "cookie": "9007200345260032",
+        "table_id": "0x0",
+        "packet_count": "1",
+        "byte_count": "98",
+        "duration_sec": "4",
+        "duration_nsec": "235000000",
+        "priority": "1",
+        "idle_timeout_s": "5",
+        "hard_timeout_s": "0",
+        "match": {
+          "in_port": "1",
+          "eth_src": "5e:c6:d3:6a:c2:31",
+          "eth_dst": "26:24:c2:27:10:d6",
+          "eth_type": "0x800",
+          "ipv4_src": "10.0.0.1",
+          "ipv4_dst": "10.0.0.4"
+        },
+        "actions": {
+          "actions": "output=2"
+        }
+      }
+    ]
+  }
+}

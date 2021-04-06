@@ -186,7 +186,7 @@
 
         //kwm:set the showPopup function is there
         network.on("showPopup", function (params) {
-            //kwm: the params in there is the s+mac or h+mac
+            //kwm: the params in there is the s+mac or h+mac; it is the ID of the element;
             //kwm: the substring(1) is the mac of the host or switch
             if (params.charAt(0) == 's') {
                 var id = params.substring(1);
@@ -287,7 +287,7 @@
                 for (var i = 0; i < devicesobject["devices"].length; i++) {
                     if (devicesobject["devices"][i]["mac"] == id){
                         //kwm: assume that every host only have one port attached.
-                        hostString +="&nbsp;&nbsp;&nbsp;Using Port: " + JSON.stringify(devicesobject["devices"][i]["attachmentPoint"][0]["port"]);
+                        hostString +="&nbsp;&nbsp;&nbsp;Using Switch Port: " + JSON.stringify(devicesobject["devices"][i]["attachmentPoint"][0]["port"]);
                         hostString += "<br>";
                         break;
                     }
@@ -312,7 +312,8 @@
 
                     flowString += "Flow " + i + ":";
                     flowString += "<br>&nbsp;&nbsp;&nbsp;Packet count: " + JSON.stringify(flowobject["flows"][i]["packet_count"]);
-                    flowString += "<br>&nbsp;&nbsp;&nbsp;Matches: " + JSON.stringify(flowobject["flows"][i]["match"]);
+                    flowString += "<br>&nbsp;&nbsp;&nbsp;Input port: " + flowobject["flows"][i]["match"]["in_port"];
+                    flowString += "<br>&nbsp;&nbsp;&nbsp;Path ID: from" + flowobject["flows"][i]["match"]["eth_src"] +  " ==> "+flowobject["flows"][i]["match"]["eth_dst"];
                     if (flowobject["flows"][i]["version"] == "OF_13") {
                         flowString += "<br>&nbsp;&nbsp;&nbsp;Actions: " + JSON.stringify(flowobject["flows"][i]["instructions"]["instruction_apply_actions"]["actions"]);
                     }
