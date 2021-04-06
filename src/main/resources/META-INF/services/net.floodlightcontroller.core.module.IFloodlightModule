@@ -34,3 +34,4 @@ net.floodlightcontroller.multicasting.MulticastManager
 net.floodlightcontroller.qos.ResourceMonitor.Impl.MonitorDelayServiceImpl
 net.floodlightcontroller.qos.ResourceMonitor.Impl.MonitorPkLossServiceImpl
 net.floodlightcontroller.qos.ResourceMonitor.Impl.QosResourceMonitorImpl
+net.floodlightcontroller.staticCache.StaticCacheManager

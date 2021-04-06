@@ -40,6 +40,7 @@ public class MulticastManager implements IOFMessageListener, IFloodlightModule, 
     protected IFloodlightProviderService floodlightProvider;
     protected IOFSwitchService switchService;
     protected ITopologyService topologyService;
+    protected OFMessageDamper messageDamper;
 
     // Multicast Data structure
     private ConcurrentHashMap<IPv4Address, MulticastGroup> multicastGroupInfoTable = new ConcurrentHashMap<>();
@@ -88,7 +89,7 @@ public class MulticastManager implements IOFMessageListener, IFloodlightModule, 
     protected static boolean FLOWMOD_DEFAULT_MATCH_TRANSPORT_DST = true;
     protected static boolean FLOWMOD_DEFAULT_MATCH_TCP_FLAG = true;
 
-    protected OFMessageDamper messageDamper;
+
     private static int OFMESSAGE_DAMPER_CAPACITY = 10000;
     private static int OFMESSAGE_DAMPER_TIMEOUT = 250; // ms
 
@@ -938,7 +939,7 @@ public class MulticastManager implements IOFMessageListener, IFloodlightModule, 
                     for (MulticastGroup mcGroup : multicastGroupInfoTable.values()) {
                         if (!mcGroup.getMulticastTreeInfoTable().isEmpty()) {
                             for (MulticastTree mcTree : mcGroup.getMulticastTreeInfoTable().values()) {
-                                if (mcTree.getSourceValidTime() != null && (mcTree.getSourceValidTime().getTime() + 10000) < System.currentTimeMillis()) {
+                                if (mcTree.getSourceValidTime() != null && (mcTree.getSourceValidTime().getTime() + 10000) < System.currentTimeMillis()) {  // provide 10 seconds redundancy for outdated source live time
                                     IPv4Address removedSource = mcTree.getSourceAddress();
                                     mcGroup.getMulticastSources().remove(removedSource);
                                     mcGroup.getMulticastTreeInfoTable().remove(removedSource);
