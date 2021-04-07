@@ -28,6 +28,7 @@
     <!-- Custom Fonts -->
     <link href="../bower_components/font-awesome/css/font-awesome.min.css" rel="stylesheet" type="text/css">
     <link href="https://cdn.datatables.net/1.10.11/css/jquery.dataTables.min.css" rel="stylesheet" type="text/css">
+    <script src="../../../../../../../../../floodlight/src/main/resources/web/js/navbar.js"></script>
     <!-- HTML5 Shim and Respond.js IE8 support of HTML5 elements and media queries -->
     <!-- WARNING: Respond.js doesn't work if you view the page via file:// -->
     <!--[if lt IE 9]>
@@ -124,15 +125,15 @@
                         </div>
                         <!-- /.table-responsive -->
                     </div>
-                    <!-- /.panel-body -->
-                    <!--<div class="form-inline">-->
-                        <!--<button type="reset" class="btn btn-success" id="hopcountButton"-->
-                                <!--onclick="setMetricToHopCount()">Hop Count-->
-                        <!--</button>-->
-                        <!--<button type="reset" class="btn btn-default" id="latencyButton" onclick="setMetricToLatency()">-->
-                            <!--Latency-->
-                        <!--</button>-->
-                    <!--</div>-->
+                     /.panel-body
+                    <div class="form-inline">
+                        <button type="reset" class="btn btn-success" id="hopcountButton"
+                                onclick="setMetricToHopCount()">Hop Count
+                        </button>
+                        <button type="reset" class="btn btn-default" id="latencyButton" onclick="setMetricToLatency()">
+                            Latency
+                        </button>
+                    </div>
                 </div>
                 <!-- /.panel -->
 
@@ -264,8 +265,10 @@
 
         routeTable.clear();
         console.log('tableRoutes load attempt');
+        //kwmtodo: wrong url?
         routeTable.ajax.url("http://" + ipaddress + ":" + restport +
-                "/wm/topology/routes/" + src + "/" + dst + "/" + num + "/json").load();
+                "/wm/routing/paths/" + src + "/" + dst + "/" + num + "/json").load();
+        console.log(routeTable);
         console.log('tableRoutes post load attempt');
 
 
@@ -299,10 +302,12 @@
             "info": false,
             "searching": false,
             lengthChange: false,
-            ajax: {
-                url: "http://" + ipaddress + ":" + restport + "/wm/core/health/json",
-                dataSrc: ''
-            },
+            //kwmtodo: try to fix it
+            data: '',
+            // ajax: {
+            //     url: "http://" + ipaddress + ":" + restport + "/wm/core/health/json",
+            //     dataSrc: ''
+            // },
             "columnDefs": [
                 {
                     "targets": [3],
