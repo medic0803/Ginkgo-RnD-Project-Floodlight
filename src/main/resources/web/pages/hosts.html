@@ -170,18 +170,15 @@
                 url: url,
                 dataSrc: 'devices'
             },
-            "createdRow": function (data) {
-                data.lastSeen = Date(data.lastSeen);
-                console.log(data);
-            },
-
             columns: [
                 {data: 'mac'},
                 {data: 'ipv4'},
                 {data: 'ipv6'},
                 {data: 'attachmentPoint[0].switch'},
                 {data: 'attachmentPoint[0].port'},
-                {data: 'lastSeen'}
+                {data: function (row) {
+                        return Date(row.lastSeen)
+                    }}
             ]
         });
 
