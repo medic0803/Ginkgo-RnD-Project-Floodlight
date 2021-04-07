@@ -287,7 +287,7 @@
                 for (var i = 0; i < devicesobject["devices"].length; i++) {
                     if (devicesobject["devices"][i]["mac"] == id){
                         //kwm: assume that every host only have one port attached.
-                        hostString +="&nbsp;&nbsp;&nbsp;Using Switch Port: " + JSON.stringify(devicesobject["devices"][i]["attachmentPoint"][0]["port"]);
+                        hostString +=" Using Switch Port: " + JSON.stringify(devicesobject["devices"][i]["attachmentPoint"][0]["port"]);
                         hostString += "<br>";
                         break;
                     }
@@ -297,6 +297,19 @@
         return hostString;
     }
     function parseFlows(id) {
+        var mac2ip = new Map();
+        $.ajax({
+            url: "http://" + ipaddress + ":" + restport + "/wm/device/",
+            dataType: 'json',
+            async: false,
+            success: function(data_response){
+                for (var i = 0; i < data_response.devices.length; i++) {
+                    //kwm:it it strange that it gives array object return here as mac and ipv4
+                    mac2ip.set(data_response.devices[i].mac[0],data_response.devices[i].ipv4[0]);
+                }
+            }
+        });
+
         var flowString = "";
         $.ajax({
             url: "http://" + ipaddress + ":" + restport + "/wm/core/switch/" + id + "/flow/json",
@@ -304,16 +317,10 @@
             success: function (flowobject) {
                 for (var i = 0; i < flowobject["flows"].length; i++) {
                     //kwmtodo:shows flow stats in the popup
-                    //kwm the 变量必须存在, otherwise, it will not show in the page and stop!
-                    if (flowobject["flows"][i]["cookie"]!= "0"){
-                        console.log("there is the info of match "+flowobject["flows"][i]["match"]["in_port"]);
-                        console.log("there is the info of match "+flowobject["flows"][i]["match"]["eth_dst"]);
-                    }
-
                     flowString += "Flow " + i + ":";
                     flowString += "<br>&nbsp;&nbsp;&nbsp;Packet count: " + JSON.stringify(flowobject["flows"][i]["packet_count"]);
                     flowString += "<br>&nbsp;&nbsp;&nbsp;Input port: " + flowobject["flows"][i]["match"]["in_port"];
-                    flowString += "<br>&nbsp;&nbsp;&nbsp;Path ID: from" + flowobject["flows"][i]["match"]["eth_src"] +  " ==> "+flowobject["flows"][i]["match"]["eth_dst"];
+                    flowString += "<br>&nbsp;&nbsp;&nbsp;Path ID: from" + mac2ip.get(flowobject["flows"][i]["match"]["eth_src"]) +  " ==> "+ mac2ip.get(flowobject["flows"][i]["match"]["eth_dst"]);
                     if (flowobject["flows"][i]["version"] == "OF_13") {
                         flowString += "<br>&nbsp;&nbsp;&nbsp;Actions: " + JSON.stringify(flowobject["flows"][i]["instructions"]["instruction_apply_actions"]["actions"]);
                     }

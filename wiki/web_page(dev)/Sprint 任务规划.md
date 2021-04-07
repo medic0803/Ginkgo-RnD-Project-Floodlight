@@ -1,12 +1,12 @@
-# Sprint 任务规划
+
 
 
 
 ```mermaid
 gantt
 dateFormat  YYYY-MM-DD
-title 软件开发甘特图
-    section 设计
+title sprint甘特图
+section sprint1
     需求                      :done,    des1, 2014-01-06,2014-01-08
     原型                      :active,  des2, 2014-01-09, 3d
     UI设计                     :         des3, after des2, 5d
@@ -24,13 +24,20 @@ section 测试
 ```
 ## 5 -11
 
-结束,清理当前分支的任务。
+结束,清理当前分支的任务。结束web页面的一些尝试性功能包括，statistic页面下的flowtable，以及topology页面上的host弹窗；
 
-创建新分支并开始。
+- 需求，以testcase列举：
 
-```mermaid
+  - flowtable 在有流表时，能在flowtable中记录并显示所有的流表；
+  - topology中，host在第二次触发popup 弹窗时，能够显示其attachment端口信息；
+  - 删除不必要的switch popup 中的信息，变简洁。
 
-```
+  
+
+创建新分支并开始。非实时的json数据格式
+
+
+
 ## 12-18
 
 ## 19-25

@@ -277,7 +277,6 @@
             }
         });
 
-        //kwmtodo: get the mac-host map
         var mac2ip = new Map();
         $.ajax({
             url: "http://" + ipaddress + ":" + restport + "/wm/device/",
@@ -292,7 +291,7 @@
         });
 
         //kwmtodo: why this over 288?
-
+        //kwm: the function will run more round , i feeling
         var tb = $('#tableFlows').DataTable({
             responsive: true,
             searching: false,
@@ -308,7 +307,7 @@
                     data:"match",
                     render: function(data,type,row,meta){
                         // if (JSON.stringify(data) == "{}") return data = "Empty";
-                        return data.eth_src+"<br>"+"The way from "+ mac2ip.get(data.eth_src)+" to "+ mac2ip.get(data.eth_dst)+"<br>";
+                        return "The Path from "+ mac2ip.get(data.eth_src)+" to "+ mac2ip.get(data.eth_dst)+"<br>";
                     }
                 },
                 {
@@ -326,7 +325,8 @@
                 },
                 {
                     data:function (row) {
-                        return
+                        var d = new Date();
+                        return d;
                     }
                 }
                 ]
