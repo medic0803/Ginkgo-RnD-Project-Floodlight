@@ -652,6 +652,7 @@ public class TopologyInstance {
 
     /*
      * Creates a map of links and the cost associated with each link
+     * kwmtodo: check the link cost ?
      */
     public Map<Link,Integer> initLinkCostMap() {
         Map<Link, Integer> linkCost = new HashMap<Link, Integer>();

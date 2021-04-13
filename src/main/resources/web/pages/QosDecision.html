@@ -74,7 +74,7 @@
                             </div>
                             <div class="col-xs-9 text-right">
                                 <div class="huge" id="firewallStatus">...</div>
-                                <div>QoS Strategy Status<a href="#" class="btn btn-xs btn-default"
+                                <div>QoS Strategy Status <a href="#" class="btn btn-xs btn-default"
                                                         data-toggle="modal"
                                                         data-target="#status-modal">Change</a></div>
                             </div>
@@ -170,7 +170,7 @@
 
         <div class="row">
             <div class="col-lg-12">
-                <a href="#" class="btn btn-sm btn-primary" data-toggle="modal" data-target="#addRuleModal">Add New Strategy</a>
+                <a href="#" class="btn btn-sm btn-primary" data-toggle="modal" data-target="#addStrategyModal">Add New Strategy</a>
             </div>
             <br/><br/>
         </div>
@@ -186,7 +186,7 @@
                     <div class="panel-body">
 
                         <table class="table table-bordered table-hover table-responsive responsive-utilities"
-                               id="ruleTable" width="100%">
+                               id="strategyTable" width="100%">
                             <thead>
                             <tr>
 <!--                   kwmtodo change the table columns -->
@@ -207,8 +207,8 @@
             </div>
         </div>
 
-        <!-- Add Rule-->
-        <div class="modal fade" tabindex="-1" id="addRuleModal" role="dialog" aria-hidden="true">
+        <!-- Add strategy-->
+        <div class="modal fade" tabindex="-1" id="addStrategyModal" role="dialog" aria-hidden="true">
             <div class="modal-dialog modal-lg">
                 <div class="modal-content">
                     <div class="modal-header">
@@ -216,7 +216,7 @@
                                 aria-label="Close">
                             <span aria-hidden="true">×</span>
                         </button>
-                        <h4 class="modal-title" id="myModalLabel2">Create Rule</h4>
+                        <h4 class="modal-title" id="myModalLabel2">Create Strategy</h4>
                     </div>
                     <div class="modal-body">
                         <div class="form-group">
@@ -232,11 +232,10 @@
                             <label>Cache IPv4</label>
                             <input class="form-control" type="text" id="cache-ip" placeholder="A.B.C.D/M">
                         </div>
-
                     </div>
                     <div class="modal-footer">
                         <button type="button" class="btn btn-sm btn-default" data-dismiss="modal">Cancel</button>
-                        <button type="button" id="btnAddRule" class="btn btn-sm btn-primary">Create</button>
+                        <button type="button" id="btnAddStrategy" class="btn btn-sm btn-primary">Create</button>
                     </div>
                 </div>
             </div>
@@ -356,7 +355,7 @@
         });
     }
 
-    //kwmtodo: change content for decision?
+    //kwmtodo: change content for strategy?
     function OpenFirewall() {
         $.ajax({
             type    : "PUT",
@@ -444,40 +443,26 @@
         });
     }
 
-    $("#btnAddRule").click(function () {
-        // kwmtodo: change the add rule function
-
-        var switchid = $("#switchid").val();
-        var src_inport = $("#src-inport").val();
-        var src_mac = $("#src-mac").val();
-        var dst_mac = $("#dst-mac").val();
-        var dl_type = "";
-        if ($("#rbARP").is(':checked')) dl_type = "ARP";
-        else dl_type = "IPV4";
-
-        var nw_proto = "";
-
-        if ($("#rbTCP").is(':checked')) nw_proto = "TCP";
-        else if ($("#rbUDP").is(':checked')) nw_proto = "UDP";
-        else nw_proto = "ICMP";
-
-        var tp_src = $("#tp-src").val();
-        var tp_dst = $("#tp-dst").val();
-        var priority = $("#priority").val();
-        var dst_ip = $("#dst-ip").val();
+    // kwmtodo:add strategy Button
+    $("#btnAddStrategy").click(function () {
+        //kwm: get input from table
         var src_ip = $("#src-ip").val();
+        var dst_ip = $("#dst-ip").val();
+        var dst_port = $("#dst-port").val();
+        var priority = $("#priority").val();
+        var cache_ip = $("#cache-ip").val();
 
+        //kwmtodo: need the action?
         var action = "";
-        if ($("#rbDeny").is(':checked')) action = "DENY";
-        else action = "ALLOW";
-
-        if (switchid != "" || src_inport != "" || src_mac != "" || dst_mac != "" || dl_type != "" || nw_proto != "" || tp_src != "" || tp_dst != "" || priority != "" || dst_ip != "" || src_ip != "" || action != "") {
-
-            AddFirewallRule(switchid, src_inport, src_mac, dst_mac, dl_type, nw_proto, tp_src, tp_dst, priority, dst_ip, src_ip, action);
-
+        // if ($("#rbDeny").is(':checked')) action = "DENY";
+        // else action = "ALLOW";
+        // if (src_ip != "" || dst_ip != "" || dst_port != "" || priority != "" || cache_ip != "" || action != "") {
+        //     AddFirewallRule(switchid, src_inport, src_mac, dst_mac, dl_type, nw_proto, tp_src, tp_dst, priority, dst_ip, src_ip, action);
+        // }
+        if (src_ip != "" || dst_ip != "" || dst_port != "" || priority != "" || cache_ip != "") {
+            AddQoSStrategy(src_ip, dst_ip, cache_ip, dst_port, priority,cache_ip);
         }
         else {
-
             new PNotify({
                 title: 'Enter a value !',
                 text : 'Please enter a valid value!',
@@ -487,37 +472,30 @@
         }
     });
 
-    function AddFirewallRule(switchid, src_inport, src_mac, dst_mac, dl_type, nw_proto, tp_src, tp_dst, priority, dst_ip, src_ip, action) {
+    function AddQoSStrategy(src_ip, dst_ip, cache_ip, dst_port, priority,cache_ip) {
         var postData = "";
-        postData = '{ "switchid":' + "\"" + switchid + "\""
-            + ',"src-inport" :' + "\"" + src_inport + "\""
-            + ',"src-mac" :' + "\"" + src_mac + "\""
-            + ',"dst-mac" :' + "\"" + dst_mac + "\""
-            + ',"dl-type":' + "\"" + dl_type + "\""
-            + ',"nw-proto": ' + "\"" + nw_proto + "\""
-            + ',"tp-src" : ' + "\"" + tp_src + "\""
-            + ',"tp-dst": ' + "\"" + tp_dst + "\""
-            + ',"priority": ' + "\"" + priority + "\""
-            + ',"dst-ip": ' + "\"" + dst_ip + "\""
-            + ',"src-ip": ' + "\"" + src_ip + "\""
-            + ',"action": ' + "\"" + action + "\"" + '}';
+        postData = '{ "src-ip":' + "\"" + src_ip + "\""
+            + ',"dst-ip" :' + "\"" + dst_ip + "\""
+            + ',"dst-port" :' + "\"" + dst_port + "\""
+            + ',"priority" :' + "\"" + priority + "\""
+            + ',"cache-ip":' + "\"" + cache_ip + "\""+ '}';
 
         $.ajax({
             type    : "POST",
             dataType: 'json',
+            //kwmtodo:[URL]    change the url
             url     : "http://" + ipaddress + ":" + restport + "/wm/firewall/rules/json",
             data    : postData,
+            //kwmtodo: set return as Strategy added
             success : function (data) {
-
-                if (data["status"] == "Rule added") {
+                if (data["status"] == "Strategy added") {
                     new PNotify({
-                        title: 'Rule is added!',
-                        text : 'New rule is successfully added.',
+                        title: 'Strategy is added!',
+                        text : 'New Strategy is successfully added.',
                         type : 'success',
                         hide : true
                     });
-
-                    GetRules();
+                    GetStrategies();
                 }
                 else {
 
@@ -537,17 +515,17 @@
 
     }
 
-    GetRules();
+    GetStrategies();
 
-    function GetRules() {
-
+    function GetStrategies() {
+        //kwmtodo:[URL]   change the url
         var url = "http://" + ipaddress + ":" + restport + "/wm/firewall/rules/json";
 
         $(document).ready(function () {
 
-            $('#ruleTable').DataTable().destroy();
+            $('#StrategyTable').DataTable().destroy();
 
-            $('#ruleTable').DataTable({
+            $('#StrategyTable').DataTable({
                 responsive  : true,
                 lengthChange: false,
                 searching: false,
@@ -563,29 +541,20 @@
                         // `data` option, which defaults to the column being worked with, in
                         // this case `data: 0`.
                         "render" : function (data, type, row) {
-                            return "<a class='btn btn-xs btn-danger' onclick='DeleteRule(" + data + ")' >Delete</<a>";
+                            return "<a class='btn btn-xs btn-danger' onclick='DeleteStrategy(" + data + ")' >Delete</<a>";
                         },
                         "targets": 15
                     }
 
                 ],
                 columns     : [
-                    {data: 'ruleid'},
-                    {data: 'dpid'},
-                    {data: 'in_port'},
-                    {data: 'dl_src'},
-                    {data: 'dl_dst'},
-                    {data: 'dl_type'},
-                    {data: 'nw_src_prefix'},
-                    {data: 'nw_src_maskbits'},
-                    {data: 'nw_dst_prefix'},
-                    {data: 'nw_dst_maskbits'},
-                    {data: 'nw_proto'},
-                    {data: 'tp_src'},
-                    {data: 'tp_dst'},
+                    //kwmtodo:[server] return a trategyid
+                    {data: 'strategyid'},
+                    {data: 'src_ip'},
+                    {data: 'dst_ip'},
+                    {data: 'dst_port'},
                     {data: 'priority'},
-                    {data: 'action'},
-                    {data: 'ruleid'},
+                    {data: 'cache_ip'}
                 ]
             });
 
@@ -593,25 +562,24 @@
 
     }
 
-    function DeleteRule(ruleId) {
+    function DeleteStrategy(strategyid) {
 
-        if (confirm("Rule will be deleted. To continue press 'OK'!")) {
-
+        if (confirm("Strategy will be deleted. To continue press 'OK'!")) {
+//kwmtodo:[server]  receive delete json
             $.ajax({
                 type    : "DELETE",
                 dataType: 'json',
                 url     : "http://" + ipaddress + ":" + restport + "/wm/firewall/rules/json",
-                data    : '{ "ruleid":' + "\"" + ruleId + "\"" + '}',
+                data    : '{ "strategyid":' + "\"" + strategyid + "\"" + '}',
                 success : function (data) {
-
                     new PNotify({
-                        title: 'Rule deleted!',
-                        text : 'Rule is successfully deleted.',
+                        title: 'Strategy deleted!',
+                        text : 'Strategy is successfully deleted.',
                         type : 'success',
                         hide : true
                     });
 
-                    GetRules();
+                    GetGetStrategies();
 
                 },
                 error   : function (jqXHR, textStatus, errorThrown) {
