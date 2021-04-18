@@ -9,8 +9,6 @@ import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.module.FloodlightModuleException;
 import net.floodlightcontroller.core.module.IFloodlightModule;
 import net.floodlightcontroller.core.module.IFloodlightService;
-import net.floodlightcontroller.firewall.FirewallRule;
-import net.floodlightcontroller.firewall.FirewallWebRoutable;
 import net.floodlightcontroller.packet.Ethernet;
 import net.floodlightcontroller.restserver.IRestApiService;
 import net.floodlightcontroller.staticCache.web.StaticCacheStrategy;
@@ -80,6 +78,7 @@ public class StaticCacheManager implements IOFMessageListener, IFloodlightModule
         Collection<Class<? extends IFloodlightService>> l =
                 new ArrayList<Class<? extends IFloodlightService>>();
         l.add(IFloodlightProviderService.class);
+        l.add(IRestApiService.class);
         return l;
     }
 
@@ -104,5 +103,10 @@ public class StaticCacheManager implements IOFMessageListener, IFloodlightModule
         System.out.println("8*****************************************************");
 
         //wrftodo: invoke strategy implement method.
+    }
+
+    @Override
+    public List<StaticCacheStrategy> getStrategies() {
+        return this.strategies;
     }
 }

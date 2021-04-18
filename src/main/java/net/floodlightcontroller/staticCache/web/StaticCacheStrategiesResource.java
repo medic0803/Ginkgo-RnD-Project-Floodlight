@@ -4,8 +4,6 @@ import com.fasterxml.jackson.core.JsonParseException;
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.JsonToken;
 import com.fasterxml.jackson.databind.MappingJsonFactory;
-import net.floodlightcontroller.firewall.FirewallRule;
-import net.floodlightcontroller.firewall.IFirewallService;
 import net.floodlightcontroller.staticCache.IStaticCacheService;
 import org.projectfloodlight.openflow.types.*;
 import org.restlet.resource.Get;
@@ -21,15 +19,14 @@ public class StaticCacheStrategiesResource extends ServerResource {
     protected static Logger log = LoggerFactory.getLogger(StaticCacheStrategiesResource.class);
 
     @Get("json")
-//    @Get
-//    public List<StaticCacheStrategy> retrieve() {
-    public String retrieve() {
+    public List<StaticCacheStrategy> retrieve() {
+//    public String retrieve() {
         System.out.println("testsf****************************");
         IStaticCacheService staticCache =
                 (IStaticCacheService)getContext().getAttributes().
                         get(IStaticCacheService.class.getCanonicalName());
 
-        return "hahah";
+        return staticCache.getStrategies();
     }
 
     @Post
@@ -82,7 +79,7 @@ public class StaticCacheStrategiesResource extends ServerResource {
                 // This is currently only applicable for remove().  In store(), ruleid takes a random number
                 if (currentName.equalsIgnoreCase("ruleid")) {
                     try {
-                        strategy.ruleid = Integer.parseInt(jsonParser.getText());
+                        strategy.strategyid = Integer.parseInt(jsonParser.getText());
                     } catch (IllegalArgumentException e) {
                         log.error("Unable to parse rule ID: {}", jsonParser.getText());
                     }

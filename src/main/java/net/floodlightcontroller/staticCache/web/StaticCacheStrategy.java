@@ -1,11 +1,13 @@
 package net.floodlightcontroller.staticCache.web;
 
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import org.projectfloodlight.openflow.types.*;
 
+@JsonSerialize(using=StaticCacheStrategySerilalizer.class)
 public class StaticCacheStrategy {
     //kwm: local vareities
     // src_ip, dst_ip, cache_ip, dst_port, priority,cache_ip
-    public int ruleid = 0;
+    public int strategyid = 0;
     public IPv4AddressWithMask nw_src_prefix_and_mask;
     public IPv4AddressWithMask nw_dst_prefix_and_mask;
     public IPv4AddressWithMask nw_cache_prefix_and_mask;
@@ -14,7 +16,7 @@ public class StaticCacheStrategy {
 
     //kwm: 空参的构造器
     public StaticCacheStrategy( ) {
-        this.ruleid = 0;
+        this.strategyid = 0;
         this.nw_src_prefix_and_mask = IPv4AddressWithMask.NONE;
         this.nw_dst_prefix_and_mask = IPv4AddressWithMask.NONE;
         this.nw_cache_prefix_and_mask = IPv4AddressWithMask.NONE;
