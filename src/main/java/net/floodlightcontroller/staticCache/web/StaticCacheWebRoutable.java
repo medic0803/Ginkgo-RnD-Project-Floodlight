@@ -9,7 +9,7 @@ public class StaticCacheWebRoutable implements RestletRoutable {
     @Override
     public Restlet getRestlet(Context context) {
         Router router = new Router(context);
-        router.attach("strategies/json", StaticCacheStrategiesResource.class);
+        router.attach("/strategies/json", StaticCacheStrategiesResource.class);
         return null;
     }
 

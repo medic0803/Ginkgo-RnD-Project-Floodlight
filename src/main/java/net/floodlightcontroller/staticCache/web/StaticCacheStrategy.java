@@ -8,6 +8,7 @@ public class StaticCacheStrategy {
     public int ruleid = 0;
     public IPv4AddressWithMask nw_src_prefix_and_mask;
     public IPv4AddressWithMask nw_dst_prefix_and_mask;
+    public IPv4AddressWithMask nw_cache_prefix_and_mask;
     public TransportPort tp_dst;
     public int priority = 0;
 
@@ -16,6 +17,7 @@ public class StaticCacheStrategy {
         this.ruleid = 0;
         this.nw_src_prefix_and_mask = IPv4AddressWithMask.NONE;
         this.nw_dst_prefix_and_mask = IPv4AddressWithMask.NONE;
+        this.nw_cache_prefix_and_mask = IPv4AddressWithMask.NONE;
         this.tp_dst = TransportPort.NONE;
         this.priority = 0;
     }

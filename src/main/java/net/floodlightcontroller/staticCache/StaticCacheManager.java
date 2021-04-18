@@ -10,8 +10,11 @@ import net.floodlightcontroller.core.module.FloodlightModuleException;
 import net.floodlightcontroller.core.module.IFloodlightModule;
 import net.floodlightcontroller.core.module.IFloodlightService;
 import net.floodlightcontroller.firewall.FirewallRule;
+import net.floodlightcontroller.firewall.FirewallWebRoutable;
 import net.floodlightcontroller.packet.Ethernet;
+import net.floodlightcontroller.restserver.IRestApiService;
 import net.floodlightcontroller.staticCache.web.StaticCacheStrategy;
+import net.floodlightcontroller.staticCache.web.StaticCacheWebRoutable;
 import net.floodlightcontroller.topology.ITopologyService;
 import net.floodlightcontroller.util.OFMessageDamper;
 import org.projectfloodlight.openflow.protocol.OFMessage;
@@ -28,6 +31,9 @@ public class StaticCacheManager implements IOFMessageListener, IFloodlightModule
     protected IOFSwitchService switchService;
     protected ITopologyService topologyService;
     protected OFMessageDamper messageDamper;
+    protected IRestApiService restApi;
+
+
     protected List<StaticCacheStrategy> strategies;
 
     @Override
@@ -81,10 +87,12 @@ public class StaticCacheManager implements IOFMessageListener, IFloodlightModule
     public void init(FloodlightModuleContext context) throws FloodlightModuleException {
         floodlightProvider = context.getServiceImpl(IFloodlightProviderService.class);
         strategies = new ArrayList<StaticCacheStrategy>();
+        restApi = context.getServiceImpl(IRestApiService.class);
     }
     @Override
     public void startUp(FloodlightModuleContext context) throws FloodlightModuleException {
         floodlightProvider.addOFMessageListener(OFType.PACKET_IN, this);
+        restApi.addRestletRoutable(new StaticCacheWebRoutable());
     }
 
     /*
@@ -93,6 +101,8 @@ public class StaticCacheManager implements IOFMessageListener, IFloodlightModule
     @Override
     public void addStrategy(StaticCacheStrategy strategy) {
         this.strategies.add(strategy);
+        System.out.println("8*****************************************************");
+
         //wrftodo: invoke strategy implement method.
     }
 }
