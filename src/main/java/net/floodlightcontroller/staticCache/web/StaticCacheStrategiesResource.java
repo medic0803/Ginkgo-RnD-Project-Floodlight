@@ -135,6 +135,7 @@ public class StaticCacheStrategiesResource extends ServerResource {
 //                    strategy.any_tp_dst = false;
                     try {
                         strategy.tp_dst = TransportPort.of(Integer.parseInt(jsonParser.getText()));
+                        System.out.println("#####################" + strategy.tp_dst);
                     } catch (IllegalArgumentException e) {
                         log.error("Unable to parse destination transport port: {}", jsonParser.getText());
                         //TODO should return some error message via HTTP message

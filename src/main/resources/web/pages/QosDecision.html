@@ -190,6 +190,7 @@
                             <thead>
                             <tr>
 <!--                   kwmtodo change the table columns -->
+                                <th>ID</th>
                                 <th>Src IP</th>
                                 <th>Dest IP</th>
                                 <th>Dest Port</th>
@@ -476,7 +477,7 @@
         var postData = "";
         postData = '{ "src-ip":' + "\"" + src_ip + "\""
             + ',"dst-ip" :' + "\"" + dst_ip + "\""
-            + ',"dst-port" :' + "\"" + dst_port + "\""
+            + ',"tp-dst" :' + "\"" + dst_port + "\""
             + ',"priority" :' + "\"" + priority + "\""
             + ',"cache-ip":' + "\"" + cache_ip + "\""+ '}';
 
@@ -520,12 +521,11 @@
     function GetStrategies() {
         //kwmtodo:[URL]   change the url
         var url = "http://" + ipaddress + ":" + restport + "/wm/staticcachepusher/strategies/json";
-
         $(document).ready(function () {
 
-            $('#StrategyTable').DataTable().destroy();
+            $('#strategyTable').DataTable().destroy();
 
-            $('#StrategyTable').DataTable({
+            $('#strategyTable').DataTable({
                 responsive  : true,
                 lengthChange: false,
                 searching: false,
@@ -549,13 +549,13 @@
                 ],
                 columns     : [
                     //kwmtodo:[server] return a trategyid
-                    {data: 'strategy-id'},
+                    {data: 'strategyid'},
                     {data: 'src_ip'},
                     {data: 'dst_ip'},
-                    {data: 'dst_port'},
+                    {data: 'tp_dst'},
                     {data: 'priority'},
                     {data: 'cache_ip'},
-                    {data: 'strategy-id'}
+                    {data: 'strategyid'}
                 ]
             });
 
