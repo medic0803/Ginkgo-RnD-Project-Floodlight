@@ -44,7 +44,7 @@ public class StaticCacheStrategiesResource extends ServerResource {
         staticCache.addStrategy(strategy);
         status = "Strategy added";
         //kwmtodo: return statement
-        return null;
+        return ("{\"status\" : \"" + status + "\", \"strategy-id\" : \""+ Integer.toString(strategy.strategyid) + "\"}");
     }
 
 

@@ -70,6 +70,7 @@ public class StaticCacheManager implements IOFMessageListener, IFloodlightModule
     @Override
     public Map<Class<? extends IFloodlightService>, IFloodlightService> getServiceImpls() {
         Map<Class<? extends IFloodlightService>, IFloodlightService> m = new HashMap<Class<? extends IFloodlightService>, IFloodlightService>();
+        m.put(IStaticCacheService.class, this);
         return m;
     }
 

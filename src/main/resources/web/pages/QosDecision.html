@@ -460,7 +460,7 @@
         //     AddFirewallRule(switchid, src_inport, src_mac, dst_mac, dl_type, nw_proto, tp_src, tp_dst, priority, dst_ip, src_ip, action);
         // }
         if (src_ip != "" || dst_ip != "" || dst_port != "" || priority != "" || cache_ip != "") {
-            AddQoSStrategy(src_ip, dst_ip, cache_ip, dst_port, priority,cache_ip);
+            AddQoSStrategy(src_ip, dst_ip, dst_port, priority, cache_ip);
         }
         else {
             new PNotify({
@@ -519,7 +519,7 @@
 
     function GetStrategies() {
         //kwmtodo:[URL]   change the url
-        var url = "http://" + ipaddress + ":" + restport + "/wm/firewall/rules/json";
+        var url = "http://" + ipaddress + ":" + restport + "/wm/staticcachepusher/strategies/json";
 
         $(document).ready(function () {
 
@@ -543,18 +543,19 @@
                         "render" : function (data, type, row) {
                             return "<a class='btn btn-xs btn-danger' onclick='DeleteStrategy(" + data + ")' >Delete</<a>";
                         },
-                        "targets": 15
+                        "targets": 6
                     }
 
                 ],
                 columns     : [
                     //kwmtodo:[server] return a trategyid
-                    {data: 'strategyid'},
+                    {data: 'strategy-id'},
                     {data: 'src_ip'},
                     {data: 'dst_ip'},
                     {data: 'dst_port'},
                     {data: 'priority'},
-                    {data: 'cache_ip'}
+                    {data: 'cache_ip'},
+                    {data: 'strategy-id'}
                 ]
             });
 
