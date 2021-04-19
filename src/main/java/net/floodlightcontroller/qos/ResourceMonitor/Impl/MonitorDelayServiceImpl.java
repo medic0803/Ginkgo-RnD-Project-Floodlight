@@ -10,12 +10,15 @@ import net.floodlightcontroller.linkdiscovery.Link;
 import net.floodlightcontroller.linkdiscovery.internal.LinkInfo;
 import net.floodlightcontroller.qos.ResourceMonitor.MonitorDelayService;
 import net.floodlightcontroller.qos.ResourceMonitor.pojo.LinkEntry;
+import net.floodlightcontroller.threadpool.IThreadPoolService;
 import org.projectfloodlight.openflow.types.DatapathId;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.*;
 import java.util.Map.Entry;
+import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.TimeUnit;
 
 /**
  * @author Michael Kang
@@ -26,6 +29,14 @@ public class MonitorDelayServiceImpl implements MonitorDelayService, IFloodlight
     private static final Logger logger = LoggerFactory.getLogger(MonitorDelayServiceImpl.class);
     private ILinkDiscoveryService linkDiscoveryService;
     private Map<LinkEntry<DatapathId, DatapathId>, Integer> linkDelaySecMap;
+    private Map<LinkEntry<DatapathId, DatapathId>, Integer> linkJitterSecMap;
+
+    private Map<LinkEntry<DatapathId, DatapathId>, Integer> first_JitterStampMap;
+    private Map<LinkEntry<DatapathId, DatapathId>, Integer> sceond_JitterStampMap;
+
+    private static IThreadPoolService threadPoolService;
+    private static ScheduledFuture<?> jitterCollector;
+    private static int jitterInterval = 10;
 
     /**
      * Return the list of interfaces that this module implements.
@@ -83,6 +94,8 @@ public class MonitorDelayServiceImpl implements MonitorDelayService, IFloodlight
     @Override
     public void init(FloodlightModuleContext context) throws FloodlightModuleException {
         linkDiscoveryService = context.getServiceImpl(ILinkDiscoveryService.class);
+        linkDelaySecMap =  new HashMap<>();
+        linkJitterSecMap = new HashMap<>();
     }
 
     /**
@@ -97,6 +110,7 @@ public class MonitorDelayServiceImpl implements MonitorDelayService, IFloodlight
      */
     @Override
     public void startUp(FloodlightModuleContext context) throws FloodlightModuleException {
+        startJitterCollection();
         //kwm: caution that the method should be the call when there exits the actual links;
 //kwmtodo: reserve the x test function
 //        while (testFunc() == 0){
@@ -150,5 +164,33 @@ public class MonitorDelayServiceImpl implements MonitorDelayService, IFloodlight
             }
         }
         return this.linkDelaySecMap;
+    }
+
+    private void startJitterCollection() {
+        jitterCollector = threadPoolService.getScheduledExecutor().scheduleAtFixedRate(new JitterCollector(),  jitterInterval, jitterInterval, TimeUnit.SECONDS);
+    }
+    protected class JitterCollector implements Runnable{
+        //kwmtodo: calculate the jitter here
+
+        @Override
+        public void run() {
+            if (linkJitterSecMap.isEmpty()){
+                initialLinkJitterMap();
+            }else{
+                //获取第二个stamp
+                sceond_JitterStampMap = getLinkDelay();
+                //两个stamp 有效
+                //计算jitter
+                //更新firstStamp
+            }
+        }
+    }
+    private void initialLinkJitterMap(){
+        this.first_JitterStampMap = getLinkDelay();
+    }
+
+    @Override
+    public Map<LinkEntry<DatapathId, DatapathId>, Integer> getLinkJitter() {
+        return this.linkJitterSecMap;
     }
 }
