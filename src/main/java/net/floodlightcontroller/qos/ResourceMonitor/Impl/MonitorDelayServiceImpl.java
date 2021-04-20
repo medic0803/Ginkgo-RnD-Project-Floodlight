@@ -77,6 +77,7 @@ public class MonitorDelayServiceImpl implements MonitorDelayService, IFloodlight
     @Override
     public Collection<Class<? extends IFloodlightService>> getModuleDependencies() {
         Collection<Class<? extends IFloodlightService>> l = new ArrayList<Class<? extends IFloodlightService>>();
+        l.add(IThreadPoolService.class);
         l.add(ILinkDiscoveryService.class);
         return l;
     }
@@ -110,6 +111,7 @@ public class MonitorDelayServiceImpl implements MonitorDelayService, IFloodlight
      */
     @Override
     public void startUp(FloodlightModuleContext context) throws FloodlightModuleException {
+        threadPoolService = context.getServiceImpl(IThreadPoolService.class);
         startJitterCollection();
         //kwm: caution that the method should be the call when there exits the actual links;
 //kwmtodo: reserve the x test function
@@ -169,9 +171,14 @@ public class MonitorDelayServiceImpl implements MonitorDelayService, IFloodlight
     private void startJitterCollection() {
         jitterCollector = threadPoolService.getScheduledExecutor().scheduleAtFixedRate(new JitterCollector(),  jitterInterval, jitterInterval, TimeUnit.SECONDS);
     }
+    /**
+     * Stop all stats threads.
+     */
+    private void stopJitterCollection() {
+        jitterCollector.cancel(false);
+    }
     protected class JitterCollector implements Runnable{
         //kwmtodo: calculate the jitter here
-
         @Override
         public void run() {
             if (linkJitterSecMap.isEmpty()){
@@ -180,8 +187,16 @@ public class MonitorDelayServiceImpl implements MonitorDelayService, IFloodlight
                 //获取第二个stamp
                 sceond_JitterStampMap = getLinkDelay();
                 //两个stamp 有效
-                //计算jitter
+                if (first_JitterStampMap.size() == sceond_JitterStampMap.size()){
+                    //计算jitter
+                    Iterator<LinkEntry<DatapathId, DatapathId>> iterator = first_JitterStampMap.keySet().iterator();
+                    while (iterator.hasNext()){
+                        LinkEntry<DatapathId, DatapathId> key = iterator.next();
+                        linkJitterSecMap.put(key,Math.abs(first_JitterStampMap.get(key) - sceond_JitterStampMap.get(key)));
+                    }
+                }
                 //更新firstStamp
+                first_JitterStampMap = sceond_JitterStampMap;
             }
         }
     }
