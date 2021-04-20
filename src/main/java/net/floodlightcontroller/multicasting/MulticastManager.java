@@ -266,7 +266,7 @@ public class MulticastManager implements IOFMessageListener, IFloodlightModule, 
         // the total length of this packet is 54, the previous 14(0-13) is for header, the rest 40 is for paylod, and the 46/32 is for record type
         if (igmpPayload[32] == 4) {
             log.info("Receive an IGMP Join Message from" + sw.getId() + ": "+ hostIPAddress + ", and send to " + multicastAddress);
-            processIGMPJoinMsg(multicastAddress, hostIPAddress, sw, pi);
+            processIGMPJoinMsg(multicastAddress, hostIPAddress, sw, pi, sw.getId(), cntx);
 
         } else if (igmpPayload[32] == 3) {  // leave message
             // only the host exist, process the leave message
@@ -279,7 +279,7 @@ public class MulticastManager implements IOFMessageListener, IFloodlightModule, 
     }
 
 
-    private void processIGMPJoinMsg(IPv4Address multicastAddress, IPv4Address hostIPAddress, IOFSwitch sw, OFPacketIn pi) {
+    private void processIGMPJoinMsg(IPv4Address multicastAddress, IPv4Address hostIPAddress, IOFSwitch sw, OFPacketIn pi, DatapathId pinSwitchId, FloodlightContext cntx) {
         boolean ifExist = false;
 
         //  process IGMP message sender host
@@ -328,7 +328,7 @@ public class MulticastManager implements IOFMessageListener, IFloodlightModule, 
 
                 MulticastTree tempMulticastTree = multicastGroupInfoTable.get(multicastAddress).getMulticastTreeInfoTable().get(multicastSource.getSrcAddress());
                 Path path = getMulticastRoutingDecision(srcId, srcPort, dstId, dstPort, dscpField, hostIPAddress, tempMulticastTree);
-                pushMulticastingRoute(path, multicastSource.getMatch(), multicastSource.getCookie(), tempMulticastTree.getAltBPRegister(), false);
+                pushMulticastingRoute(path, multicastSource.getMatch(), pi, pinSwitchId, multicastSource.getCookie(), cntx, tempMulticastTree.getAltBPRegister(), false, false);
             }
         }
     }
@@ -463,7 +463,7 @@ public class MulticastManager implements IOFMessageListener, IFloodlightModule, 
             dstId = pinSwitchInfoMap.get(hostAddress).getPinSwitchId();
             dstPort = pinSwitchInfoMap.get(hostAddress).getPinSwitchInPort();
             path = getMulticastRoutingDecision(srcId, srcPort, dstId, dstPort, dscpField, hostAddress, multicastGroupInfoTable.get(multicastAddress).getMulticastTreeInfoTable().get(sourceAddress));
-            pushMulticastingRoute(path, match, cookie, multicastGroupInfoTable.get(multicastAddress).getMulticastTreeInfoTable().get(sourceAddress).getAltBPRegister(), false);
+            pushMulticastingRoute(path, match, pi, sw.getId(), cookie, cntx, multicastGroupInfoTable.get(multicastAddress).getMulticastTreeInfoTable().get(sourceAddress).getAltBPRegister(), false, false);
         }
 
         return Command.CONTINUE;
@@ -479,8 +479,8 @@ public class MulticastManager implements IOFMessageListener, IFloodlightModule, 
      * @param requestFlowRemovedNotification default is false
      * @return
      */
-    public boolean pushMulticastingRoute(Path route, Match match, U64 cookie, HashMap<DatapathId, AltBP> currentAltBPSet,
-                                         boolean requestFlowRemovedNotification) {
+    public boolean pushMulticastingRoute(Path route, Match match, OFPacketIn pi, DatapathId pinSwitch, U64 cookie, FloodlightContext cntx, HashMap<DatapathId, AltBP> currentAltBPSet,
+                                         boolean requestFlowRemovedNotification, boolean packetOutSent) {
 
         List<NodePortTuple> switchPortList = route.getPath();
         for (int indx = switchPortList.size() - 1; indx > 0; indx -= 2) {
@@ -617,7 +617,15 @@ public class MulticastManager implements IOFMessageListener, IFloodlightModule, 
                     log.info("A new " + fmb.getCommand() + " flow table item has been written to " + switchDPID);
                 }
             }
+            /* Push the packet out the first hop switch */
+            if (!packetOutSent && sw.getId().equals(pinSwitch) &&
+                    !fmb.getCommand().equals(OFFlowModCommand.DELETE) &&
+                    !fmb.getCommand().equals(OFFlowModCommand.DELETE_STRICT)) {
+                /* Use the buffered packet at the switch, if there's one stored */
+                log.info("Push packet out the first hop switch");
+                pushPacket(sw, pi, outPort, true, cntx);
 
+            }
         }
 
         return true;
