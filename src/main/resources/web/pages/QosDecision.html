@@ -213,11 +213,11 @@
             <div class="modal-dialog modal-lg">
                 <div class="modal-content">
                     <div class="modal-header">
-                        <button type="button" class="close" id="roleModalCloseButton2" data-dismiss="modal"
+                        <button type="button" class="close" id="roleModalCloseButton3" data-dismiss="modal"
                                 aria-label="Close">
                             <span aria-hidden="true">×</span>
                         </button>
-                        <h4 class="modal-title" id="myModalLabel2">Create Strategy</h4>
+                        <h4 class="modal-title" id="myModalLabel3">Create Strategy</h4>
                     </div>
                     <div class="modal-body">
                         <div class="form-group">
@@ -241,7 +241,6 @@
                 </div>
             </div>
         </div>
-
     </div>
     <!-- /#page-wrapper -->
     <div id="login-modal-include"></div>
@@ -484,10 +483,10 @@
         $.ajax({
             type    : "POST",
             dataType: 'json',
-            //kwmtodo:[URL]    change the url
+            //kwm:[URL]    change the url
             url     : "http://" + ipaddress + ":" + restport + "/wm/staticcachepusher/strategies/json",
             data    : postData,
-            //kwmtodo: set return as Strategy added
+            //kwm: set return as Strategy added
             success : function (data) {
                 if (data["status"] == "Strategy added") {
                     new PNotify({
@@ -497,6 +496,7 @@
                         hide : true
                     });
                     GetStrategies();
+                    $("#roleModalCloseButton3").click();
                 }
                 else {
 
@@ -519,7 +519,7 @@
     GetStrategies();
 
     function GetStrategies() {
-        //kwmtodo:[URL]   change the url
+        //kwm:[URL]   change the url
         var url = "http://" + ipaddress + ":" + restport + "/wm/staticcachepusher/strategies/json";
         $(document).ready(function () {
 
@@ -548,7 +548,7 @@
 
                 ],
                 columns     : [
-                    //kwmtodo:[server] return a trategyid
+                    //kwm:[server] return a trategyid
                     {data: 'strategyid'},
                     {data: 'src_ip'},
                     {data: 'dst_ip'},
