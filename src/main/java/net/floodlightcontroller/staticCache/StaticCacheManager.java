@@ -9,7 +9,6 @@ import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.module.FloodlightModuleException;
 import net.floodlightcontroller.core.module.IFloodlightModule;
 import net.floodlightcontroller.core.module.IFloodlightService;
-import net.floodlightcontroller.multicasting.MulticastManager;
 import net.floodlightcontroller.packet.Ethernet;
 import net.floodlightcontroller.packet.IPv4;
 import net.floodlightcontroller.restserver.IRestApiService;
@@ -17,14 +16,10 @@ import net.floodlightcontroller.staticCache.web.StaticCacheStrategy;
 import net.floodlightcontroller.staticCache.web.StaticCacheWebRoutable;
 import net.floodlightcontroller.topology.ITopologyService;
 import net.floodlightcontroller.util.OFMessageDamper;
-import net.floodlightcontroller.util.OFMessageUtils;
 import org.projectfloodlight.openflow.protocol.OFMessage;
 import org.projectfloodlight.openflow.protocol.OFPacketIn;
 import org.projectfloodlight.openflow.protocol.OFType;
-import org.projectfloodlight.openflow.types.EthType;
-import org.projectfloodlight.openflow.types.IPv4Address;
-import org.projectfloodlight.openflow.types.IpProtocol;
-import org.projectfloodlight.openflow.types.OFPort;
+import org.projectfloodlight.openflow.types.*;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -57,26 +52,39 @@ public class StaticCacheManager implements IOFMessageListener, IFloodlightModule
                 OFPacketIn pi = (OFPacketIn) msg;
                 if (eth.getEtherType() == EthType.IPv4) {
                     if (((IPv4) eth.getPayload()).getProtocol() == IpProtocol.TCP || ((IPv4) eth.getPayload()).getProtocol() == IpProtocol.UDP) {
-                        //wrf: 判断80端口，如果是src，那就是src在干什么，如果是
                         byte[] ipv4Packet = eth.getPayload().serialize();
-                        byte[] rawSrcPort = new byte[2];
-                        byte[] rawDstPort = new byte[2];
-                        System.arraycopy(ipv4Packet, 20, rawSrcPort, 0, 2);
-                        System.arraycopy(ipv4Packet, 22, rawDstPort, 0, 2);
+                        byte[] raw_tp_src = new byte[2];
+                        byte[] raw_tp_dst = new byte[2];
+                        System.arraycopy(ipv4Packet, 20, raw_tp_src, 0, 2);
+                        System.arraycopy(ipv4Packet, 22, raw_tp_dst, 0, 2);
 
-                        int srcPort= (int) ( ((rawSrcPort[0] & 0xFF)<<8)
-                                |(rawSrcPort[1] & 0xFF));
+                        int tp_src= (int) ( ((raw_tp_src[0] & 0xFF)<<8)
+                                |(raw_tp_src[1] & 0xFF));
 
-                        int dstPort= (int) ( ((rawDstPort[0] & 0xFF)<<8)
-                                |(rawDstPort[1] & 0xFF));
+                        int tp_dst= (int) ( ((raw_tp_dst[0] & 0xFF)<<8)
+                                |(raw_tp_dst[1] & 0xFF));
 
                         log.info("The protocol is " + ((IPv4) eth.getPayload()).getProtocol().toString());
-                        log.info("The source port is " + srcPort);
-                        log.info("The destionation port is " + dstPort);
-                        if (dstPort == 80 || dstPort == 8080 || dstPort  == 8081 || dstPort == 9098){
+                        log.info("The source port is " + tp_src);
+                        log.info("The destination port is " + tp_dst);
+                        if (tp_dst == 80 || tp_dst == 8080 || tp_dst  == 8081 || tp_dst == 9098){
                             log.info("Receive a HTTP packet");
+                            //wrf: 匹配策略表，一旦匹配，下发修改流表选项
                             IPv4Address srcAddress = ((IPv4) eth.getPayload()).getSourceAddress();
                             IPv4Address dstAddress = ((IPv4) eth.getPayload()).getDestinationAddress();
+                            System.out.println(srcAddress.asCidrMaskLength());
+//                            srcAddress.getLength()
+                            srcAddress.asCidrMaskLength();
+                            StaticCacheStrategy matched_strategy;
+                            for (StaticCacheStrategy strategy : strategies){
+                                matched_strategy = strategy.ifMatch(srcAddress, dstAddress, TransportPort.of(tp_dst));
+                                if (matched_strategy != null) {
+                                   //wrf: apply the strategy
+                                    matched_strategy.applyStrategy();
+                                    break;
+                                }
+                            }
+                            //wrf: 下发流表，action设置为修改dst address和MAC地址
 
                         } else {
                             return Command.STOP;
@@ -145,6 +153,7 @@ public class StaticCacheManager implements IOFMessageListener, IFloodlightModule
     @Override
     public void addStrategy(StaticCacheStrategy strategy) {
         this.strategies.add(strategy);
+        //wrf:思考如何匹配上策略表
         System.out.println("8*****************************************************");
 
         //wrftodo: invoke strategy implement method.
