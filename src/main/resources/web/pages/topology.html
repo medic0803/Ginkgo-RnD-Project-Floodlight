@@ -220,7 +220,7 @@
                         width: 4
                     });
                 }
-
+                //kwmtodo: load the links with the hosts
                 for (var i = 0; i < hosts.length; i++) {
                     if (hosts[i]["attachmentPoint"].length > 0) {
                         if (hosts[i].hasOwnProperty("trueAttachmentPoint") && hosts[i]["trueAttachmentPoint"][0] != null) {
@@ -362,6 +362,7 @@
         });
     }
 
+    //kwmtodo: add host
     function LoadHosts() {
         $.ajax({
             url: "http://" + ipaddress + ":" + restport + "/wm/device/",
