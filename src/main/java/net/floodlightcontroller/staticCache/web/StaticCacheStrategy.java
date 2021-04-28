@@ -78,6 +78,7 @@ public class StaticCacheStrategy {
                                 .build()
                 )
                 .build();
+        System.out.println(this.nw_cache_prefix_and_mask.getValue());
         List<OFAction> actions = new ArrayList<>();
         actions.add(host_setEthDst);
         actions.add(host_setIpv4Dst);
