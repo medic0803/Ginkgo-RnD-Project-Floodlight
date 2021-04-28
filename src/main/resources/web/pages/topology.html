@@ -203,6 +203,14 @@
     loadSwitches();
 
 
+    //kwmtodo:[000] make the appointment of the router ip, like
+    //ae:52:40:f2:32:d8	192.168.12.1
+    //3a:ea:56:a8:3e:f6	192.168.23.2
+
+    var Router_IP = '192.168.23.2';
+    var Router_Mac = '3a:ea:56:a8:3e:f6';
+    var Router_Pair_IP = '192.168.12.1';
+
     function loadExternalLinks(hosts) {
 
         var url = "http://" + ipaddress + ":" + restport + "/wm/topology/external-links/json";
@@ -220,26 +228,38 @@
                         width: 4
                     });
                 }
+                //kwmtodo: [002] load the links with the hosts with the rule with ROUTER
 
                 for (var i = 0; i < hosts.length; i++) {
                     if (hosts[i]["attachmentPoint"].length > 0) {
                         if (hosts[i].hasOwnProperty("trueAttachmentPoint") && hosts[i]["trueAttachmentPoint"][0] != null) {
                             edges.push({
-                                from: "h" + hosts[i]["mac"]
-                                , to: "s" + hosts[i]["trueAttachmentPoint"][0].switch, length: EDGE_LENGTH_MAIN,
+                                from: "h" + hosts[i]["mac"],
+                                to: "s" + hosts[i]["trueAttachmentPoint"][0].switch, length: EDGE_LENGTH_MAIN,
                                 title: hosts[i]["trueAttachmentPoint"][0].switch + "/" + hosts[i]["trueAttachmentPoint"][0].port,
                                 color: 'green',
                                 width: 2
                             });
                         }
                         else {
-                            edges.push({
-                                from: "h" + hosts[i]["mac"]
-                                , to: "s" + hosts[i]["attachmentPoint"][0].switch, length: EDGE_LENGTH_MAIN,
-                                title: hosts[i]["attachmentPoint"][0].switch + "/" + hosts[i]["attachmentPoint"][0].port,
-                                color: 'green',
-                                width: 2
-                            });
+                            //kwmtodo: don't know what is the trueAttachmentPoint, but do the method give a special node as router
+                            if (hosts[i]["ipv4"] == Router_Pair_IP || hosts[i]["ipv4"] == Router_IP){
+                                edges.push({
+                                    from: "h" + Router_Mac,
+                                    to: "s" + hosts[i]["attachmentPoint"][0].switch, length: EDGE_LENGTH_MAIN,
+                                    title: hosts[i]["attachmentPoint"][0].switch + "/" + hosts[i]["attachmentPoint"][0].port,
+                                    color: 'blue',
+                                    width: 2
+                                });
+                            }else {
+                                edges.push({
+                                    from: "h" + hosts[i]["mac"],
+                                    to: "s" + hosts[i]["attachmentPoint"][0].switch, length: EDGE_LENGTH_MAIN,
+                                    title: hosts[i]["attachmentPoint"][0].switch + "/" + hosts[i]["attachmentPoint"][0].port,
+                                    color: 'green',
+                                    width: 2
+                                });
+                            }
                         }
                     }
                 }
@@ -362,6 +382,7 @@
         });
     }
 
+
     function LoadHosts() {
         $.ajax({
             url: "http://" + ipaddress + ":" + restport + "/wm/device/",
@@ -370,15 +391,31 @@
                 for (var i = 0; i < hosts.length; i++) {
 
                     if (hosts[i]["attachmentPoint"].length > 0) {
-                        var id = "h" + hosts[i]["mac"];
-                        var label = "h" + hosts[i]["ipv4"];
-                        nodes.push({
-                            id: id,
-                            label: label,
-                            image: DIR + 'Hardware-My-Computer-3-icon.png',
-                            shape: 'image',
-                            title: hosts[i]["mac"]
-                        });
+                        //kwmtodo: [001]  add the hosts and router
+                        if (hosts[i]["ipv4"] == Router_IP){
+                            Router_Mac = hosts[i]["mac"];
+                            var id = "h" + Router_Mac;
+                            var label = "Router";
+                            nodes.push({
+                                id: id,
+                                label: label,
+                                image: DIR + 'router.png',
+                                shape: 'image',
+                                title: hosts[i]["mac"]
+                            });
+                        }else if (hosts[i]["ipv4"] == Router_Pair_IP){
+                            continue;
+                        }else {
+                            var id = "h" + hosts[i]["mac"];
+                            var label = "h" + hosts[i]["ipv4"];
+                            nodes.push({
+                                id: id,
+                                label: label,
+                                image: DIR + 'Hardware-My-Computer-3-icon.png',
+                                shape: 'image',
+                                title: hosts[i]["mac"]
+                            });
+                        }
                     }
                 }
                 loadExternalLinks(hosts);
