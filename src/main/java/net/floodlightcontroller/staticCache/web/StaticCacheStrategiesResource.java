@@ -21,7 +21,6 @@ public class StaticCacheStrategiesResource extends ServerResource {
     @Get("json")
     public List<StaticCacheStrategy> retrieve() {
 //    public String retrieve() {
-        System.out.println("testsf****************************");
         IStaticCacheService staticCache =
                 (IStaticCacheService)getContext().getAttributes().
                         get(IStaticCacheService.class.getCanonicalName());
@@ -49,13 +48,12 @@ public class StaticCacheStrategiesResource extends ServerResource {
 
 
     public static StaticCacheStrategy jsonToStaticCacheStrategy(String fmJson) {
-        //        FirewallRule rule = new FirewallRule();
         StaticCacheStrategy strategy = new StaticCacheStrategy();
-        MappingJsonFactory f = new MappingJsonFactory();
+        MappingJsonFactory mappingJsonFactory = new MappingJsonFactory();
         JsonParser jsonParser;
         try {
             try {
-                jsonParser = f.createParser(fmJson);
+                jsonParser = mappingJsonFactory.createParser(fmJson);
             } catch (JsonParseException e) {
                 throw new IOException(e);
             }

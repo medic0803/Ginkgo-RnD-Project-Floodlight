@@ -115,9 +115,7 @@ public class StaticCacheManager implements IOFMessageListener, IFloodlightModule
     @Override
     public void addStrategy(StaticCacheStrategy strategy) {
         this.strategies.add(strategy);
-        System.out.println("8*****************************************************");
-
-        //wrftodo: invoke strategy implement method.
+        //wrf:todo: invoke strategy implement method.
     }
 
     @Override
