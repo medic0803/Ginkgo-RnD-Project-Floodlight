@@ -113,7 +113,7 @@
                                 aria-label="Close">
                             <span aria-hidden="true">×</span>
                         </button>
-                        <h4 class="modal-title" id="myModalLabel2">Change Firewall Status </h4>
+                        <h4 class="modal-title" id="myModalLabel">Change Firewall Status </h4>
                     </div>
                     <div class="modal-body">
 
@@ -301,6 +301,7 @@
         }
     });
 
+    //kwmtodo: [nice to have] the control of something
     $("#btnChange").click(function () {
 
         if ($("#rbEnable").is(':checked')) {
@@ -319,7 +320,7 @@
             });
         }
     });
-
+    //kwm: something about show in the page front
     function GetStatus() {
         $.ajax({
             type    : "GET",
@@ -355,7 +356,6 @@
         });
     }
 
-    //kwmtodo: change content for strategy?
     function OpenFirewall() {
         $.ajax({
             type    : "PUT",
@@ -403,6 +403,7 @@
         });
     }
 
+    //kwm:[ Tentative ] if this chage matter
     function ChangeSubnetMask(mask) {
         $.ajax({
             type    : "POST",
@@ -443,21 +444,15 @@
         });
     }
 
-    // kwmtodo:add strategy Button
+    //kwmtodo:[ 001 ]add strategy Button
     $("#btnAddStrategy").click(function () {
-        //kwm: get input from table
         var src_ip = $("#src-ip").val();
         var dst_ip = $("#dst-ip").val();
         var dst_port = $("#dst-port").val();
         var priority = $("#priority").val();
         var cache_ip = $("#cache-ip").val();
-
-        //kwmtodo: need the action?
-        var action = "";
-        // if ($("#rbDeny").is(':checked')) action = "DENY";
-        // else action = "ALLOW";
         // if (src_ip != "" || dst_ip != "" || dst_port != "" || priority != "" || cache_ip != "" || action != "") {
-        //     AddFirewallRule(switchid, src_inport, src_mac, dst_mac, dl_type, nw_proto, tp_src, tp_dst, priority, dst_ip, src_ip, action);
+        // AddFirewallRule(switchid, src_inport, src_mac, dst_mac, dl_type, nw_proto, tp_src, tp_dst, priority, dst_ip, src_ip, action);
         // }
         if (src_ip != "" || dst_ip != "" || dst_port != "" || priority != "" || cache_ip != "") {
             AddQoSStrategy(src_ip, dst_ip, dst_port, priority, cache_ip);
