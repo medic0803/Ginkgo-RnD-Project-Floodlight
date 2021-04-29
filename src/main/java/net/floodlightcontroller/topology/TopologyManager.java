@@ -178,6 +178,7 @@ ITopologyManagerBackend, ILinkDiscoveryListener, IOFMessageListener {
             try {
                 if (ldUpdates.peek() != null) { /* must check here, otherwise will run every interval */
                     updateTopology("link-discovery-updates", false);
+                    System.out.println("!!!!!!!!!!!!!!!!!!!!!update!!!!!!!!!!!!!!!!!!!!!!!!!!!");
                 }
                 handleMiscellaneousPeriodicEvents();
             }

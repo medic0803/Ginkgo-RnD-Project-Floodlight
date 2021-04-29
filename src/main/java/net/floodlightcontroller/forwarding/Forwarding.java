@@ -17,15 +17,7 @@
 
 package net.floodlightcontroller.forwarding;
 
-import java.util.*;
-import java.util.Map.Entry;
-import java.util.concurrent.ConcurrentHashMap;
-
-import net.floodlightcontroller.core.FloodlightContext;
-import net.floodlightcontroller.core.IFloodlightProviderService;
-import net.floodlightcontroller.core.IOFSwitch;
-import net.floodlightcontroller.core.IOFSwitchListener;
-import net.floodlightcontroller.core.PortChangeType;
+import net.floodlightcontroller.core.*;
 import net.floodlightcontroller.core.internal.IOFSwitchService;
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.module.FloodlightModuleException;
@@ -48,7 +40,6 @@ import net.floodlightcontroller.routing.*;
 import net.floodlightcontroller.routing.web.RoutingWebRoutable;
 import net.floodlightcontroller.topology.ITopologyService;
 import net.floodlightcontroller.util.*;
-
 import org.projectfloodlight.openflow.protocol.*;
 import org.projectfloodlight.openflow.protocol.action.OFAction;
 import org.projectfloodlight.openflow.protocol.match.Match;
@@ -61,9 +52,12 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nonnull;
+import java.util.*;
+import java.util.Map.Entry;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class Forwarding extends ForwardingBase implements IFloodlightModule, IOFSwitchListener, ILinkDiscoveryListener,
-        IRoutingDecisionChangedListener, IGatewayService {
+        IRoutingDecisionChangedListener, IGatewayService, IProcessDiffServ {
     protected static final Logger log = LoggerFactory.getLogger(Forwarding.class);
 
     /*
@@ -103,6 +97,75 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
 
     private Map<OFPacketIn, Ethernet> l3cache;
     private DeviceListenerImpl deviceListener;
+
+    /**
+     * Desc: Sets the priority of the different data streams
+     * @param eth
+     * @author K-Ir
+     * @date 2021/4/19 10:07
+     */
+    @Override
+    public void setPriorityOfStream(Ethernet eth) {
+        IPv4Address ip = ((IPv4) eth.getPayload()).getDestinationAddress();
+        String ipAddress = ip.toString();
+        if (ipEqualTeacher(ipAddress)){
+            if(isRTP(eth)) { //CS6
+                ((IPv4) eth.getPayload()).setDiffServ((byte) 0b110000);
+            }
+            else { //CS4
+                ((IPv4) eth.getPayload()).setDiffServ((byte) 0b100000);
+            }
+        }
+        else if (ipEqualStudents(ipAddress)){
+            if (isRTP(eth)){ //CS5
+                ((IPv4) eth.getPayload()).setDiffServ((byte) 0b101000);
+            }
+            else { //CS3
+                ((IPv4) eth.getPayload()).setDiffServ((byte) 0b011000);
+            }
+        }
+    }
+
+    /**
+     * Desc: Determine if the IP address belongs to teachers
+     * @param ip
+     * @return {@link boolean}
+     * @author K-Ir
+     * @date 2021/4/19 11:10
+     */
+    private boolean ipEqualTeacher(String ip){
+        return ip.substring(0,4).equals("10.1");
+    }
+
+    /**
+     * Desc: Determine if the IP address belongs to students
+     * @param ip
+     * @return {@link boolean}
+     * @author K-Ir
+     * @date 2021/4/19 11:11
+     */
+    private boolean ipEqualStudents(String ip){
+        return ip.substring(0,4).equals("10.2") || ip.substring(0,4).equals("10.3");
+    }
+
+    private boolean isRTP(Ethernet eth){
+        byte[] ipv4Packet = eth.getPayload().serialize();
+        byte[] rawSrcPort = new byte[2];
+        byte[] rawDstPort = new byte[2];
+        System.arraycopy(ipv4Packet, 20, rawSrcPort, 0, 2);
+        System.arraycopy(ipv4Packet, 22, rawDstPort, 0, 2);
+
+        int srcPort= (int) ( ((rawSrcPort[0] & 0xFF)<<8)
+                |(rawSrcPort[1] & 0xFF));
+
+        int dstPort= (int) ( ((rawDstPort[0] & 0xFF)<<8)
+                |(rawDstPort[1] & 0xFF));
+        if (dstPort == 5004){
+            log.info("This is a video stream");
+            return true;
+        }
+        return false;
+    }
 
     protected static class FlowSetIdRegistry {
         private volatile Map<NodePortTuple, Set<U64>> nptToFlowSetIds;
@@ -482,7 +545,7 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
 
                 pushRoute(path, m, pi, sw.getId(), cookie,
                         cntx, requestFlowRemovedNotifn,
-                        OFFlowModCommand.ADD, false);
+                        OFFlowModCommand.ADD, false,-1);
 
                 /*
                  * Register this flowset with ingress and egress ports for link down
@@ -514,7 +577,7 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
             Path newPath = getNewPath(path);
             pushRoute(newPath, match, pi, sw.getId(), cookie,
                     cntx, requestFlowRemovedNotifn,
-                    OFFlowModCommand.ADD, packetOutSent);
+                    OFFlowModCommand.ADD, packetOutSent, -1);
 
             /* Register flow sets */
             for (NodePortTuple npt : path.getPath()) {
@@ -711,7 +774,7 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
             // translate from two's complement representation
             byte diffServ = (byte) ((((IPv4) eth.getPayload()).getDiffServ() >> 2) & 0x3f);
 
-
+//            (IPv4) ((IPv4) eth.getPayload()).setDiffServ();
             // determine the PHB of DSCPField
             for (DSCPField dscp: DSCPField.values()){
                 if ((byte) dscp.getDscpField() == diffServ){
@@ -723,6 +786,7 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
             if (dscpField.equals(DSCPField.Default)){
                 log.info("Receive a Non-Qos Flow with dscpField: " + dscpField);
             } else{ // QoS Flow
+
                 log.info("Receive a Qos Flow with dscpField: " + dscpField);
             }
 
@@ -734,6 +798,40 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
                 dstAp.getPortId());
 
         Match m = createMatchFromPacket(sw, srcPort, pi, cntx);
+
+        long queueID = 0;
+        if (eth.getEtherType().equals(Ethernet.TYPE_IPv4)) {
+            setPriorityOfStream(eth);
+        }
+        OFQueueGetConfigRequest cr = sw.getOFFactory().buildQueueGetConfigRequest().setPort(OFPort.of(1)).build(); /* Request queues on any port (i.e. don't care) */
+//        ListenableFuture<OFQueueGetConfigReply> future = switchService.getSwitch(DatapathId.of(1)).writeRequest(cr); /* Send request to switch 1 */
+        try {
+//            future.cancel(false);
+//            OFQueueGetConfigReply reply = future.get();
+            List<OFPacketQueue> queues = switchService.getSwitch(DatapathId.of(1)).writeRequest(cr).get().getQueues();
+            System.out.println("!!!!!!!!!!!!!!!!!!!!!!!!!!queue!!!!!!!!!!!!!!!!!!!!!!!!!!");
+            for (OFPacketQueue queue : queues){
+                System.out.println(queue.getQueueId());
+            }
+            System.out.println("!!!!!!!!!!!!!!!!!!!!!!!!!!queue!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+
+            switch (((IPv4) eth.getPayload()).getDiffServ()){
+                case 0b110000:
+                    queueID = queues.get(0).getQueueId();
+                    break;
+                case 0b100000:
+                    queueID = queues.get(2).getQueueId();
+                    break;
+                case 0b101000:
+                    queueID = queues.get(1).getQueueId();
+                    break;
+                case 0b011000:
+                    queueID = queues.get(3).getQueueId();
+                    break;
+            }
+        } catch (Exception e){
+            e.printStackTrace();
+        }
 
         if (! path.getPath().isEmpty()) {
             if (log.isDebugEnabled()) {
@@ -747,7 +845,7 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
 
             pushRoute(path, m, pi, sw.getId(), cookie,
                     cntx, requestFlowRemovedNotifn,
-                    OFFlowModCommand.ADD, false);
+                    OFFlowModCommand.ADD, false, queueID);
 
             /*
              * Register this flowset with ingress and egress ports for link down
@@ -1226,6 +1324,7 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
      * @param cntx The FloodlightContext associated with this OFPacketIn
      */
     protected void doFlood(IOFSwitch sw, OFPacketIn pi, IRoutingDecision decision, FloodlightContext cntx) {
+        System.out.println("sssssbbbbbsssssbbbbbbsssssbbbbbsssssbbbbb");
         OFPort inPort = OFMessageUtils.getInPort(pi);
         OFPacketOut.Builder pob = sw.getOFFactory().buildPacketOut();
         List<OFAction> actions = new ArrayList<>();
@@ -1924,14 +2023,15 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
         log.error("Could not locate a 'true' attachment point in {}", aps);
         return null;
     }
+
     @Override
     public Command receive(IOFSwitch sw, OFMessage msg, FloodlightContext cntx) {
         Ethernet eth = IFloodlightProviderService.bcStore.get(cntx, IFloodlightProviderService.CONTEXT_PI_PAYLOAD);
+        List<OFAction> actions = new ArrayList<>();
 
         switch (msg.getType()) {
             case PACKET_IN:
                 IRoutingDecision decision = null;
-
                 // Destination IPv4Address was included in multicast group, skip the forwarding
             if (eth.getEtherType() == EthType.IPv4){
                 if (fetchMulticastGroupService.ifMulticastAddressExist(((IPv4)eth.getPayload()).getDestinationAddress())) {

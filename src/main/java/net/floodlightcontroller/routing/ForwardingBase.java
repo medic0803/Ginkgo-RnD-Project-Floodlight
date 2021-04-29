@@ -17,8 +17,6 @@
 
 package net.floodlightcontroller.routing;
 
-import java.util.*;
-
 import net.floodlightcontroller.core.FloodlightContext;
 import net.floodlightcontroller.core.IFloodlightProviderService;
 import net.floodlightcontroller.core.IOFMessageListener;
@@ -33,21 +31,20 @@ import net.floodlightcontroller.linkdiscovery.ILinkDiscoveryService;
 import net.floodlightcontroller.multicasting.IFetchMulticastGroupService;
 import net.floodlightcontroller.packet.Ethernet;
 import net.floodlightcontroller.packet.IPacket;
-import net.floodlightcontroller.packet.IPv4;
 import net.floodlightcontroller.restserver.IRestApiService;
 import net.floodlightcontroller.topology.ITopologyService;
 import net.floodlightcontroller.util.*;
-
 import org.projectfloodlight.openflow.protocol.*;
-import org.projectfloodlight.openflow.protocol.action.OFActionEnqueue;
+import org.projectfloodlight.openflow.protocol.action.OFAction;
+import org.projectfloodlight.openflow.protocol.action.OFActionOutput;
 import org.projectfloodlight.openflow.protocol.action.OFActionSetQueue;
 import org.projectfloodlight.openflow.protocol.match.Match;
 import org.projectfloodlight.openflow.protocol.match.MatchField;
-import org.projectfloodlight.openflow.protocol.action.OFAction;
-import org.projectfloodlight.openflow.protocol.action.OFActionOutput;
 import org.projectfloodlight.openflow.types.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.util.*;
 
 
 /**
@@ -162,8 +159,8 @@ public abstract class ForwardingBase implements IOFMessageListener {
      * Push routes from back to front
      * @param route Route to push
      * @param match OpenFlow fields to match on
-     * @param srcSwPort Source switch port for the first hop
-     * @param dstSwPort Destination switch port for final hop
+     * @param pi PacketIn
+     * @param pinSwitch
      * @param cookie The cookie to set in each flow_mod
      * @param cntx The floodlight context
      * @param requestFlowRemovedNotification if set to true then the switch would
@@ -174,7 +171,7 @@ public abstract class ForwardingBase implements IOFMessageListener {
      */
     public boolean pushRoute(Path route, Match match, OFPacketIn pi,
             DatapathId pinSwitch, U64 cookie, FloodlightContext cntx,
-            boolean requestFlowRemovedNotification, OFFlowModCommand flowModCommand, boolean packetOutSent) {
+            boolean requestFlowRemovedNotification, OFFlowModCommand flowModCommand, boolean packetOutSent, long queueId) {
 
         List<NodePortTuple> switchPortList = route.getPath();
 
@@ -225,6 +222,14 @@ public abstract class ForwardingBase implements IOFMessageListener {
             aob.setPort(outPort);
             aob.setMaxLen(Integer.MAX_VALUE);
             actions.add(aob.build());
+
+
+            if(queueId > 0) {
+                OFActionSetQueue setQueue = sw.getOFFactory().actions().buildSetQueue()
+                        .setQueueId(queueId)
+                        .build();
+                actions.add(setQueue);
+            }
 
             if (FLOWMOD_DEFAULT_SET_SEND_FLOW_REM_FLAG || requestFlowRemovedNotification) {
                 Set<OFFlowModFlags> flags = new HashSet<>();

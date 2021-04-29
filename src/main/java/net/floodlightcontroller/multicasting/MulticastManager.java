@@ -198,7 +198,12 @@ public class MulticastManager implements IOFMessageListener, IFloodlightModule, 
                 if (eth.getEtherType() == EthType.IPv4) {
                     IPv4Address srcAddress = ((IPv4) eth.getPayload()).getSourceAddress();
                     IPv4Address dstAddress = ((IPv4) eth.getPayload()).getDestinationAddress();
-
+                    if (((IPv4) eth.getPayload()).getProtocol() == IpProtocol.CRTP) {
+                        System.out.println("########################################### crtp");
+                    }
+                    if (((IPv4) eth.getPayload()).getProtocol() == IpProtocol.IRTP) {
+                        System.out.println("########################################### irtp");
+                    }
                     //  Process IGMP Message
                     if (((IPv4) eth.getPayload()).getProtocol() == IpProtocol.IGMP) {
                         if (!multicastGroupInfoTable.containsKey(dstAddress)) {
@@ -925,6 +930,7 @@ public class MulticastManager implements IOFMessageListener, IFloodlightModule, 
         flowSetIdRegistry = FlowSetIdRegistry.getInstance();
     }
 
+
     @Override
     public void startUp(FloodlightModuleContext context) throws FloodlightModuleException {
         floodlightProvider.addOFMessageListener(OFType.PACKET_IN, this);
@@ -959,6 +965,19 @@ public class MulticastManager implements IOFMessageListener, IFloodlightModule, 
         return this.multicastGroupInfoTable.containsKey(dstAddress);
     }
 
+    /**
+     * Desc: This function returns a Path
+     * @param src The switch ID that connects to the Source
+     * @param srcPort The port of this switch that connects to the Source
+     * @param dst The switch ID that connects to the Host
+     * @param dstPort The port of this switch that connects to the Host
+     * @param dscpField A default value
+     * @param hostAddress The host's IP address
+     * @param multicastTree Store the path
+     * @return {@link Path}
+     * @author K-Ir
+     * @date 2021/3/06 10:56
+     */
     private Path getMulticastRoutingDecision(DatapathId src, OFPort srcPort,
                                              DatapathId dst, OFPort dstPort,
                                              DSCPField dscpField,
