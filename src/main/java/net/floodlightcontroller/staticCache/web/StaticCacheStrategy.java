@@ -82,6 +82,8 @@ public class StaticCacheStrategy {
         List<OFAction> actions = new ArrayList<>();
         actions.add(host_setEthDst);
         actions.add(host_setIpv4Dst);
+        actions.add(sw.getOFFactory().actions().buildOutput().setPort(OFPort.of(3)).build());
+
         OFInstructionApplyActions host_instruction = sw.getOFFactory().instructions().buildApplyActions()
                 .setActions(actions)
                 .build();
@@ -101,7 +103,7 @@ public class StaticCacheStrategy {
         //wrf: change the hardtimeout
         OFFlowAdd flowAdd = sw.getOFFactory().buildFlowAdd()
                 .setMatch(match)
-                .setIdleTimeout(5)
+                .setIdleTimeout(3600)
                 .setHardTimeout(3600)
                 .setBufferId(OFBufferId.NO_BUFFER)
                 .setCookie(pi.getCookie())
@@ -114,7 +116,55 @@ public class StaticCacheStrategy {
         sw.write(flowAdd);
 
         //wrf:逆着回来的流表
+        OFActionSetField cache_setEthSrc = sw.getOFFactory().actions().buildSetField()
+                .setField(
+                        sw.getOFFactory().oxms().buildEthSrc()
+                                .setValue(MacAddress.of("2e:d9:c4:94:dc:5e"))
+                                .build()
+                )
+                .build();
+        OFActionSetField cache_setIpv4Src = sw.getOFFactory().actions().buildSetField()
+                .setField(
+                        sw.getOFFactory().oxms().buildIpv4Src()
+                                .setValue(this.nw_dst_prefix_and_mask.getValue())
+                                .build()
+                )
+                .build();
+        List<OFAction> actions_Cache = new ArrayList<>();
+        actions_Cache.add(cache_setEthSrc);
+        actions_Cache.add(cache_setIpv4Src);
+        actions_Cache.add(sw.getOFFactory().actions().buildOutput().setPort(OFPort.of(2)).build());
 
+        OFInstructionApplyActions instruction_cache = sw.getOFFactory().instructions().buildApplyActions()
+                .setActions(actions_Cache)
+                .build();
+
+        List<OFInstruction> instructions_cache = new ArrayList<>();
+        instructions_cache.add(instruction_cache);
+        System.out.println("---------------------------Apply the Cache strategy Successfully-------------------------------------------");
+        Match match_cache = sw.getOFFactory().buildMatch()
+                .setExact(MatchField.IN_PORT, OFPort.of(3))
+                .setExact(MatchField.ETH_TYPE, EthType.IPv4)
+                .setExact(MatchField.IPV4_SRC, this.nw_cache_prefix_and_mask.getValue())
+                .setExact(MatchField.IP_PROTO, IpProtocol.TCP)
+                .setExact(MatchField.IPV4_DST, this.nw_src_prefix_and_mask.getValue())
+                .setExact(MatchField.TCP_SRC, TransportPort.of(8080))
+                .build();
+
+        //wrf: change the hardtimeout
+        OFFlowAdd flowAdd_cache = sw.getOFFactory().buildFlowAdd()
+                .setMatch(match_cache)
+                .setIdleTimeout(3600)
+                .setHardTimeout(3600)
+                .setBufferId(OFBufferId.NO_BUFFER)
+                .setCookie(pi.getCookie())
+                .setPriority(32768)
+                .setInstructions(instructions_cache)
+                .setTableId(TableId.ZERO)
+                .build();
+
+        // OFBadMatchErrorMsgVer13, code=BAD_PREREQ
+        sw.write(flowAdd_cache);
 
     }
 }

@@ -1,6 +1,5 @@
 package net.floodlightcontroller.staticCache;
 
-import com.sun.deploy.security.MacOSXDeployNTLMAuthCallback;
 import net.floodlightcontroller.core.FloodlightContext;
 import net.floodlightcontroller.core.IFloodlightProviderService;
 import net.floodlightcontroller.core.IOFMessageListener;
@@ -161,9 +160,11 @@ public class StaticCacheManager implements IOFMessageListener, IFloodlightModule
         tempStrategy.nw_src_prefix_and_mask = IPv4AddressWithMask.of("10.0.0.2/32");
         tempStrategy.nw_dst_prefix_and_mask = IPv4AddressWithMask.of("10.0.0.1/32");
         tempStrategy.nw_cache_prefix_and_mask = IPv4AddressWithMask.of("10.0.0.3/32");
-        tempStrategy.tp_dst = TransportPort.of(80);
-        tempStrategy.nw_cache_dl_dst = MacAddress.of("9e:0b:de:a4:68:f7");
+        tempStrategy.tp_dst = TransportPort.of(8080);
+        tempStrategy.nw_cache_dl_dst = MacAddress.of("be:5f:68:79:d3:44");
         strategies.add(tempStrategy);
+
+
     }
 
     @Override
