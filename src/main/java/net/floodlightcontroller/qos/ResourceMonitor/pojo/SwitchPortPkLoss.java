@@ -22,7 +22,7 @@ public class SwitchPortPkLoss {
     private SwitchPortPkLoss() {
     }
 
-    public SwitchPortPkLoss(DatapathId id, OFPort pt, int pkLossRatio, U64 rxValue, U64 rx_DropValue, U64 txValue, U64 tx_DropValue) {
+    public SwitchPortPkLoss(DatapathId id, OFPort pt, Integer pkLossRatio, U64 rxValue, U64 rx_DropValue, U64 txValue, U64 tx_DropValue) {
         this.id = id;
         this.pt = pt;
         this.pkLossRatio = pkLossRatio;

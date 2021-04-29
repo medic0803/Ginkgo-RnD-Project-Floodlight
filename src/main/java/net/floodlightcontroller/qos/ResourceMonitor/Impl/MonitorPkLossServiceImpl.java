@@ -44,7 +44,7 @@ public class MonitorPkLossServiceImpl implements IFloodlightModule,MonitorPkLoss
     //kwmtodo: need method to call the service to run
     private static boolean isEnabled = false;
 
-    private static final int portStatsInterval = 5;
+    private static final int portStatsInterval = 10;
     private static ScheduledFuture<?> portStatsCollector;
 
     private static final String INTERVAL_PORT_STATS_STR = "collectionIntervalPortStatsSeconds";
@@ -58,10 +58,24 @@ public class MonitorPkLossServiceImpl implements IFloodlightModule,MonitorPkLoss
 
         //kwm: count the pkloss ratio base on the change data in a period
         private int getPkLossRatio(long rx, long rx_drop, long tx, long tx_drop){
-            int ratio = 0;
-            ratio = (int)(rx_drop / rx * 100);
-            ratio = ((tx_drop / tx)>ratio) ? (int)(rx_drop / rx) : ratio;
-            return ratio;
+            double ratio = 0;
+            if (rx == 0 && 0 == tx){
+                return 0;
+            }
+            if (rx == 0 || 0 == tx){
+                if (rx != 0){
+                    ratio = (int) rx_drop*100.0/rx;
+                    return (int)ratio;
+                }
+                ratio = (int) tx_drop*100.0/tx;
+                return (int)ratio;
+            }
+
+            ratio = rx_drop*100.0/rx;
+            if (tx_drop*100.0/tx > ratio){
+                ratio = tx_drop*100.0/tx;
+            }
+            return (int)ratio;
         }
         @Override
         public void run() {
@@ -116,9 +130,11 @@ public class MonitorPkLossServiceImpl implements IFloodlightModule,MonitorPkLoss
                             } else {
                                 tx_dropBytesNum = pse.getTxDropped().subtract(spl.getPriorTx_DropValue());
                             }
+
+                            int pkLossRatio = getPkLossRatio(rxBytesCounted.getValue(), rx_dropBytesNum.getValue(),
+                                    txBytesCounted.getValue(), tx_dropBytesNum.getValue());
                             portStats.put(npt, SwitchPortPkLoss.of(npt.getNodeId(), npt.getPortId(),
-                                    getPkLossRatio(rxBytesCounted.getValue(),rx_dropBytesNum.getValue(),
-                                    txBytesCounted.getValue(),tx_dropBytesNum.getValue()),
+                                    pkLossRatio,
                                     pse.getRxBytes(),pse.getRxDropped(),
                                     pse.getTxBytes(), pse.getTxDropped())
                             );
@@ -134,37 +150,6 @@ public class MonitorPkLossServiceImpl implements IFloodlightModule,MonitorPkLoss
         }
     }
 
-    /**
-     * Single thread for collecting switch statistics and
-     * containing the reply.
-     *
-     * @author Ryan Izard, ryan.izard@bigswitch.com, rizard@g.clemson.edu
-     *
-     */
-    private class GetStatisticsThread extends Thread {
-        private List<OFStatsReply> statsReply;
-        private DatapathId switchId;
-        private OFStatsType statType;
-
-        public GetStatisticsThread(DatapathId switchId, OFStatsType statType) {
-            this.switchId = switchId;
-            this.statType = statType;
-            this.statsReply = null;
-        }
-
-        public List<OFStatsReply> getStatisticsReply() {
-            return statsReply;
-        }
-
-        public DatapathId getSwitchId() {
-            return switchId;
-        }
-
-        @Override
-        public void run() {
-            statsReply = getSwitchStatistics(switchId, statType);
-        }
-    }
 
     /*
      * IFloodlightModule implementation
@@ -251,7 +236,7 @@ public class MonitorPkLossServiceImpl implements IFloodlightModule,MonitorPkLoss
     private void startStatisticsCollection() {
         portStatsCollector = threadPoolService.getScheduledExecutor().scheduleAtFixedRate(new PortStatsCollector(), portStatsInterval, portStatsInterval, TimeUnit.SECONDS);
         tentativePortStats.clear(); /* must clear out, otherwise might have huge BW result if present and wait a long time before re-enabling stats */
-        log.warn("Statistics collection thread(s) started");
+        log.warn("pkloss collection thread(s) started");
     }
 
     /**
@@ -262,6 +247,38 @@ public class MonitorPkLossServiceImpl implements IFloodlightModule,MonitorPkLoss
             log.error("Could not cancel port stats thread");
         } else {
             log.warn("Statistics collection thread(s) stopped");
+        }
+    }
+
+    /**
+     * Single thread for collecting switch statistics and
+     * containing the reply.
+     *
+     * @author Ryan Izard, ryan.izard@bigswitch.com, rizard@g.clemson.edu
+     *
+     */
+    private class GetStatisticsThread extends Thread {
+        private List<OFStatsReply> statsReply;
+        private DatapathId switchId;
+        private OFStatsType statType;
+
+        public GetStatisticsThread(DatapathId switchId, OFStatsType statType) {
+            this.switchId = switchId;
+            this.statType = statType;
+            this.statsReply = null;
+        }
+
+        public List<OFStatsReply> getStatisticsReply() {
+            return statsReply;
+        }
+
+        public DatapathId getSwitchId() {
+            return switchId;
+        }
+
+        @Override
+        public void run() {
+            statsReply = getSwitchStatistics(switchId, statType);
         }
     }
 
