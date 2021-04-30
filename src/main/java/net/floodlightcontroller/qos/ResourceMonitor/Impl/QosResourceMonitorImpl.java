@@ -75,6 +75,7 @@ public class QosResourceMonitorImpl implements QosResourceMonitor, IFloodlightMo
     @Override
     public Map<NodePortTuple, SwitchPortPkLoss> getPkLoss() {
         try {
+            pklossMap = pkLossService.getPkLoss();
             while (pklossMap.isEmpty()){
                 Thread.sleep(1000);
                 pklossMap = pkLossService.getPkLoss();
@@ -87,7 +88,7 @@ public class QosResourceMonitorImpl implements QosResourceMonitor, IFloodlightMo
 
     @Override
     public SwitchPortPkLoss getPkLoss(DatapathId dpid, OFPort p) {
-        SwitchPortPkLoss answer = null;
+        SwitchPortPkLoss answer = pkLossService.getPkLoss(dpid,p);
         try {
             int count = 0;
             while (answer == null){
