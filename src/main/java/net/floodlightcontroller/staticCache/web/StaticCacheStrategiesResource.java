@@ -148,6 +148,14 @@ public class StaticCacheStrategiesResource extends ServerResource {
                         //TODO should return some error message via HTTP message
                     }
                 }
+                else if (currentName.equalsIgnoreCase("cache-mac")) {
+                    try {
+                        strategy.nw_cache_dl_dst = MacAddress.of(jsonParser.getText());
+                    } catch (IllegalArgumentException e) {
+                        log.error("Unable to parse Mac Address: {}", jsonParser.getText());
+                        //TODO should return some error message via HTTP message
+                    }
+                }
             }
         } catch (IOException e) {
             log.error("Unable to parse JSON string: {}", e);

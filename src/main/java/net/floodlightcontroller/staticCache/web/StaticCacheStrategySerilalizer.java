@@ -19,6 +19,7 @@ public class StaticCacheStrategySerilalizer extends JsonSerializer<StaticCacheSt
         jsonGenerator.writeNumberField("tp_dst", strategy.tp_dst.getPort());
         jsonGenerator.writeNumberField("priority", strategy.priority);
         jsonGenerator.writeStringField("cache_ip", strategy.nw_cache_ipv4.toString());
+        jsonGenerator.writeStringField("cache_mac", strategy.nw_cache_dl_dst.toString());
 
         jsonGenerator.writeEndObject();
     }
