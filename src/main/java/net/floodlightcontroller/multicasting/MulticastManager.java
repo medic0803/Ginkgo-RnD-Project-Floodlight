@@ -266,7 +266,7 @@ public class MulticastManager implements IOFMessageListener, IFloodlightModule, 
         IPv4Address multicastAddress = IPv4Address.of(rawMulticastAddress);
         IPv4Address hostIPAddress = ((IPv4) eth.getPayload()).getSourceAddress();
 
-        // the total length of this packet is 54, the previous 14(0-13) is for header, the rest 40 is for paylod, and the 46/32 is for record type
+        // the total length of this packet is 54, the previous 14(0-13) is for header, the rest 40 is for payload, and the 46/32 is for record type
         if (igmpPayload[32] == 4) {
             log.info("Receive an IGMP Join Message from" + sw.getId() + ": "+ hostIPAddress + ", and send to " + multicastAddress);
             processIGMPJoinMsg(multicastAddress, hostIPAddress, sw, pi, sw.getId(), cntx);
