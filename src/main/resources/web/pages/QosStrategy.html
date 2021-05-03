@@ -429,20 +429,20 @@
         });
     }
 
-    function GetSubnetMask() {
-
-        $.ajax({
-            type    : "GET",
-            dataType: 'json',
-            url     : "http://" + ipaddress + ":" + restport + "/wm/firewall/module/subnet-mask/json",
-            success : function (data) {
-                $("#subnetMask").html(data["subnet-mask"]);
-            },
-            error   : function (jqXHR, textStatus, errorThrown) {
-                alert('Error: ' + " " + jqXHR.responseText + " \n Status: " + textStatus + " \n Error Thrown: " + errorThrown);
-            }
-        });
-    }
+    // function GetSubnetMask() {
+    //
+    //     $.ajax({
+    //         type    : "GET",
+    //         dataType: 'json',
+    //         url     : "http://" + ipaddress + ":" + restport + "/wm/firewall/module/subnet-mask/json",
+    //         success : function (data) {
+    //             $("#subnetMask").html(data["subnet-mask"]);
+    //         },
+    //         error   : function (jqXHR, textStatus, errorThrown) {
+    //             alert('Error: ' + " " + jqXHR.responseText + " \n Status: " + textStatus + " \n Error Thrown: " + errorThrown);
+    //         }
+    //     });
+    // }
 
     //kwmtodo:[ 001 ]add strategy Button
     $("#btnAddStrategy").click(function () {
@@ -451,9 +451,7 @@
         var dst_port = $("#dst-port").val();
         var priority = $("#priority").val();
         var cache_ip = $("#cache-ip").val();
-        // if (src_ip != "" || dst_ip != "" || dst_port != "" || priority != "" || cache_ip != "" || action != "") {
-        // AddFirewallRule(switchid, src_inport, src_mac, dst_mac, dl_type, nw_proto, tp_src, tp_dst, priority, dst_ip, src_ip, action);
-        // }
+
         if (src_ip != "" || dst_ip != "" || dst_port != "" || priority != "" || cache_ip != "") {
             AddQoSStrategy(src_ip, dst_ip, dst_port, priority, cache_ip);
         }

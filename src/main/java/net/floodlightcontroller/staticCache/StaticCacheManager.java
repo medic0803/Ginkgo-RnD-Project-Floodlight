@@ -11,7 +11,6 @@ import net.floodlightcontroller.core.module.IFloodlightModule;
 import net.floodlightcontroller.core.module.IFloodlightService;
 import net.floodlightcontroller.devicemanager.IDevice;
 import net.floodlightcontroller.devicemanager.IDeviceService;
-import net.floodlightcontroller.devicemanager.internal.Device;
 import net.floodlightcontroller.packet.Ethernet;
 import net.floodlightcontroller.packet.IPv4;
 import net.floodlightcontroller.restserver.IRestApiService;
@@ -27,7 +26,6 @@ import org.projectfloodlight.openflow.types.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.lang.annotation.Annotation;
 import java.util.*;
 
 public class StaticCacheManager implements IOFMessageListener, IFloodlightModule, IStaticCacheService {
@@ -157,9 +155,9 @@ public class StaticCacheManager implements IOFMessageListener, IFloodlightModule
         deviceService = context.getServiceImpl(IDeviceService.class);
         //wrf: detele pre-defined strategy
         StaticCacheStrategy tempStrategy = new StaticCacheStrategy();
-        tempStrategy.nw_src_prefix_and_mask = IPv4AddressWithMask.of("10.0.0.2/32");
-        tempStrategy.nw_dst_prefix_and_mask = IPv4AddressWithMask.of("10.0.0.1/32");
-        tempStrategy.nw_cache_prefix_and_mask = IPv4AddressWithMask.of("10.0.0.3/32");
+        tempStrategy.nw_src_ipv4 = IPv4Address.of("10.0.0.2");
+        tempStrategy.nw_dst_ipv4 = IPv4Address.of("10.0.0.1");
+        tempStrategy.nw_cache_ipv4 = IPv4Address.of("10.0.0.3");
         tempStrategy.tp_dst = TransportPort.of(8080);
         tempStrategy.nw_cache_dl_dst = MacAddress.of("be:5f:68:79:d3:44");
         strategies.add(tempStrategy);
@@ -184,7 +182,7 @@ public class StaticCacheManager implements IOFMessageListener, IFloodlightModule
         Collection<? extends IDevice> devices = deviceService.getAllDevices();
         for (IDevice device : devices){
             for (IPv4Address srcAddress : device.getIPv4Addresses()){
-                if (srcAddress.equals(strategy.nw_cache_prefix_and_mask.getValue())){
+                if (srcAddress.equals(strategy.nw_cache_ipv4)){
                     strategy.nw_cache_dl_dst = device.getMACAddress();
                 }
             }

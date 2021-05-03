@@ -14,11 +14,11 @@ public class StaticCacheStrategySerilalizer extends JsonSerializer<StaticCacheSt
         jsonGenerator.writeStartObject();
 
         jsonGenerator.writeNumberField("strategyid", strategy.strategyid);
-        jsonGenerator.writeStringField("src_ip", strategy.nw_src_prefix_and_mask.getValue().toString());
-        jsonGenerator.writeStringField("dst_ip", strategy.nw_dst_prefix_and_mask.getValue().toString());
+        jsonGenerator.writeStringField("src_ip", strategy.nw_src_ipv4.toString());
+        jsonGenerator.writeStringField("dst_ip", strategy.nw_dst_ipv4.toString());
         jsonGenerator.writeNumberField("tp_dst", strategy.tp_dst.getPort());
         jsonGenerator.writeNumberField("priority", strategy.priority);
-        jsonGenerator.writeStringField("cache_ip", strategy.nw_src_prefix_and_mask.getValue().toString());
+        jsonGenerator.writeStringField("cache_ip", strategy.nw_cache_ipv4.toString());
 
         jsonGenerator.writeEndObject();
     }
