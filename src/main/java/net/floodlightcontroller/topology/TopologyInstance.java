@@ -21,6 +21,8 @@ import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.types.NodePortTuple;
 import net.floodlightcontroller.linkdiscovery.Link;
 import net.floodlightcontroller.qos.DSCPField;
+import net.floodlightcontroller.qos.ResourceMonitor.QosResourceMonitor;
+import net.floodlightcontroller.qos.ResourceMonitor.pojo.LinkEntry;
 import net.floodlightcontroller.qos.ResourceMonitor.pojo.SwitchPortPkLoss;
 import net.floodlightcontroller.routing.BroadcastTree;
 import net.floodlightcontroller.routing.Path;
@@ -68,6 +70,7 @@ public class TopologyInstance {
     private Map<NodePortTuple, Set<Link>>   linksNonBcastNonTunnel; /* only non-broadcast and non-tunnel links */
     private Map<NodePortTuple, Set<Link>>   linksExternal; /* BDDP links b/t clusters */
     private Set<Link>                       linksNonExternalInterCluster;
+    protected QosResourceMonitor qosResourceMonitor;
 
     /* Blocked */
     private Set<NodePortTuple>  portsBlocked;
@@ -88,6 +91,10 @@ public class TopologyInstance {
 
     protected void set(Map<NodePortTuple, SwitchPortPkLoss> map){
         this.pkLossMap = map;
+    }
+
+    public ConcurrentHashMap<PathId, List<Path>> getPathCache(){
+        return pathcache;
     }
 
     protected TopologyInstance(Map<DatapathId, Set<OFPort>> portsWithLinks,
@@ -1249,7 +1256,16 @@ public class TopologyInstance {
 
         try {
             if (!pathcache.get(id).isEmpty()) {
-                result = pathcache.get(id).get(0);
+                for (int i = 0; i < pathcache.get(id).size(); i++){
+                    Path newPath = pathcache.get(id).get(i);
+                    if (getPathDelay(newPath) < 150 && getPathPKLoss(newPath) < 5){
+                        result = newPath;
+                        break;
+                    }
+                }
+                //判断第一条路径上delay<150ms,pkloss<5%,jitter<300ms是否满足条件
+//                result = pathcache.get(id).get(0);
+                //否，判断第二条
             }
         } catch (Exception e) {
             log.warn("Could not find route from {} to {}. If the path exists, wait for the topology to settle, and it will be detected", srcId, dstId);
@@ -1450,5 +1466,41 @@ public class TopologyInstance {
     
     public Set<DatapathId> getArchipelagoIds() {
         return archipelagos.stream().map(Archipelago::getId).collect(Collectors.toSet());
+    }
+
+    private Integer getPathDelay(Path path){
+        Integer pathDelay = 0;
+        List<NodePortTuple> nodePortTupleList = path.getPath();
+        Map<LinkEntry<DatapathId,DatapathId>,Integer> linkDelayMap = qosResourceMonitor.getLinkDelay();
+        if (nodePortTupleList.size() > 2) {
+            for (int length = 1; length < nodePortTupleList.size(); length += 4) {
+                DatapathId HeadDatapathId = nodePortTupleList.get(length).getNodeId();
+                DatapathId TailDatapathId = nodePortTupleList.get(length + 2).getNodeId();
+                LinkEntry linkEntry = new LinkEntry(HeadDatapathId, TailDatapathId);
+                pathDelay += linkDelayMap.get(linkEntry);
+            }
+        }
+        return pathDelay;
+    }
+
+    private Integer getPathPKLoss(Path path){
+        Integer pklossRatio = 0;
+        List<NodePortTuple> nodePortTupleList = path.getPath();
+        Map<NodePortTuple, SwitchPortPkLoss> pkLossMap = qosResourceMonitor.getPkLoss();
+        while (pkLossMap.isEmpty()){
+            pkLossMap = qosResourceMonitor.getPkLoss();
+            System.out.println("----------------------");
+            System.out.println(pkLossMap);
+        }
+        System.out.println(pkLossMap);
+        for (int length = 1; length < nodePortTupleList.size(); length +=2){
+            NodePortTuple n = nodePortTupleList.get(length);
+            for(NodePortTuple node : pkLossMap.keySet()){
+                if (n.equals(node)){
+                    pklossRatio += pkLossMap.get(n).getPkLossPerSec();
+                }
+            }
+        }
+        return pklossRatio;
     }
 } 
