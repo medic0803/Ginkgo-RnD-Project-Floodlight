@@ -14,7 +14,6 @@ import net.floodlightcontroller.core.util.AppCookie;
 import net.floodlightcontroller.core.util.SingletonTask;
 import net.floodlightcontroller.packet.*;
 import net.floodlightcontroller.qos.DSCPField;
-import net.floodlightcontroller.qos.ResourceMonitor.QosResourceMonitor;
 import net.floodlightcontroller.routing.*;
 import net.floodlightcontroller.threadpool.IThreadPoolService;
 import net.floodlightcontroller.topology.ITopologyService;
@@ -93,8 +92,6 @@ public class MulticastManager implements IOFMessageListener, IFloodlightModule, 
 
     private static int OFMESSAGE_DAMPER_CAPACITY = 10000;
     private static int OFMESSAGE_DAMPER_TIMEOUT = 250; // ms
-
-    protected QosResourceMonitor qosResourceMonitor;
 
     protected static class FlowSetIdRegistry {
         private volatile Map<NodePortTuple, Set<U64>> nptToFlowSetIds;
@@ -930,7 +927,6 @@ public class MulticastManager implements IOFMessageListener, IFloodlightModule, 
         routingService = context.getServiceImpl(IRoutingService.class);
         topologyService = context.getServiceImpl(ITopologyService.class);
         threadPoolService = context.getServiceImpl(IThreadPoolService.class);
-        qosResourceMonitor = context.getServiceImpl(QosResourceMonitor.class);
         messageDamper = new OFMessageDamper(OFMESSAGE_DAMPER_CAPACITY,
                 EnumSet.of(OFType.FLOW_MOD),
                 OFMESSAGE_DAMPER_TIMEOUT);
@@ -980,12 +976,6 @@ public class MulticastManager implements IOFMessageListener, IFloodlightModule, 
         Stack<DatapathId> tempBP = new Stack<>();
         Stack<DatapathId> possibleBP = new Stack<>();
         Path newPath = routingService.getPath(src, srcPort, dst, dstPort);
-//        int pkloss = getPathPKLoss(newPath);
-        //zzy: get the path's qos indicators
-//        System.out.println(pkloss); //get pkloss of whole path
-//        int delay = getPathDelay(newPath);
-//        System.out.println(delay);  //get delay of whole path
-
 
         if (multicastTree.getPathList().isEmpty()) {
             multicastTree.getPathList().put(hostAddress, newPath);
@@ -1034,40 +1024,4 @@ public class MulticastManager implements IOFMessageListener, IFloodlightModule, 
         log.info("An initial path has been calculated " + newPath);
         return newPath;
     }
-
-//    private Integer getPathDelay(Path path){
-//        Integer pathDelay = 0;
-//        List<NodePortTuple> nodePortTupleList = path.getPath();
-//        Map<LinkEntry<DatapathId,DatapathId>,Integer> linkDelayMap = qosResourceMonitor.getLinkDelay();
-//        if (nodePortTupleList.size() > 2) {
-//            for (int length = 1; length < nodePortTupleList.size(); length += 4) {
-//                DatapathId HeadDatapathId = nodePortTupleList.get(length).getNodeId();
-//                DatapathId TailDatapathId = nodePortTupleList.get(length + 2).getNodeId();
-//                LinkEntry linkEntry = new LinkEntry(HeadDatapathId, TailDatapathId);
-//                pathDelay += linkDelayMap.get(linkEntry);
-//            }
-//        }
-//        return pathDelay;
-//    }
-//
-//    private Integer getPathPKLoss(Path path){
-//        Integer pklossRatio = 0;
-//        List<NodePortTuple> nodePortTupleList = path.getPath();
-//        Map<NodePortTuple, SwitchPortPkLoss> pkLossMap = qosResourceMonitor.getPkLoss();
-//        while (pkLossMap.isEmpty()){
-//            pkLossMap = qosResourceMonitor.getPkLoss();
-//            System.out.println("----------------------");
-//            System.out.println(pkLossMap);
-//        }
-//        System.out.println(pkLossMap);
-//        for (int length = 1; length < nodePortTupleList.size(); length +=2){
-//            NodePortTuple n = nodePortTupleList.get(length);
-//            for(NodePortTuple node : pkLossMap.keySet()){
-//                if (n.equals(node)){
-//                    pklossRatio += pkLossMap.get(n).getPkLossPerSec();
-//                }
-//            }
-//        }
-//        return pklossRatio;
-//    }
 }
