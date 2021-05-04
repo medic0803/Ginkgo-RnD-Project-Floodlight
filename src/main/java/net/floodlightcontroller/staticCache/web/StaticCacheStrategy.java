@@ -114,7 +114,7 @@ public class StaticCacheStrategy {
         OFActionSetField cache_setEthSrc = sw.getOFFactory().actions().buildSetField()
                 .setField(
                         sw.getOFFactory().oxms().buildEthSrc()
-                                .setValue(MacAddress.of("2e:d9:c4:94:dc:5e"))
+                                .setValue(MacAddress.of("00:00:00:00:00:44"))
                                 .build()
                 )
                 .build();

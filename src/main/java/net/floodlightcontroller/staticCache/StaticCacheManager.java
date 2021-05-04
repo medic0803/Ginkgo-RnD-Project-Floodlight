@@ -159,7 +159,7 @@ public class StaticCacheManager implements IOFMessageListener, IFloodlightModule
         tempStrategy.nw_dst_ipv4 = IPv4Address.of("10.0.0.1");
         tempStrategy.nw_cache_ipv4 = IPv4Address.of("10.0.0.3");
         tempStrategy.tp_dst = TransportPort.of(8080);
-        tempStrategy.nw_cache_dl_dst = MacAddress.of("be:5f:68:79:d3:44");
+        tempStrategy.nw_cache_dl_dst = MacAddress.of("00:00:00:00:00:22");
         strategies.add(tempStrategy);
 
 
