@@ -9,6 +9,8 @@ import net.floodlightcontroller.core.module.FloodlightModuleException;
 import net.floodlightcontroller.core.module.IFloodlightModule;
 import net.floodlightcontroller.core.module.IFloodlightService;
 import net.floodlightcontroller.core.types.NodePortTuple;
+import net.floodlightcontroller.core.web.OFStatsTypeStrings;
+import net.floodlightcontroller.core.web.StatsReply;
 import net.floodlightcontroller.restserver.IRestApiService;
 import net.floodlightcontroller.statistics.web.SwitchStatisticsWebRoutable;
 import net.floodlightcontroller.threadpool.IThreadPoolService;
@@ -260,8 +262,123 @@ public class StatisticsCollector implements IFloodlightModule, IStatisticsServic
 		if (isEnabled) {
 			startStatisticsCollection();
 		}
+		//kwmtodo: test for the method
+		new Thread(new Runnable(){
+			@Override
+			public void run() {
+				for (int i = 0; i < 10; i++) {
+					try {
+						Thread.sleep(5000);
+					} catch (InterruptedException e) {
+						e.printStackTrace();
+					}
+					log.info("=======================this is queue test=====================");
+					Map<String, StatsReply> queue = retrieveInternal("queue");
+					Iterator<StatsReply> iterator = queue.values().iterator();
+					while (iterator.hasNext()){
+						StatsReply statsReply = iterator.next();
+						System.out.println(statsReply.getDatapathId());
+						System.out.println(statsReply.getValues());
+					}
+				}
+			}
+		}).start();
+		System.out.println("hello this is main thread");
+	}
+	private Map<String, StatsReply> retrieveInternal(String statType) {
+		HashMap<String, StatsReply> model = new HashMap<String, StatsReply>();
+
+		OFStatsType type = null;
+
+		switch (statType) {
+			case "queue":
+				type = OFStatsType.QUEUE;
+				break;
+			case "queue_desc":
+				type = OFStatsType.QUEUE_DESC;
+				break;
+			default:
+				model.put("error", new StatsReply()); // will generate error message when serializer is invoked
+				return model;
+		}
+
+		Set<DatapathId> switchDpids = switchService.getAllSwitchDpids();
+		List<GetConcurrentStatsThread> activeThreads = new ArrayList<GetConcurrentStatsThread>(switchDpids.size());
+		List<GetConcurrentStatsThread> pendingRemovalThreads = new ArrayList<GetConcurrentStatsThread>();
+		GetConcurrentStatsThread t;
+		for (DatapathId l : switchDpids) {
+			t = new GetConcurrentStatsThread(l, type);
+			activeThreads.add(t);
+			t.start();
+		}
+
+		// Join all the threads after the timeout. Set a hard timeout
+		// of 12 seconds for the threads to finish. If the thread has not
+		// finished the switch has not replied yet and therefore we won't
+		// add the switch's stats to the reply.
+		for (int iSleepCycles = 0; iSleepCycles < 12; iSleepCycles++) {
+			for (GetConcurrentStatsThread curThread : activeThreads) {
+				if (curThread.getState() == State.TERMINATED) {
+						model.put(curThread.getSwitchId().toString(), new StatsReply(curThread.getSwitchId(), curThread.getStatisticsReply(), type));
+//						model.put(curThread.getSwitchId().toString(), new StatsReply(curThread.getSwitchId(), curThread.getFeaturesReply(), type));
+					pendingRemovalThreads.add(curThread);
+				}
+			}
+
+			// remove the threads that have completed the queries to the switches
+			for (GetConcurrentStatsThread curThread : pendingRemovalThreads) {
+				activeThreads.remove(curThread);
+			}
+			// clear the list so we don't try to double remove them
+			pendingRemovalThreads.clear();
+
+			// if we are done finish early so we don't always get the worst case
+			if (activeThreads.isEmpty()) {
+				break;
+			}
+
+			// sleep for 1 s here
+			try {
+				Thread.sleep(1000);
+			} catch (InterruptedException e) {
+				log.error("Interrupted while waiting for statistics", e);
+			}
+		}
+
+		return model;
 	}
 
+	protected class GetConcurrentStatsThread extends Thread {
+		private List<OFStatsReply> switchReply;
+		private DatapathId switchId;
+		private OFStatsType statType;
+		private OFFeaturesReply featuresReply;
+
+		public GetConcurrentStatsThread(DatapathId switchId,OFStatsType statType) {
+			this.switchId = switchId;
+			this.statType = statType;
+			this.switchReply = null;
+			this.featuresReply = null;
+		}
+
+		public List<OFStatsReply> getStatisticsReply() {
+			return switchReply;
+		}
+
+		public OFFeaturesReply getFeaturesReply() {
+			return featuresReply;
+		}
+
+		public DatapathId getSwitchId() {
+			return switchId;
+		}
+
+		@Override
+		public void run() {
+				switchReply = getSwitchStatistics(switchId, statType);
+//				featuresReply = getSwitchFeaturesReply(switchId);
+		}
+	}
 	/*
 	 * IStatisticsService implementation
 	 */
