@@ -295,6 +295,7 @@ public class StatisticsCollector implements IFloodlightModule, IStatisticsServic
 				type = OFStatsType.QUEUE;
 				break;
 			case "queue_desc":
+				//kwm: Stats Request Type QUEUE_DESC not implemented yet
 				type = OFStatsType.QUEUE_DESC;
 				break;
 			default:
