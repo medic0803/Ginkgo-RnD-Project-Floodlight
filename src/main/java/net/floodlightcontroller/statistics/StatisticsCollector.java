@@ -274,6 +274,7 @@ public class StatisticsCollector implements IFloodlightModule, IStatisticsServic
 					}
 					log.info("=======================this is queue test=====================");
 					OFFactory factory = OFFactories.getFactory(OFVersion.OF_13);
+					//kwm look for line 453.
 					OFQueueStatsRequest sr = factory.buildQueueStatsRequest()
 							.setPortNo(OFPort.ANY)
 							.setQueueId(UnsignedLong.MAX_VALUE.longValue())
@@ -290,6 +291,15 @@ public class StatisticsCollector implements IFloodlightModule, IStatisticsServic
 								System.out.println(txb);
 							}
 						}
+						/**
+						 * output:
+						 * 0
+						 * 0x00000000000211f6
+						 * 123
+						 * 0x0000000000000000
+						 * 456
+						 * 0x0000000000000000
+						 */
 					}catch(InterruptedException | ExecutionException | TimeoutException e) {
 						e.printStackTrace();
 					}
