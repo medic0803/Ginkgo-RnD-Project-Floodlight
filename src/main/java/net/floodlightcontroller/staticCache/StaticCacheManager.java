@@ -14,10 +14,13 @@ import net.floodlightcontroller.devicemanager.IDeviceService;
 import net.floodlightcontroller.packet.Ethernet;
 import net.floodlightcontroller.packet.IPv4;
 import net.floodlightcontroller.restserver.IRestApiService;
+import net.floodlightcontroller.routing.IRoutingService;
+import net.floodlightcontroller.routing.Path;
 import net.floodlightcontroller.staticCache.web.StaticCacheStrategy;
 import net.floodlightcontroller.staticCache.web.StaticCacheWebRoutable;
 import net.floodlightcontroller.topology.ITopologyService;
 import net.floodlightcontroller.util.OFMessageDamper;
+import net.floodlightcontroller.util.OFMessageUtils;
 import org.projectfloodlight.openflow.protocol.OFMessage;
 import org.projectfloodlight.openflow.protocol.OFPacketIn;
 import org.projectfloodlight.openflow.protocol.OFType;
@@ -25,6 +28,7 @@ import org.projectfloodlight.openflow.types.*;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import sun.misc.MessageUtils;
 
 import java.util.*;
 
@@ -38,7 +42,7 @@ public class StaticCacheManager implements IOFMessageListener, IFloodlightModule
     protected OFMessageDamper messageDamper;
     protected IRestApiService restApi;
     protected IDeviceService deviceService;
-
+    protected IRoutingService routingEngineService;
     protected List<StaticCacheStrategy> strategies;
 
     protected static Logger log = LoggerFactory.getLogger(StaticCacheManager.class);
@@ -70,36 +74,38 @@ public class StaticCacheManager implements IOFMessageListener, IFloodlightModule
                         log.info("The destination port is " + tp_dst);
                         IPv4Address srcAddress = ((IPv4) eth.getPayload()).getSourceAddress();
                         IPv4Address dstAddress = ((IPv4) eth.getPayload()).getDestinationAddress();
-//                            System.out.println(srcAddress.asCidrMaskLength());
-//                            srcAddress.getLength()
-//                            srcAddress.asCidrMaskLength();
-                        log.info("src ip is " + srcAddress);
-                        log.info("dst ip is " + dstAddress);
                         if (tp_dst == 80 || tp_dst == 8080 || tp_dst  == 8081 || tp_dst == 9098){
-                            log.info("Receive a HTTP packet");
+                            log.info("Receive a HTTP packet on port " + tp_dst);
                             //wrf: 匹配策略表，一旦匹配，下发修改流表选项
-//                            IPv4Address srcAddress = ((IPv4) eth.getPayload()).getSourceAddress();
-//                            IPv4Address dstAddress = ((IPv4) eth.getPayload()).getDestinationAddress();
-//                            System.out.println(srcAddress.asCidrMaskLength());
-//                            srcAddress.getLength()
-//                            srcAddress.asCidrMaskLength();
+
                             log.info("src ip is " + srcAddress);
                             log.info("dst ip is " + dstAddress);
-                            StaticCacheStrategy matched_strategy;
+
+                            StaticCacheStrategy matched_strategy = null;
+                            // wrf: find highest priority strategy，找到所有匹配项，然后选出最高的那一个
                             for (StaticCacheStrategy strategy : strategies){
-                                matched_strategy = strategy.ifMatch(srcAddress, dstAddress, TransportPort.of(tp_dst));
-                                if (matched_strategy != null) {
-                                   //wrf: apply the strategy
-//                                    matched_strategy.applyStrategy();
-                                    System.out.println("match the strategy");
-                                    log.info("match the strategy");
-                                    matched_strategy.applyStrategy(sw, pi);
-                                    break;
+                                StaticCacheStrategy temp_strategy = strategy.ifMatch(srcAddress, dstAddress, TransportPort.of(tp_dst));
+                                if (temp_strategy != null) {
+                                    if (matched_strategy == null){
+                                        matched_strategy = temp_strategy;
+                                    } else {    // matched_strategy !=null
+                                        if (temp_strategy.priority < matched_strategy.priority){    // find a high priority strategy
+                                            matched_strategy = temp_strategy;
+                                        }
+                                    }
                                 }
                             }
-                            //wrf: 下发流表，action设置为修改dst address和MAC地址
+                            if (matched_strategy != null) {
+                                //wrf: apply the strategy
+                                log.info("match the strategy");
+                                matched_strategy.src_dpid = sw.getId();
+                                matched_strategy.src_inPort = OFMessageUtils.getInPort(pi);
 
-                        } else {
+                                Path path = routingEngineService.getPath(matched_strategy.src_dpid, matched_strategy.src_inPort, matched_strategy.dst_dpid, matched_strategy.dst_outPort);
+
+                                matched_strategy.applyStrategy(sw, pi, path);
+                                break;
+                            }
                             return Command.STOP;
                         }
                     }
@@ -153,16 +159,7 @@ public class StaticCacheManager implements IOFMessageListener, IFloodlightModule
         strategies = new ArrayList<StaticCacheStrategy>();
         restApi = context.getServiceImpl(IRestApiService.class);
         deviceService = context.getServiceImpl(IDeviceService.class);
-        //wrf: detele pre-defined strategy
-        StaticCacheStrategy tempStrategy = new StaticCacheStrategy();
-        tempStrategy.nw_src_ipv4 = IPv4Address.of("10.0.0.2");
-        tempStrategy.nw_dst_ipv4 = IPv4Address.of("10.0.0.1");
-        tempStrategy.nw_cache_ipv4 = IPv4Address.of("10.0.0.3");
-        tempStrategy.tp_dst = TransportPort.of(8080);
-        tempStrategy.nw_cache_dl_dst = MacAddress.of("00:00:00:00:00:22");
-        strategies.add(tempStrategy);
-
-
+        routingEngineService = context.getServiceImpl(IRoutingService.class);
     }
 
     @Override
@@ -178,21 +175,17 @@ public class StaticCacheManager implements IOFMessageListener, IFloodlightModule
     public void addStrategy(StaticCacheStrategy strategy) {
         this.strategies.add(strategy);
 
-        //wrf: invoke strategy implement method.
         Collection<? extends IDevice> devices = deviceService.getAllDevices();
         for (IDevice device : devices){
             for (IPv4Address srcAddress : device.getIPv4Addresses()){
                 if (srcAddress.equals(strategy.nw_cache_ipv4)){
                     strategy.nw_cache_dl_dst = device.getMACAddress();
+                    strategy.dst_outPort = device.getAttachmentPoints()[0].getPortId();
+                    strategy.dst_dpid = device.getAttachmentPoints()[0].getNodeId();
                 }
             }
         }
-        //wrf:思考如何匹配上策略表
-        System.out.println("8*****************************************************");
-
-        //wrftodo: invoke strategy implement method.
     }
-
     @Override
     public List<StaticCacheStrategy> getStrategies() {
         return this.strategies;

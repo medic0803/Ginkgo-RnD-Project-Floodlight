@@ -234,7 +234,7 @@ public class MulticastManager implements IOFMessageListener, IFloodlightModule, 
                                return Command.STOP;
                             }
 
-                        } else {    // do not have host wait for mulitcasting, drop the packet_in from source
+                        } else {    // do not have host wait for multicasting, drop the packet_in from source
                             return Command.STOP;
                         }
                     }

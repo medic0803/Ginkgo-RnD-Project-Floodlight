@@ -2,6 +2,7 @@ package net.floodlightcontroller.staticCache.web;
 
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import net.floodlightcontroller.core.IOFSwitch;
+import net.floodlightcontroller.routing.Path;
 import net.floodlightcontroller.util.OFMessageUtils;
 import org.projectfloodlight.openflow.protocol.OFFlowAdd;
 import org.projectfloodlight.openflow.protocol.OFPacketIn;
@@ -25,9 +26,14 @@ public class StaticCacheStrategy {
     public IPv4Address nw_dst_ipv4;
     public IPv4Address nw_cache_ipv4;
     public MacAddress nw_cache_dl_dst;
-    public TransportPort tp_dst;
     public int priority = 0;
 
+    // Complements
+    public TransportPort tp_dst;
+    public OFPort src_inPort;
+    public OFPort dst_outPort;
+    public DatapathId src_dpid;
+    public DatapathId dst_dpid;
     //Constructor
     public StaticCacheStrategy() {
         this.strategyid = this.genID();
@@ -48,16 +54,16 @@ public class StaticCacheStrategy {
         return uid;
     }
 
-    //wrf: 匹配策略表
     public StaticCacheStrategy ifMatch(IPv4Address srcAddress, IPv4Address dstAddress, TransportPort tp_dst) {
-        if (srcAddress.equals(this.nw_src_ipv4) && dstAddress.equals(this.nw_dst_ipv4.toString()) && tp_dst.equals(this.tp_dst)) {
+        if (srcAddress.equals(this.nw_src_ipv4) && dstAddress.equals(this.nw_dst_ipv4) && tp_dst.equals(this.tp_dst)) {
             return this;
         }
         return null;
     }
 
     //wrf: 下发策略
-    public void applyStrategy(IOFSwitch sw, OFPacketIn pi) {
+    public void applyStrategy(IOFSwitch sw, OFPacketIn pi, Path path) {
+        // push Route
 
         OFActionSetField host_setEthDst = sw.getOFFactory().actions().buildSetField()
                 .setField(
@@ -73,11 +79,10 @@ public class StaticCacheStrategy {
                                 .build()
                 )
                 .build();
-        System.out.println(this.nw_cache_ipv4);
         List<OFAction> actions = new ArrayList<>();
         actions.add(host_setEthDst);
         actions.add(host_setIpv4Dst);
-        actions.add(sw.getOFFactory().actions().buildOutput().setPort(OFPort.of(3)).build());
+        actions.add(sw.getOFFactory().actions().buildOutput().setPort(dst_outPort).build());
 
         OFInstructionApplyActions host_instruction = sw.getOFFactory().instructions().buildApplyActions()
                 .setActions(actions)
@@ -87,7 +92,7 @@ public class StaticCacheStrategy {
         instructions.add(host_instruction);
         System.out.println("---------------------------Apply the strategy Successfully-------------------------------------------");
         Match match = sw.getOFFactory().buildMatch()
-                .setExact(MatchField.IN_PORT, OFMessageUtils.getInPort(pi))
+                .setExact(MatchField.IN_PORT, this.src_inPort)
                 .setExact(MatchField.ETH_TYPE, EthType.IPv4)
                 .setExact(MatchField.IPV4_SRC, this.nw_src_ipv4)
                 .setExact(MatchField.IP_PROTO, IpProtocol.TCP)
@@ -107,14 +112,13 @@ public class StaticCacheStrategy {
                 .setTableId(TableId.ZERO)
                 .build();
 
-        // OFBadMatchErrorMsgVer13, code=BAD_PREREQ
         sw.write(flowAdd);
 
         //wrf:逆着回来的流表
         OFActionSetField cache_setEthSrc = sw.getOFFactory().actions().buildSetField()
                 .setField(
                         sw.getOFFactory().oxms().buildEthSrc()
-                                .setValue(MacAddress.of("00:00:00:00:00:44"))
+                                .setValue(nw_cache_dl_dst)
                                 .build()
                 )
                 .build();
@@ -128,7 +132,7 @@ public class StaticCacheStrategy {
         List<OFAction> actions_Cache = new ArrayList<>();
         actions_Cache.add(cache_setEthSrc);
         actions_Cache.add(cache_setIpv4Src);
-        actions_Cache.add(sw.getOFFactory().actions().buildOutput().setPort(OFPort.of(2)).build());
+        actions_Cache.add(sw.getOFFactory().actions().buildOutput().setPort(src_inPort).build());
 
         OFInstructionApplyActions instruction_cache = sw.getOFFactory().instructions().buildApplyActions()
                 .setActions(actions_Cache)
@@ -138,7 +142,7 @@ public class StaticCacheStrategy {
         instructions_cache.add(instruction_cache);
         System.out.println("---------------------------Apply the Cache strategy Successfully-------------------------------------------");
         Match match_cache = sw.getOFFactory().buildMatch()
-                .setExact(MatchField.IN_PORT, OFPort.of(3))
+                .setExact(MatchField.IN_PORT, dst_outPort)
                 .setExact(MatchField.ETH_TYPE, EthType.IPv4)
                 .setExact(MatchField.IPV4_SRC, this.nw_cache_ipv4)
                 .setExact(MatchField.IP_PROTO, IpProtocol.TCP)
