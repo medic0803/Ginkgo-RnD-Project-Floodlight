@@ -17,16 +17,17 @@
 
 package net.floodlightcontroller.routing;
 
-import java.util.Collection;
-import java.util.List;
-import java.util.Optional;
-
-import net.floodlightcontroller.core.IOFSwitch;
-import net.floodlightcontroller.core.types.NodePortTuple;
-import net.floodlightcontroller.qos.DSCPField;
-import org.projectfloodlight.openflow.types.*;
-
 import net.floodlightcontroller.core.module.IFloodlightService;
+import net.floodlightcontroller.core.types.NodePortTuple;
+import net.floodlightcontroller.qos.ResourceMonitor.pojo.LinkEntry;
+import net.floodlightcontroller.qos.ResourceMonitor.pojo.SwitchPortPkLoss;
+import org.projectfloodlight.openflow.types.DatapathId;
+import org.projectfloodlight.openflow.types.Masked;
+import org.projectfloodlight.openflow.types.OFPort;
+import org.projectfloodlight.openflow.types.U64;
+
+import java.util.List;
+import java.util.Map;
 
 public interface IRoutingService extends IFloodlightService {
 
@@ -150,6 +151,17 @@ public interface IRoutingService extends IFloodlightService {
      */
     Path getPath(DatapathId src, OFPort srcPort, DatapathId dst, OFPort dstPort);
 
+    /**
+     *
+     * @param src
+     * @param srcPort
+     * @param dst
+     * @param dstPort
+     * @param pkLoss
+     * @param linkDelay
+     * @return
+     */
+    Path getPath(DatapathId src, OFPort srcPort, DatapathId dst, OFPort dstPort, Map<NodePortTuple, SwitchPortPkLoss> pkLoss, Map<LinkEntry<DatapathId, DatapathId>, Integer> linkDelay);
     /**
      * Provides the shortest path between srcPort on src and dstPort on dst based on the .
      * @param src source switch

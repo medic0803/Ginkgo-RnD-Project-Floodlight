@@ -14,6 +14,9 @@ import net.floodlightcontroller.core.util.AppCookie;
 import net.floodlightcontroller.core.util.SingletonTask;
 import net.floodlightcontroller.packet.*;
 import net.floodlightcontroller.qos.DSCPField;
+import net.floodlightcontroller.qos.ResourceMonitor.QosResourceMonitor;
+import net.floodlightcontroller.qos.ResourceMonitor.pojo.LinkEntry;
+import net.floodlightcontroller.qos.ResourceMonitor.pojo.SwitchPortPkLoss;
 import net.floodlightcontroller.routing.*;
 import net.floodlightcontroller.threadpool.IThreadPoolService;
 import net.floodlightcontroller.topology.ITopologyService;
@@ -41,6 +44,7 @@ public class MulticastManager implements IOFMessageListener, IFloodlightModule, 
     protected IOFSwitchService switchService;
     protected ITopologyService topologyService;
     protected OFMessageDamper messageDamper;
+    protected QosResourceMonitor qosResourceMonitor;
 
     // Multicast Data structure
     private ConcurrentHashMap<IPv4Address, MulticastGroup> multicastGroupInfoTable = new ConcurrentHashMap<>();
@@ -927,6 +931,7 @@ public class MulticastManager implements IOFMessageListener, IFloodlightModule, 
         routingService = context.getServiceImpl(IRoutingService.class);
         topologyService = context.getServiceImpl(ITopologyService.class);
         threadPoolService = context.getServiceImpl(IThreadPoolService.class);
+        qosResourceMonitor = context.getServiceImpl(QosResourceMonitor.class);
         messageDamper = new OFMessageDamper(OFMESSAGE_DAMPER_CAPACITY,
                 EnumSet.of(OFType.FLOW_MOD),
                 OFMESSAGE_DAMPER_TIMEOUT);
@@ -975,7 +980,9 @@ public class MulticastManager implements IOFMessageListener, IFloodlightModule, 
         DatapathId bp = null;
         Stack<DatapathId> tempBP = new Stack<>();
         Stack<DatapathId> possibleBP = new Stack<>();
-        Path newPath = routingService.getPath(src, srcPort, dst, dstPort);
+        Map<NodePortTuple, SwitchPortPkLoss> pkLoss = qosResourceMonitor.getPkLoss();
+        Map<LinkEntry<DatapathId, DatapathId>, Integer> linkDelay = qosResourceMonitor.getLinkDelay();
+        Path newPath = routingService.getPath(src, srcPort, dst, dstPort, pkLoss, linkDelay);
 
         if (multicastTree.getPathList().isEmpty()) {
             multicastTree.getPathList().put(hostAddress, newPath);

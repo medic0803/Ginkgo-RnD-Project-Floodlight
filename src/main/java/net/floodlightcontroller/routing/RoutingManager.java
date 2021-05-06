@@ -1,23 +1,28 @@
 package net.floodlightcontroller.routing;
 
-import java.util.*;
-
-import net.floodlightcontroller.core.IOFSwitch;
-import net.floodlightcontroller.core.types.NodePortTuple;
-import net.floodlightcontroller.qos.DSCPField;
-import org.projectfloodlight.openflow.types.*;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
-
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.module.FloodlightModuleException;
 import net.floodlightcontroller.core.module.IFloodlightModule;
 import net.floodlightcontroller.core.module.IFloodlightService;
+import net.floodlightcontroller.core.types.NodePortTuple;
+import net.floodlightcontroller.qos.DSCPField;
+import net.floodlightcontroller.qos.ResourceMonitor.pojo.LinkEntry;
+import net.floodlightcontroller.qos.ResourceMonitor.pojo.SwitchPortPkLoss;
 import net.floodlightcontroller.topology.ITopologyManagerBackend;
 import net.floodlightcontroller.topology.ITopologyService;
+import org.projectfloodlight.openflow.types.DatapathId;
+import org.projectfloodlight.openflow.types.Masked;
+import org.projectfloodlight.openflow.types.OFPort;
+import org.projectfloodlight.openflow.types.U64;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
+import java.util.Map;
 
 /**
  * Separate path-finding and routing functionality from the
@@ -106,9 +111,15 @@ public class RoutingManager implements IFloodlightModule, IRoutingService {
         return tm.getCurrentTopologyInstance().getPath(src, srcPort, dst, dstPort, DSCPField.Default);
     }
 
+    @Override
+    public Path getPath(DatapathId src, OFPort srcPort, DatapathId dst, OFPort dstPort, Map<NodePortTuple, SwitchPortPkLoss> pkLoss, Map<LinkEntry<DatapathId, DatapathId>, Integer> linkDelay) {
+        return tm.getCurrentTopologyInstance().getPath(src, srcPort, dst, dstPort, pkLoss, linkDelay);
+    }
+
     public Path getPath(DatapathId src, OFPort srcPort, DatapathId dst, OFPort dstPort, DSCPField dscpField) {
         return tm.getCurrentTopologyInstance().getPath(src, srcPort, dst, dstPort, dscpField);
     }
+
     @Override
     public List<Path> getPathsFast(DatapathId src, DatapathId dst) {
         return tm.getCurrentTopologyInstance().getPathsFast(src, dst, tm.getMaxPathsToCompute());

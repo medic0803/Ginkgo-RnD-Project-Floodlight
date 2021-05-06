@@ -21,6 +21,7 @@ import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.types.NodePortTuple;
 import net.floodlightcontroller.linkdiscovery.Link;
 import net.floodlightcontroller.qos.DSCPField;
+import net.floodlightcontroller.qos.ResourceMonitor.pojo.LinkEntry;
 import net.floodlightcontroller.qos.ResourceMonitor.pojo.SwitchPortPkLoss;
 import net.floodlightcontroller.routing.BroadcastTree;
 import net.floodlightcontroller.routing.Path;
@@ -88,6 +89,10 @@ public class TopologyInstance {
 
     protected void set(Map<NodePortTuple, SwitchPortPkLoss> map){
         this.pkLossMap = map;
+    }
+
+    public ConcurrentHashMap<PathId, List<Path>> getPathcache(){
+        return pathcache;
     }
 
     protected TopologyInstance(Map<DatapathId, Set<OFPort>> portsWithLinks,
@@ -1229,7 +1234,88 @@ public class TopologyInstance {
         return r;
     }
 
+    //zzy
+    public Path getPath(DatapathId srcId, OFPort srcPort,
+                        DatapathId dstId, OFPort dstPort,
+                        Map<NodePortTuple, SwitchPortPkLoss> pkLoss,
+                        Map<LinkEntry<DatapathId, DatapathId>, Integer> linkDelay) {
+        Path r = getPath(srcId, dstId, pkLoss, linkDelay);
 
+        /* Path cannot be null, but empty b/t 2 diff DPIDs -> not found */
+        if (! srcId.equals(dstId) && r.getPath().isEmpty()) {
+            return r;
+        }
+
+        /* Else, path is valid (len=0) on the same DPID or (len>0) diff DPIDs */
+        List<NodePortTuple> nptList = new ArrayList<NodePortTuple>(r.getPath());
+        NodePortTuple npt = new NodePortTuple(srcId, srcPort);
+        nptList.add(0, npt); // add src port to the front
+        npt = new NodePortTuple(dstId, dstPort);
+        nptList.add(npt); // add dst port to the end
+
+        PathId id = new PathId(srcId, dstId);
+        r = new Path(id, nptList);
+        return r;
+    }
+
+    public Path getPath(DatapathId srcId, DatapathId dstId,
+                        Map<NodePortTuple, SwitchPortPkLoss> pkLoss,
+                        Map<LinkEntry<DatapathId, DatapathId>, Integer> linkDelay) {
+        PathId id = new PathId(srcId, dstId);
+
+        /* Return empty route if srcId equals dstId */
+        if (srcId.equals(dstId)) {
+            return new Path(id, ImmutableList.of());
+        }
+
+        Path result = null;
+
+        try {
+            if (!pathcache.get(id).isEmpty()) {
+                for (int i = 0; i < pathcache.get(id).size(); i++){
+                    Path newPath = pathcache.get(id).get(i);
+                    if (getPathDelay(newPath, linkDelay) < 150 && getPathPKLoss(newPath, pkLoss) < 5){
+                        result = newPath;
+                        break;
+                    }
+                }
+                result = pathcache.get(id).get(0);
+            }
+        } catch (Exception e) {
+            log.warn("Could not find route from {} to {}. If the path exists, wait for the topology to settle, and it will be detected", srcId, dstId);
+        }
+
+
+        if (log.isTraceEnabled()) {
+            log.trace("getPath: {} -> {}", id, result);
+        }
+        return result == null ? new Path(id, ImmutableList.of()) : result;
+    }
+
+    private Integer getPathDelay(Path path, Map<LinkEntry<DatapathId, DatapathId>, Integer> linkDelay){
+        Integer delay = 0;
+        List<NodePortTuple> nodePortTupleList = path.getPath();
+        for (int index = 1; index < nodePortTupleList.size(); index += 2) {
+            DatapathId HeadDatapathId = nodePortTupleList.get(index).getNodeId();
+            DatapathId TailDatapathId = nodePortTupleList.get(index + 1).getNodeId();
+            LinkEntry linkEntry = new LinkEntry(HeadDatapathId, TailDatapathId);
+            delay += linkDelay.get(linkEntry);
+        }
+        return delay;
+    }
+
+    private Integer getPathPKLoss(Path path, Map<NodePortTuple, SwitchPortPkLoss> pkLoss){
+        Integer pklossRatio = 0;
+        double pksucessRatio = 1;
+        List<NodePortTuple> nodePortTupleList = path.getPath();
+        //zzy: check the pkloss is right
+        for (int i = 0; i < nodePortTupleList.size(); i++) {
+            double lossRatio = pkLoss.get(nodePortTupleList.get(i)).getPkLossPerSec()/100.0;
+            pksucessRatio = pksucessRatio*(1-lossRatio);
+        }
+        pklossRatio = (int)(1-pksucessRatio);
+        return pklossRatio;
+    }
     /**
      * Get the fastest path from the pathcache.
      * @param srcId
