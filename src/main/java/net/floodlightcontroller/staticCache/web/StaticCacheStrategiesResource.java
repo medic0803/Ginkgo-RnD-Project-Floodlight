@@ -24,7 +24,6 @@ public class StaticCacheStrategiesResource extends ServerResource {
         IStaticCacheService staticCache =
                 (IStaticCacheService)getContext().getAttributes().
                         get(IStaticCacheService.class.getCanonicalName());
-
         return staticCache.getStrategies();
     }
 
@@ -37,7 +36,7 @@ public class StaticCacheStrategiesResource extends ServerResource {
 
         //kwmtodo: json translation function
         StaticCacheStrategy strategy = jsonToStaticCacheStrategy(scJson);
-
+        System.out.println(strategy);
         String status = null;
         //kwmtodo: status determiner
         staticCache.addStrategy(strategy);
@@ -91,7 +90,9 @@ public class StaticCacheStrategiesResource extends ServerResource {
 //                            strategy.dl_type = EthType.IPv4;
 //                        }
                         try {
-                            strategy.nw_src_prefix_and_mask = IPv4AddressWithMask.of(jsonParser.getText());
+                            strategy.nw_src_ipv4 = IPv4Address.of(jsonParser.getText());
+                            System.out.println(jsonParser.getText());
+                            System.out.println(strategy.nw_src_ipv4);
                         } catch (IllegalArgumentException e) {
                             log.error("Unable to parse source IP: {}", jsonParser.getText());
                             //TODO should return some error message via HTTP message
@@ -107,7 +108,7 @@ public class StaticCacheStrategiesResource extends ServerResource {
 //                            strategy.dl_type = EthType.IPv4;
 //                        }
                         try {
-                            strategy.nw_dst_prefix_and_mask = IPv4AddressWithMask.of(jsonParser.getText());
+                            strategy.nw_dst_ipv4 = IPv4Address.of(jsonParser.getText());
                         } catch (IllegalArgumentException e) {
                             log.error("Unable to parse destination IP: {}", jsonParser.getText());
                             //TODO should return some error message via HTTP message
@@ -122,7 +123,7 @@ public class StaticCacheStrategiesResource extends ServerResource {
 //                            strategy.dl_type = EthType.IPv4;
 //                        }
                         try {
-                            strategy.nw_cache_prefix_and_mask = IPv4AddressWithMask.of(jsonParser.getText());
+                            strategy.nw_cache_ipv4 = IPv4Address.of(jsonParser.getText());
                         } catch (IllegalArgumentException e) {
                             log.error("Unable to parse destination IP: {}", jsonParser.getText());
                             //TODO should return some error message via HTTP message
@@ -133,7 +134,6 @@ public class StaticCacheStrategiesResource extends ServerResource {
 //                    strategy.any_tp_dst = false;
                     try {
                         strategy.tp_dst = TransportPort.of(Integer.parseInt(jsonParser.getText()));
-                        System.out.println("#####################" + strategy.tp_dst);
                     } catch (IllegalArgumentException e) {
                         log.error("Unable to parse destination transport port: {}", jsonParser.getText());
                         //TODO should return some error message via HTTP message
@@ -145,6 +145,14 @@ public class StaticCacheStrategiesResource extends ServerResource {
                         strategy.priority = Integer.parseInt(jsonParser.getText());
                     } catch (IllegalArgumentException e) {
                         log.error("Unable to parse priority: {}", jsonParser.getText());
+                        //TODO should return some error message via HTTP message
+                    }
+                }
+                else if (currentName.equalsIgnoreCase("cache-mac")) {
+                    try {
+                        strategy.nw_cache_dl_dst = MacAddress.of(jsonParser.getText());
+                    } catch (IllegalArgumentException e) {
+                        log.error("Unable to parse Mac Address: {}", jsonParser.getText());
                         //TODO should return some error message via HTTP message
                     }
                 }
