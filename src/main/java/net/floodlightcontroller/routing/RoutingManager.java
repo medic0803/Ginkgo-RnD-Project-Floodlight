@@ -112,8 +112,8 @@ public class RoutingManager implements IFloodlightModule, IRoutingService {
     }
 
     @Override
-    public Path getPath(DatapathId src, OFPort srcPort, DatapathId dst, OFPort dstPort, Map<NodePortTuple, SwitchPortPkLoss> pkLoss, Map<LinkEntry<DatapathId, DatapathId>, Integer> linkDelay) {
-        return tm.getCurrentTopologyInstance().getPath(src, srcPort, dst, dstPort, pkLoss, linkDelay);
+    public Path getPath(DatapathId src, OFPort srcPort, DatapathId dst, OFPort dstPort, Map<NodePortTuple, SwitchPortPkLoss> pkLoss, Map<LinkEntry<DatapathId, DatapathId>, Integer> linkDelay, Map<NodePortTuple, SwitchPortPkLoss> linkJitter) {
+        return tm.getCurrentTopologyInstance().getPath(src, srcPort, dst, dstPort, pkLoss, linkDelay, linkJitter);
     }
 
     public Path getPath(DatapathId src, OFPort srcPort, DatapathId dst, OFPort dstPort, DSCPField dscpField) {

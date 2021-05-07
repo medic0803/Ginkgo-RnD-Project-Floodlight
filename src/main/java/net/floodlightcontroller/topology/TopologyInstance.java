@@ -1238,7 +1238,9 @@ public class TopologyInstance {
     public Path getPath(DatapathId srcId, OFPort srcPort,
                         DatapathId dstId, OFPort dstPort,
                         Map<NodePortTuple, SwitchPortPkLoss> pkLoss,
-                        Map<LinkEntry<DatapathId, DatapathId>, Integer> linkDelay) {
+                        Map<LinkEntry<DatapathId, DatapathId>, Integer> linkDelay,
+                        Map<NodePortTuple, SwitchPortPkLoss> linkJitter) {
+        //zzy: Add jitter
         Path r = getPath(srcId, dstId, pkLoss, linkDelay);
 
         /* Path cannot be null, but empty b/t 2 diff DPIDs -> not found */
@@ -1271,26 +1273,38 @@ public class TopologyInstance {
         Path result = null;
 
         try {
-            if (!pathcache.get(id).isEmpty()) {
-                for (int i = 0; i < pathcache.get(id).size(); i++){
-                    Path newPath = pathcache.get(id).get(i);
-                    if (getPathDelay(newPath, linkDelay) < 150 && getPathPKLoss(newPath, pkLoss) < 5){
-                        result = newPath;
-                        break;
-                    }
-                }
-                result = pathcache.get(id).get(0);
-            }
+            result = getPathByDelayAndPkloss(id,linkDelay,pkLoss);
         } catch (Exception e) {
             log.warn("Could not find route from {} to {}. If the path exists, wait for the topology to settle, and it will be detected", srcId, dstId);
         }
-
 
         if (log.isTraceEnabled()) {
             log.trace("getPath: {} -> {}", id, result);
         }
         return result == null ? new Path(id, ImmutableList.of()) : result;
     }
+
+    private Path getPathByDelayAndPkloss(PathId id,
+        Map<LinkEntry<DatapathId, DatapathId>, Integer> linkDelayMsp,
+        Map<NodePortTuple, SwitchPortPkLoss> pkLossMap) {
+
+        List<Path> pathList = pathcache.get(id);
+        if (!pathList.isEmpty()) {
+            for (int i = 0; i < pathList.size(); i++){
+                Path newPath = pathList.get(i);
+                //zzy: test
+                System.out.println("===================000000000=====================");
+                if (getPathDelay(newPath, linkDelayMsp) < 1500){
+                    System.out.println("===================11111111=====================");
+                    if (getPathPKLoss(newPath, pkLossMap) < 5) {
+                        System.out.println("===================2222222=====================");
+                        return newPath;
+                    }
+                }
+            }
+        }
+        return null;
+}
 
     private Integer getPathDelay(Path path, Map<LinkEntry<DatapathId, DatapathId>, Integer> linkDelay){
         Integer delay = 0;
