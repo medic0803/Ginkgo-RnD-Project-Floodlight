@@ -1,8 +1,10 @@
 package net.floodlightcontroller.qos.ResourceMonitor;
 
 import net.floodlightcontroller.core.module.IFloodlightService;
+import net.floodlightcontroller.qos.ResourceMonitor.pojo.LinkEntry;
+import org.projectfloodlight.openflow.types.DatapathId;
 
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.Map;
 
 /**
  * @author Michael Kang
@@ -13,7 +15,7 @@ public interface MonitorDelayService extends IFloodlightService {
      * 获取链路之间的时间延迟
      * @return Map<MyEntry<DatapathId,DatapathId>,Integer> 链路：时延(b)
      */
-    public ConcurrentHashMap<String,Integer> getLinkDelay();
+    public Map<LinkEntry<DatapathId,DatapathId>,Integer> getLinkDelay();
 
-    public ConcurrentHashMap<String,Integer> getLinkJitter();
+    public Map<LinkEntry<DatapathId,DatapathId>,Integer> getLinkJitter();
 }

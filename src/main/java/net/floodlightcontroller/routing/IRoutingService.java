@@ -19,6 +19,7 @@ package net.floodlightcontroller.routing;
 
 import net.floodlightcontroller.core.module.IFloodlightService;
 import net.floodlightcontroller.core.types.NodePortTuple;
+import net.floodlightcontroller.qos.ResourceMonitor.pojo.LinkEntry;
 import net.floodlightcontroller.qos.ResourceMonitor.pojo.SwitchPortPkLoss;
 import org.projectfloodlight.openflow.types.DatapathId;
 import org.projectfloodlight.openflow.types.Masked;
@@ -160,7 +161,7 @@ public interface IRoutingService extends IFloodlightService {
      * @param linkDelay
      * @return
      */
-    Path getPath(DatapathId src, OFPort srcPort, DatapathId dst, OFPort dstPort, Map<NodePortTuple, SwitchPortPkLoss> pkLoss, Map<String, Integer> linkDelay, Map<String, Integer> linkJitter);
+    Path getPath(DatapathId src, OFPort srcPort, DatapathId dst, OFPort dstPort, Map<NodePortTuple, SwitchPortPkLoss> pkLoss, Map<LinkEntry<DatapathId, DatapathId>, Integer> linkDelay);
     /**
      * Provides the shortest path between srcPort on src and dstPort on dst based on the .
      * @param src source switch
