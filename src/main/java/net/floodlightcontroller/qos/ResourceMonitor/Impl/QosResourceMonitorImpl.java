@@ -5,15 +5,18 @@ import net.floodlightcontroller.core.module.FloodlightModuleException;
 import net.floodlightcontroller.core.module.IFloodlightModule;
 import net.floodlightcontroller.core.module.IFloodlightService;
 import net.floodlightcontroller.core.types.NodePortTuple;
+import net.floodlightcontroller.linkdiscovery.ILinkDiscoveryService;
+import net.floodlightcontroller.linkdiscovery.Link;
 import net.floodlightcontroller.qos.ResourceMonitor.MonitorDelayService;
 import net.floodlightcontroller.qos.ResourceMonitor.MonitorPkLossService;
 import net.floodlightcontroller.qos.ResourceMonitor.QosResourceMonitor;
 import net.floodlightcontroller.qos.ResourceMonitor.pojo.LinkEntry;
-import net.floodlightcontroller.qos.ResourceMonitor.pojo.SwitchPortPkLoss;
+import net.floodlightcontroller.qos.ResourceMonitor.pojo.SwitchPortCounter;
 import net.floodlightcontroller.statistics.IStatisticsService;
 import net.floodlightcontroller.statistics.SwitchPortBandwidth;
 import org.projectfloodlight.openflow.types.DatapathId;
 import org.projectfloodlight.openflow.types.OFPort;
+import org.projectfloodlight.openflow.types.U64;
 
 import java.util.*;
 
@@ -27,11 +30,12 @@ public class QosResourceMonitorImpl implements QosResourceMonitor, IFloodlightMo
     // 注册module
     private static IStatisticsService bandwidthService;
     private static MonitorDelayService delayService;
+    private static ILinkDiscoveryService linkDiscoveryService;
     private static MonitorPkLossService pkLossService;
 
     private static Map<NodePortTuple,SwitchPortBandwidth> bandwidthMap;
     private static Map<LinkEntry<DatapathId, DatapathId>, Integer> linkDelaySecMap;
-    private static Map<NodePortTuple, SwitchPortPkLoss> pklossMap;
+    private static Map<LinkEntry<DatapathId, DatapathId>, Double> pklossMap;
 
     /**
      *  bandwidth methods
@@ -72,17 +76,30 @@ public class QosResourceMonitorImpl implements QosResourceMonitor, IFloodlightMo
         pkLossService.collectStatistics(collect);
     }
 
-    @Override
-    public Map<NodePortTuple, SwitchPortPkLoss> getPkLoss() {
-        pklossMap = pkLossService.getPkLoss();
-        return pklossMap;
-    }
+
 
     @Override
-    public SwitchPortPkLoss getPkLoss(DatapathId dpid, OFPort p) {
-        SwitchPortPkLoss answer = pkLossService.getPkLoss(dpid,p);
-        return answer;
+    public Map<LinkEntry<DatapathId,DatapathId>,Double> getPkLoss() {
+        if (!pklossMap.isEmpty()){
+            pklossMap.clear();
+        }
+        Set<Link> links = linkDiscoveryService.getLinks().keySet();
+        Map<NodePortTuple, SwitchPortCounter> portStatsMap = new HashMap<>();
+        portStatsMap.putAll(pkLossService.getPortStatsMap());
+        for (Link linkEntry:links) {
+            NodePortTuple headPortTuple = new NodePortTuple(linkEntry.getSrc(), linkEntry.getSrcPort());
+            NodePortTuple tailPortTuple = new NodePortTuple(linkEntry.getDst(), linkEntry.getDstPort());
+            LinkEntry<DatapathId,DatapathId> linkAsKey = new LinkEntry<>(headPortTuple.getNodeId(),tailPortTuple.getNodeId());
+            U64 tx = portStatsMap.get(headPortTuple).getTx();
+            U64 rx = portStatsMap.get(tailPortTuple).getRx();
+            pklossMap.put(linkAsKey,countPkloss(tx.getValue(),rx.getValue()));
+        }
+        return pklossMap;
     }
+    private double countPkloss(long send, long receive){
+        return 1-(receive*100.0)/send;
+    }
+
 
     /**
      * Floodlight Module skeleton
@@ -128,6 +145,7 @@ public class QosResourceMonitorImpl implements QosResourceMonitor, IFloodlightMo
         l.add(IStatisticsService.class);
         l.add(MonitorDelayService.class);
         l.add(MonitorPkLossService.class);
+        l.add(ILinkDiscoveryService.class);
         return l;
     }
 
@@ -146,6 +164,11 @@ public class QosResourceMonitorImpl implements QosResourceMonitor, IFloodlightMo
         bandwidthService = context.getServiceImpl(IStatisticsService.class);
         delayService = context.getServiceImpl(MonitorDelayService.class);
         pkLossService = context.getServiceImpl(MonitorPkLossService.class);
+        linkDiscoveryService = context.getServiceImpl(ILinkDiscoveryService.class);
+
+        pklossMap = new HashMap<>();
+        bandwidthMap = new HashMap<>();
+        linkDelaySecMap = new HashMap<>();
     }
 
     /**
@@ -163,5 +186,6 @@ public class QosResourceMonitorImpl implements QosResourceMonitor, IFloodlightMo
         System.out.println("----------------QosResourceMonitor actived-------------------");
         this.setBandwidthCollection(true);
         this.setPkLossCollection(true);
+        
     }
 }

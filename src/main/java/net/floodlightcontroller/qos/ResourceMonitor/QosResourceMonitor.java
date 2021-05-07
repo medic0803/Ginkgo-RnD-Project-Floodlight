@@ -3,7 +3,7 @@ package net.floodlightcontroller.qos.ResourceMonitor;
 import net.floodlightcontroller.core.module.IFloodlightService;
 import net.floodlightcontroller.core.types.NodePortTuple;
 import net.floodlightcontroller.qos.ResourceMonitor.pojo.LinkEntry;
-import net.floodlightcontroller.qos.ResourceMonitor.pojo.SwitchPortPkLoss;
+import net.floodlightcontroller.qos.ResourceMonitor.pojo.SwitchPortCounter;
 import net.floodlightcontroller.statistics.SwitchPortBandwidth;
 import org.projectfloodlight.openflow.types.DatapathId;
 import org.projectfloodlight.openflow.types.OFPort;
@@ -37,6 +37,5 @@ public interface QosResourceMonitor extends IFloodlightService{
      * shape the method of the StatisticsCollector used in bandwith to collect Parket loss
      */
     public void setPkLossCollection (boolean collect);
-    public Map<NodePortTuple, SwitchPortPkLoss> getPkLoss();
-    public SwitchPortPkLoss getPkLoss(DatapathId dpid, OFPort p);
+    public Map<LinkEntry<DatapathId,DatapathId>,Double> getPkLoss();
 }

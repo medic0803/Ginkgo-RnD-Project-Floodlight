@@ -21,7 +21,6 @@ import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.types.NodePortTuple;
 import net.floodlightcontroller.linkdiscovery.Link;
 import net.floodlightcontroller.qos.DSCPField;
-import net.floodlightcontroller.qos.ResourceMonitor.pojo.LinkEntry;
 import net.floodlightcontroller.qos.ResourceMonitor.pojo.SwitchPortPkLoss;
 import net.floodlightcontroller.routing.BroadcastTree;
 import net.floodlightcontroller.routing.Path;
@@ -89,10 +88,6 @@ public class TopologyInstance {
 
     protected void set(Map<NodePortTuple, SwitchPortPkLoss> map){
         this.pkLossMap = map;
-    }
-
-    public ConcurrentHashMap<PathId, List<Path>> getPathcache(){
-        return pathcache;
     }
 
     protected TopologyInstance(Map<DatapathId, Set<OFPort>> portsWithLinks,
@@ -657,7 +652,6 @@ public class TopologyInstance {
 
     /*
      * Creates a map of links and the cost associated with each link
-     * kwmtodo: check the link cost ?
      */
     public Map<Link,Integer> initLinkCostMap() {
         Map<Link, Integer> linkCost = new HashMap<Link, Integer>();
