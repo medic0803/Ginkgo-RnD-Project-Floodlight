@@ -13,9 +13,7 @@ import net.floodlightcontroller.core.types.NodePortTuple;
 import net.floodlightcontroller.core.util.AppCookie;
 import net.floodlightcontroller.devicemanager.IDevice;
 import net.floodlightcontroller.devicemanager.IDeviceService;
-import net.floodlightcontroller.packet.Ethernet;
-import net.floodlightcontroller.packet.IPv4;
-import net.floodlightcontroller.packet.TCP;
+import net.floodlightcontroller.packet.*;
 import net.floodlightcontroller.restserver.IRestApiService;
 import net.floodlightcontroller.routing.IRoutingDecision;
 import net.floodlightcontroller.routing.IRoutingService;
@@ -241,7 +239,6 @@ public class StaticCacheManager implements IOFMessageListener, IFloodlightModule
                         if (tp_dst == 80 || tp_dst == 8080 || tp_dst == 8081 || tp_dst == 9098) {
                             return process_http_from_host(srcAddress, dstAddress, tp_src, tp_dst, sw, pi, cntx);
                         } else if (tp_src == 80 || tp_src == 8080 || tp_src == 8081 || tp_src == 9098) {
-                            log.info("Receive a HTTP packet from cache/server on port " + tp_src);
                             return process_http_from_cache(srcAddress, dstAddress, tp_src, tp_dst, sw, pi, cntx);
                         }
                     }
@@ -251,16 +248,16 @@ public class StaticCacheManager implements IOFMessageListener, IFloodlightModule
         }
         return Command.CONTINUE;
     }
-
+    /**
+     * The destination transport is already be determined as a HTTP packet,
+     * which is then needed to be matched with a exist strategy to do the following processes,
+     * e.g. getPath, pushRoute
+     * @param tp_src                            Transport for source
+     * @param tp_dst                            Transport for destination
+     * @return Command.STOP if match any strategy, otherwise return Command.CONTINUE
+     */
     private Command process_http_from_host(IPv4Address srcAddress, IPv4Address dstAddress, int tp_src, int tp_dst, IOFSwitch sw, OFPacketIn pi, FloodlightContext cntx) {
-        log.info("Receive a HTTP packet from host on port " + tp_dst);
-        //wrf: 匹配策略表，一旦匹配，下发修改流表选项
-
-        log.info("src ip is " + srcAddress);
-        log.info("dst ip is " + dstAddress);
-
         StaticCacheStrategy matched_strategy = null;
-        // wrf: find highest priority strategy，找到所有匹配项，然后选出最高的那一个
         for (StaticCacheStrategy strategy : strategies) {
             StaticCacheStrategy temp_strategy = strategy.ifMatch(srcAddress, dstAddress, TransportPort.of(tp_dst), "HOST");
             if (temp_strategy != null) {
@@ -277,34 +274,34 @@ public class StaticCacheManager implements IOFMessageListener, IFloodlightModule
         // Matched strategy exists
         if (matched_strategy != null) {
             //wrf: apply the strategy
-            log.info("match the strategy");
+            log.info("match one strategy");
             matched_strategy.tp_src = TransportPort.of(tp_src);
             matched_strategy.src_dpid = sw.getId();
             matched_strategy.src_inPort = OFMessageUtils.getInPort(pi);
 
             Path path_forward = routingEngineService.getPath(matched_strategy.src_dpid, matched_strategy.src_inPort, matched_strategy.dst_dpid, matched_strategy.dst_inPort);
 
-            // wrf:push forward & inverse path
             U64 flowSetId = flowSetIdRegistry.generateFlowSetId();
             U64 cookie = makeForwardingCookie(RoutingDecision.rtStore.get(cntx, IRoutingDecision.CONTEXT_DECISION), flowSetId);
 
-            pushRoute(path_forward, matched_strategy.match_host, pi, matched_strategy, sw.getId(), cookie, cntx, false, "HOST");
+            pushRoute(path_forward, pi, matched_strategy, sw.getId(), cookie, cntx, false, "HOST");
 
-            //wrf: break?
             return Command.STOP;
         } else
             return Command.CONTINUE;
     }
 
+    /**
+     * The source transport is already be determined as a HTTP packet,
+     * which is then needed to be matched with a exist strategy to do the following processes,
+     * e.g. getPath, pushRoute
+     * @param tp_src                            Transport for source
+     * @param tp_dst                            Transport for destination
+     * @return Command.STOP if match any strategy, otherwise return Command.CONTINUE
+     */
     private Command process_http_from_cache(IPv4Address srcAddress, IPv4Address dstAddress, int tp_src, int tp_dst, IOFSwitch sw, OFPacketIn pi, FloodlightContext cntx) {
-        log.info("Receive a HTTP packet from cache on port " + tp_src);
-        //wrf: 匹配策略表，一旦匹配，下发修改流表选项
-
-        log.info("src ip is " + srcAddress);
-        log.info("dst ip is " + dstAddress);
 
         StaticCacheStrategy matched_strategy = null;
-        // wrf: find highest priority strategy，找到所有匹配项，然后选出最高的那一个
         for (StaticCacheStrategy strategy : strategies) {
             StaticCacheStrategy temp_strategy = strategy.ifMatch(srcAddress, dstAddress, TransportPort.of(tp_dst), "CACHE");
             if (temp_strategy != null) {
@@ -320,17 +317,14 @@ public class StaticCacheManager implements IOFMessageListener, IFloodlightModule
 
         // Matched strategy exists
         if (matched_strategy != null) {
-            //wrf: apply the strategy
-            log.info("match the strategy");
+            log.info("match one strategy");
             Path path_inverse = routingEngineService.getPath(matched_strategy.dst_dpid, matched_strategy.dst_inPort, matched_strategy.src_dpid, matched_strategy.src_inPort);
 
-            // wrf:push forward & inverse path
             U64 flowSetId = flowSetIdRegistry.generateFlowSetId();
             U64 cookie = makeForwardingCookie(RoutingDecision.rtStore.get(cntx, IRoutingDecision.CONTEXT_DECISION), flowSetId);
 
-            pushRoute(path_inverse, matched_strategy.match_cache, pi, matched_strategy, sw.getId(), cookie, cntx, false, "CACHE");
+            pushRoute(path_inverse, pi, matched_strategy, sw.getId(), cookie, cntx, false, "CACHE");
 
-            //wrf: break?
             return Command.STOP;
         } else
             return Command.CONTINUE;
@@ -393,9 +387,10 @@ public class StaticCacheManager implements IOFMessageListener, IFloodlightModule
         restApi.addRestletRoutable(new StaticCacheWebRoutable());
     }
 
-    /*
-     * kwm:IStaticCacheService implements
-     * */
+    /**
+     *
+     * @param strategy                  A new strategy, which needed to be complemented some information
+     */
     @Override
     public void addStrategy(StaticCacheStrategy strategy) {
         this.strategies.add(strategy);
@@ -412,28 +407,26 @@ public class StaticCacheManager implements IOFMessageListener, IFloodlightModule
         }
     }
 
+    /**
+     *
+     * @return strategies arraylist to present on the WEB UI
+     */
     @Override
     public List<StaticCacheStrategy> getStrategies() {
         return this.strategies;
     }
 
-    public void applyStrategy(StaticCacheStrategy strategy, IOFSwitch sw, OFPacketIn pi, Path path) {
-
-    }
-
     /**
      * Push routes from back to front
      *
-     * @param route                          Route to push
-     * @param match                          OpenFlow fields to match on
-     * @param cookie                         The cookie to set in each flow_mod
-     * @param cntx                           The floodlight context
-     * @param requestFlowRemovedNotification if set to true then the switch would
-     *                                       send a flow mod removal notification when the flow mod expires
-     *                                       OFFlowMod.OFPFC_MODIFY etc.
+     * @param route                         Route to push
+     * @param strategy                      Matched strategy to write flow with flow item modification
+     * @param cookie                        The cookie to set in each flow_mod
+     * @param cntx                          The floodlight context
+     * @param hostOrCache                   Determine which flowMod should be generated and write into the switch, host or cache
      * @return true if a packet out was sent on the first-hop switch of this route
      */
-    public boolean pushRoute(Path route, Match match, OFPacketIn pi, StaticCacheStrategy strategy,
+    public boolean pushRoute(Path route, OFPacketIn pi, StaticCacheStrategy strategy,
                              DatapathId pinSwitch, U64 cookie, FloodlightContext cntx,
                              boolean requestFlowRemovedNotification, String hostOrCache) {
 
@@ -459,10 +452,12 @@ public class StaticCacheManager implements IOFMessageListener, IFloodlightModule
                     case "HOST":
                         strategy.completeStrategy_host(sw, pi, outPort);
                         sw.write(strategy.flowAdd_host);
+                        log.info("Redirect the packet from " + strategy.nw_dst_ipv4 + " to " + strategy.nw_cache_ipv4);
                         break;
                     case "CACHE":
                         strategy.completeStrategy_cache(sw, pi, outPort);
                         sw.write(strategy.flowAdd_cache);
+                        log.info("Inverse proxy the packet from " + strategy.nw_dst_ipv4 + " to " + strategy.nw_cache_ipv4);
                         break;
                 }
                 pushPacket(sw, pi, outPort, true, cntx);
@@ -474,6 +469,8 @@ public class StaticCacheManager implements IOFMessageListener, IFloodlightModule
 
                 OFActionOutput.Builder aob = sw.getOFFactory().actions().buildOutput();
                 List<OFAction> actions = new ArrayList<>();
+
+                Match match = createMatchFromPacket(sw, inPort, pi, cntx);
                 Match.Builder mb = MatchUtils.convertToVersion(match, sw.getOFFactory().getVersion());
 
 
@@ -587,5 +584,174 @@ public class StaticCacheManager implements IOFMessageListener, IFloodlightModule
 
         OFMessageUtils.setInPort(pob, OFMessageUtils.getInPort(pi));
         messageDamper.write(sw, pob.build());
+    }
+    /**
+     * Instead of using the Firewall's routing decision Match, which might be as general
+     * as "in_port" and inadvertently Match packets erroneously, construct a more
+     * specific Match based on the deserialized OFPacketIn's payload, which has been
+     * placed in the FloodlightContext already by the Controller.
+     *
+     * @param sw,     the switch on which the packet was received
+     * @param inPort, the ingress switch port on which the packet was received
+     * @param cntx,   the current context which contains the deserialized packet
+     * @return a composed Match object based on the provided information
+     */
+    protected Match createMatchFromPacket(IOFSwitch sw, OFPort inPort, OFPacketIn pi, FloodlightContext cntx) {
+        // The packet in match will only contain the port number.
+        // We need to add in specifics for the hosts we're routing between.
+        Ethernet eth = IFloodlightProviderService.bcStore.get(cntx, IFloodlightProviderService.CONTEXT_PI_PAYLOAD);
+
+        VlanVid vlan = null;
+        if (pi.getVersion().compareTo(OFVersion.OF_11) > 0 && /* 1.0 and 1.1 do not have a match */
+                pi.getMatch().get(MatchField.VLAN_VID) != null) {
+            vlan = pi.getMatch().get(MatchField.VLAN_VID).getVlanVid(); /* VLAN may have been popped by switch */
+        }
+        if (vlan == null) {
+            vlan = VlanVid.ofVlan(eth.getVlanID()); /* VLAN might still be in packet */
+        }
+
+        MacAddress srcMac = eth.getSourceMACAddress();
+        MacAddress dstMac = eth.getDestinationMACAddress();
+
+        Match.Builder mb = sw.getOFFactory().buildMatch();
+        if (FLOWMOD_DEFAULT_MATCH_IN_PORT) {
+            mb.setExact(MatchField.IN_PORT, inPort);
+        }
+
+        if (FLOWMOD_DEFAULT_MATCH_MAC) {
+            if (FLOWMOD_DEFAULT_MATCH_MAC_SRC) {
+                mb.setExact(MatchField.ETH_SRC, srcMac);
+            }
+            if (FLOWMOD_DEFAULT_MATCH_MAC_DST) {
+                mb.setExact(MatchField.ETH_DST, dstMac);
+            }
+        }
+
+        if (FLOWMOD_DEFAULT_MATCH_VLAN) {
+            if (!vlan.equals(VlanVid.ZERO)) {
+                mb.setExact(MatchField.VLAN_VID, OFVlanVidMatch.ofVlanVid(vlan));
+            }
+        }
+
+        // TODO Detect switch type and match to create hardware-implemented flow
+        if (eth.getEtherType() == EthType.IPv4) { /* shallow check for equality is okay for EthType */
+            IPv4 ip = (IPv4) eth.getPayload();
+            IPv4Address srcIp = ip.getSourceAddress();
+            IPv4Address dstIp = ip.getDestinationAddress();
+
+            if (FLOWMOD_DEFAULT_MATCH_IP) {
+                mb.setExact(MatchField.ETH_TYPE, EthType.IPv4);
+                if (FLOWMOD_DEFAULT_MATCH_IP_SRC) {
+                    mb.setExact(MatchField.IPV4_SRC, srcIp);
+                }
+                if (FLOWMOD_DEFAULT_MATCH_IP_DST) {
+                    mb.setExact(MatchField.IPV4_DST, dstIp);
+                }
+            }
+
+            if (FLOWMOD_DEFAULT_MATCH_TRANSPORT) {
+                /*
+                 * Take care of the ethertype if not included earlier,
+                 * since it's a prerequisite for transport ports.
+                 */
+                if (!FLOWMOD_DEFAULT_MATCH_IP) {
+                    mb.setExact(MatchField.ETH_TYPE, EthType.IPv4);
+                }
+
+                if (ip.getProtocol().equals(IpProtocol.TCP)) {
+                    TCP tcp = (TCP) ip.getPayload();
+                    mb.setExact(MatchField.IP_PROTO, IpProtocol.TCP);
+                    if (FLOWMOD_DEFAULT_MATCH_TRANSPORT_SRC) {
+                        mb.setExact(MatchField.TCP_SRC, tcp.getSourcePort());
+                    }
+                    if (FLOWMOD_DEFAULT_MATCH_TRANSPORT_DST) {
+                        mb.setExact(MatchField.TCP_DST, tcp.getDestinationPort());
+                    }
+                    if (sw.getOFFactory().getVersion().compareTo(OFVersion.OF_15) >= 0) {
+                        if (FLOWMOD_DEFAULT_MATCH_TCP_FLAG) {
+                            mb.setExact(MatchField.TCP_FLAGS, U16.of(tcp.getFlags()));
+                        }
+                    } else if (sw.getSwitchDescription().getHardwareDescription().toLowerCase().contains("open vswitch") && (
+                            Integer.parseInt(sw.getSwitchDescription().getSoftwareDescription().toLowerCase().split("\\.")[0]) > 2 || (
+                                    Integer.parseInt(sw.getSwitchDescription().getSoftwareDescription().toLowerCase().split("\\.")[0]) == 2 &&
+                                            Integer.parseInt(sw.getSwitchDescription().getSoftwareDescription().toLowerCase().split("\\.")[1]) >= 1))
+                    ) {
+                        if (FLOWMOD_DEFAULT_MATCH_TCP_FLAG) {
+                            mb.setExact(MatchField.OVS_TCP_FLAGS, U16.of(tcp.getFlags()));
+                        }
+                    }
+                } else if (ip.getProtocol().equals(IpProtocol.UDP)) {
+                    UDP udp = (UDP) ip.getPayload();
+                    mb.setExact(MatchField.IP_PROTO, IpProtocol.UDP);
+                    if (FLOWMOD_DEFAULT_MATCH_TRANSPORT_SRC) {
+                        mb.setExact(MatchField.UDP_SRC, udp.getSourcePort());
+                    }
+                    if (FLOWMOD_DEFAULT_MATCH_TRANSPORT_DST) {
+                        mb.setExact(MatchField.UDP_DST, udp.getDestinationPort());
+                    }
+                }
+            }
+        } else if (eth.getEtherType() == EthType.ARP) { /* shallow check for equality is okay for EthType */
+            mb.setExact(MatchField.ETH_TYPE, EthType.ARP);
+        } else if (eth.getEtherType() == EthType.IPv6) {
+            IPv6 ip = (IPv6) eth.getPayload();
+            IPv6Address srcIp = ip.getSourceAddress();
+            IPv6Address dstIp = ip.getDestinationAddress();
+
+            if (FLOWMOD_DEFAULT_MATCH_IP) {
+                mb.setExact(MatchField.ETH_TYPE, EthType.IPv6);
+                if (FLOWMOD_DEFAULT_MATCH_IP_SRC) {
+                    mb.setExact(MatchField.IPV6_SRC, srcIp);
+                }
+                if (FLOWMOD_DEFAULT_MATCH_IP_DST) {
+                    mb.setExact(MatchField.IPV6_DST, dstIp);
+                }
+            }
+
+            if (FLOWMOD_DEFAULT_MATCH_TRANSPORT) {
+                /*
+                 * Take care of the ethertype if not included earlier,
+                 * since it's a prerequisite for transport ports.
+                 */
+                if (!FLOWMOD_DEFAULT_MATCH_IP) {
+                    mb.setExact(MatchField.ETH_TYPE, EthType.IPv6);
+                }
+
+                if (ip.getNextHeader().equals(IpProtocol.TCP)) {
+                    TCP tcp = (TCP) ip.getPayload();
+                    mb.setExact(MatchField.IP_PROTO, IpProtocol.TCP);
+                    if (FLOWMOD_DEFAULT_MATCH_TRANSPORT_SRC) {
+                        mb.setExact(MatchField.TCP_SRC, tcp.getSourcePort());
+                    }
+                    if (FLOWMOD_DEFAULT_MATCH_TRANSPORT_DST) {
+                        mb.setExact(MatchField.TCP_DST, tcp.getDestinationPort());
+                    }
+                    if (sw.getOFFactory().getVersion().compareTo(OFVersion.OF_15) >= 0) {
+                        if (FLOWMOD_DEFAULT_MATCH_TCP_FLAG) {
+                            mb.setExact(MatchField.TCP_FLAGS, U16.of(tcp.getFlags()));
+                        }
+                    } else if (
+                            sw.getSwitchDescription().getHardwareDescription().toLowerCase().contains("open vswitch") && (
+                                    Integer.parseInt(sw.getSwitchDescription().getSoftwareDescription().toLowerCase().split("\\.")[0]) > 2 || (
+                                            Integer.parseInt(sw.getSwitchDescription().getSoftwareDescription().toLowerCase().split("\\.")[0]) == 2 &&
+                                                    Integer.parseInt(sw.getSwitchDescription().getSoftwareDescription().toLowerCase().split("\\.")[1]) >= 1))
+                    ) {
+                        if (FLOWMOD_DEFAULT_MATCH_TCP_FLAG) {
+                            mb.setExact(MatchField.OVS_TCP_FLAGS, U16.of(tcp.getFlags()));
+                        }
+                    }
+                } else if (ip.getNextHeader().equals(IpProtocol.UDP)) {
+                    UDP udp = (UDP) ip.getPayload();
+                    mb.setExact(MatchField.IP_PROTO, IpProtocol.UDP);
+                    if (FLOWMOD_DEFAULT_MATCH_TRANSPORT_SRC) {
+                        mb.setExact(MatchField.UDP_SRC, udp.getSourcePort());
+                    }
+                    if (FLOWMOD_DEFAULT_MATCH_TRANSPORT_DST) {
+                        mb.setExact(MatchField.UDP_DST, udp.getDestinationPort());
+                    }
+                }
+            }
+        }
+        return mb.build();
     }
 }

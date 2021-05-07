@@ -61,6 +61,17 @@ public class StaticCacheStrategy {
         return uid;
     }
 
+    /**
+     * This method is used to determine whether a pakcet_in information
+     * would match an existing static cache strategy,
+     * and it has two situation, forward flow: the packet_in from host
+     * inverse flow: the packet_in from cache
+     * @param srcAddress                Source Address in a packet_in, which stands for target server or cache server's IPv4Address
+     * @param dstAddress                Destination Address in a pakcet_in, which stands for host or cache server's IPv4Address
+     * @param tp_dst                    Transport port for destination
+     * @param hostOrCache               Indicate the packet_in is from host or cache to determine which statement would be processed
+     * @return
+     */
     public StaticCacheStrategy ifMatch(IPv4Address srcAddress, IPv4Address dstAddress, TransportPort tp_dst, String hostOrCache) {
         switch (hostOrCache) {
             case "HOST":
@@ -77,7 +88,14 @@ public class StaticCacheStrategy {
         return null;
     }
 
-    //wrf: 下发策略
+    /**
+     * This method should be processed in pushRoute method in StaticCacheManager,
+     * which used to compose the instructions and FlowAdd for the pinSwitch of the cache server.
+     * There are three actions needed to put in the instructions,
+     * modify the source IPv4Address, modify the source MACAddress which are used to implement redirection of packet to cache server
+     * set outPort to guide the flow
+     * @param src_outPort                   Source(Host)'s out OFPort on it's attachment point switch
+     */
     public void completeStrategy_host(IOFSwitch sw, OFPacketIn pi, OFPort src_outPort) {
         this.src_outPort = src_outPort;
 
@@ -130,6 +148,14 @@ public class StaticCacheStrategy {
                 .build();
     }
 
+    /**
+     * This method should be processed in pushRoute method in StaticCacheManager,
+     * which used to compose the instructions and FlowAdd for the pinSwitch of the cache server.
+     * There are three actions needed to put in the instructions,
+     * modify the destination IPv4Address, modify the destination MACAddress which are used to implement Reverse Proxy
+     * set outPort to guide the flow
+     * @param dst_outPort                   Destination(Cache server)'s out OFPort on it's attachment point switch
+     */
     public void completeStrategy_cache(IOFSwitch sw, OFPacketIn pi, OFPort dst_outPort) {
         this.dst_outPort = dst_outPort;
 
