@@ -9,7 +9,7 @@ import net.floodlightcontroller.qos.ResourceMonitor.MonitorDelayService;
 import net.floodlightcontroller.qos.ResourceMonitor.MonitorPkLossService;
 import net.floodlightcontroller.qos.ResourceMonitor.QosResourceMonitor;
 import net.floodlightcontroller.qos.ResourceMonitor.pojo.LinkEntry;
-import net.floodlightcontroller.qos.ResourceMonitor.pojo.SwitchPortPkLoss;
+import net.floodlightcontroller.qos.ResourceMonitor.pojo.SwitchPortCounter;
 import net.floodlightcontroller.statistics.IStatisticsService;
 import net.floodlightcontroller.statistics.SwitchPortBandwidth;
 import org.projectfloodlight.openflow.types.DatapathId;
@@ -31,7 +31,7 @@ public class QosResourceMonitorImpl implements QosResourceMonitor, IFloodlightMo
 
     private static Map<NodePortTuple,SwitchPortBandwidth> bandwidthMap;
     private static Map<LinkEntry<DatapathId, DatapathId>, Integer> linkDelaySecMap;
-    private static Map<NodePortTuple, SwitchPortPkLoss> pklossMap;
+    private static Map<NodePortTuple, SwitchPortCounter> pklossMap;
 
     /**
      *  bandwidth methods
@@ -73,13 +73,13 @@ public class QosResourceMonitorImpl implements QosResourceMonitor, IFloodlightMo
     }
 
     @Override
-    public Map<NodePortTuple, SwitchPortPkLoss> getPkLoss() {
+    public Map<NodePortTuple, SwitchPortCounter> getPkLoss() {
         pklossMap = pkLossService.getPkLoss();
         return pklossMap;
     }
 
     @Override
-    public SwitchPortPkLoss getPkLoss(DatapathId dpid, OFPort p) {
+    public SwitchPortCounter getPkLoss(DatapathId dpid, OFPort p) {
         return pkLossService.getPkLoss(dpid,p);
     }
 

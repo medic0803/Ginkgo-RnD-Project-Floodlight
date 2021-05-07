@@ -8,63 +8,48 @@ import org.projectfloodlight.openflow.types.U64;
  * @author Michael Kang
  * @create 2021-02-18 下午 04:40
  */
-public class SwitchPortPkLoss {
+public class SwitchPortCounter {
 
     private DatapathId id;
     private OFPort pt;
 
-    private Integer pkLossRatio; //the core for the PkLossRatio
     private U64 rxValue;
-    private U64 rx_DropValue;
+    private U64 rx;
     private U64 txValue;
-    private U64 tx_DropValue;
+    private U64 tx;
 
-    private SwitchPortPkLoss() {
+    public SwitchPortCounter() {
     }
 
-    public SwitchPortPkLoss(DatapathId id, OFPort pt, int pkLossRatio, U64 rxValue, U64 rx_DropValue, U64 txValue, U64 tx_DropValue) {
+    public SwitchPortCounter(DatapathId id, OFPort pt, U64 rxValue, U64 rx_counted, U64 txValue, U64 tx_counted) {
         this.id = id;
         this.pt = pt;
-        this.pkLossRatio = pkLossRatio;
         this.rxValue = rxValue;
-        this.rx_DropValue = rx_DropValue;
+        this.rx = rx_counted;
         this.txValue = txValue;
-        this.tx_DropValue = tx_DropValue;
+        this.tx = tx_counted;
     }
 
-    //kwmtodo: 更改这个if变量
-    public static SwitchPortPkLoss of(DatapathId id, OFPort pt, Integer pkLossRatio,
-                                      U64 rxValue, U64 rx_DropValue, U64 txValue, U64 tx_DropValue) {
+    public static SwitchPortCounter of(DatapathId id, OFPort pt, U64 rxValue, U64 rx_Counted, U64 txValue, U64 tx_Counted) {
         if (id == null) {
             throw new IllegalArgumentException("Datapath ID cannot be null");
         }
         if (pt == null) {
             throw new IllegalArgumentException("Port cannot be null");
         }
-        if (pkLossRatio == null) {
-            throw new IllegalArgumentException("pkLossRatio cannot be null");
-        }
         if (rxValue == null) {
             throw new IllegalArgumentException("rxValue cannot be null");
         }
-        if (rx_DropValue == null) {
-            throw new IllegalArgumentException("rx_DropValue cannot be null");
+        if (rx_Counted == null) {
+            throw new IllegalArgumentException("rx_counted cannot be null");
         }
         if (txValue == null) {
             throw new IllegalArgumentException("txValue cannot be null");
         }
-        if (tx_DropValue == null) {
-            throw new IllegalArgumentException("tx_DropValue cannot be null");
+        if (tx_Counted == null) {
+            throw new IllegalArgumentException("tx_counted cannot be null");
         }
-        return new SwitchPortPkLoss(id, pt, pkLossRatio, rxValue, rx_DropValue, txValue, tx_DropValue);
-    }
-
-    public U64 getPriorRx_DropValue() {
-        return rx_DropValue;
-    }
-
-    public U64 getPriorTx_DropValue() {
-        return tx_DropValue;
+        return new SwitchPortCounter(id, pt, rxValue, rx_Counted, txValue, tx_Counted);
     }
 
     public DatapathId getSwitchId() {
@@ -73,10 +58,6 @@ public class SwitchPortPkLoss {
 
     public OFPort getSwitchPort() {
         return pt;
-    }
-
-    public int getPkLossPerSec() {
-        return this.pkLossRatio;
     }
 
     public U64 getPriorByteValueRx() {
@@ -104,7 +85,7 @@ public class SwitchPortPkLoss {
             return false;
         if (getClass() != obj.getClass())
             return false;
-        SwitchPortPkLoss other = (SwitchPortPkLoss) obj;
+        SwitchPortCounter other = (SwitchPortCounter) obj;
         if (id == null) {
             if (other.id != null)
                 return false;

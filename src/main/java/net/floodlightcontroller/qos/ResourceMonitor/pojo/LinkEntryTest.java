@@ -1,8 +1,5 @@
 package net.floodlightcontroller.qos.ResourceMonitor.pojo;
 
-import net.floodlightcontroller.core.types.NodePortTuple;
-import net.floodlightcontroller.qos.ResourceMonitor.pojo.LinkEntry;
-import net.floodlightcontroller.qos.ResourceMonitor.pojo.SwitchPortPkLoss;
 import org.projectfloodlight.openflow.types.DatapathId;
 
 import java.util.HashMap;

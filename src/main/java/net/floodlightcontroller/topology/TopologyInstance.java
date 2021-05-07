@@ -21,7 +21,7 @@ import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.types.NodePortTuple;
 import net.floodlightcontroller.linkdiscovery.Link;
 import net.floodlightcontroller.qos.DSCPField;
-import net.floodlightcontroller.qos.ResourceMonitor.pojo.SwitchPortPkLoss;
+import net.floodlightcontroller.qos.ResourceMonitor.pojo.SwitchPortCounter;
 import net.floodlightcontroller.routing.BroadcastTree;
 import net.floodlightcontroller.routing.Path;
 import net.floodlightcontroller.routing.PathId;
@@ -84,9 +84,9 @@ public class TopologyInstance {
     private Map<DatapathId, Set<NodePortTuple>> portsBroadcastPerArchipelago; /* broadcast ports in each archipelago ID */
     private ConcurrentHashMap<PathId, List<Path>>             pathcache; /* contains computed paths ordered best to worst */
 
-    Map<NodePortTuple, SwitchPortPkLoss> pkLossMap;
+    Map<NodePortTuple, SwitchPortCounter> pkLossMap;
 
-    protected void set(Map<NodePortTuple, SwitchPortPkLoss> map){
+    protected void set(Map<NodePortTuple, SwitchPortCounter> map){
         this.pkLossMap = map;
     }
 
