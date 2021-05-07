@@ -26,4 +26,12 @@ public class LinkEntry<K,V> implements Entry<K,V>{
     public V setValue(V value) {
         return null;
     }
+
+    @Override
+    public String toString() {
+        return "LinkEntry{" +
+                "source=" + source +
+                ", destination=" + destination +
+                '}';
+    }
 }

@@ -83,7 +83,7 @@ public class TopologyInstance {
     private List<Archipelago>                   archipelagos; /* connected clusters */
     private Map<Cluster, Archipelago>           archipelagoFromCluster;
     private Map<DatapathId, Set<NodePortTuple>> portsBroadcastPerArchipelago; /* broadcast ports in each archipelago ID */
-    private ConcurrentHashMap<PathId, List<Path>>             pathcache; /* contains computed paths ordered best to worst */
+    private static ConcurrentHashMap<PathId, List<Path>>             pathcache; /* contains computed paths ordered best to worst */
 
     Map<NodePortTuple, SwitchPortPkLoss> pkLossMap;
 
@@ -1238,8 +1238,9 @@ public class TopologyInstance {
     public Path getPath(DatapathId srcId, OFPort srcPort,
                         DatapathId dstId, OFPort dstPort,
                         Map<NodePortTuple, SwitchPortPkLoss> pkLoss,
-                        Map<LinkEntry<DatapathId, DatapathId>, Integer> linkDelay) {
-        Path r = getPath(srcId, dstId, pkLoss, linkDelay);
+                        Map<String, Integer> linkDelay,
+                        Map<String, Integer> linkJitter) {
+        Path r = getPath(srcId, dstId, pkLoss, linkDelay, linkJitter);
 
         /* Path cannot be null, but empty b/t 2 diff DPIDs -> not found */
         if (! srcId.equals(dstId) && r.getPath().isEmpty()) {
@@ -1260,51 +1261,66 @@ public class TopologyInstance {
 
     public Path getPath(DatapathId srcId, DatapathId dstId,
                         Map<NodePortTuple, SwitchPortPkLoss> pkLoss,
-                        Map<LinkEntry<DatapathId, DatapathId>, Integer> linkDelay) {
-        PathId id = new PathId(srcId, dstId);
+                        Map<String, Integer> linkDelay,
+                        Map<String, Integer> linkJitter) {
 
+        PathId id = new PathId(srcId, dstId);
         /* Return empty route if srcId equals dstId */
         if (srcId.equals(dstId)) {
             return new Path(id, ImmutableList.of());
         }
 
         Path result = null;
-
         try {
-            if (!pathcache.get(id).isEmpty()) {
-                for (int i = 0; i < pathcache.get(id).size(); i++){
-                    Path newPath = pathcache.get(id).get(i);
-                    if (getPathDelay(newPath, linkDelay) < 150 && getPathPKLoss(newPath, pkLoss) < 5){
-                        result = newPath;
-                        break;
-                    }
-                }
-                result = pathcache.get(id).get(0);
-            }
+            result = getPathByDelayAndPkloss(id,linkDelay,pkLoss);
         } catch (Exception e) {
-            log.warn("Could not find route from {} to {}. If the path exists, wait for the topology to settle, and it will be detected", srcId, dstId);
+            e.printStackTrace();
+//            log.warn("Could not find route from {} to {}. If the path exists, wait for the topology to settle, and it will be detected", srcId, dstId);
         }
-
-
         if (log.isTraceEnabled()) {
             log.trace("getPath: {} -> {}", id, result);
         }
         return result == null ? new Path(id, ImmutableList.of()) : result;
     }
+    private static Path getPathByDelayAndPkloss(PathId id,
+                                                Map<String, Integer> linkDelayMsp,
+                                                Map<NodePortTuple, SwitchPortPkLoss> pkLossMap) {
 
-    private Integer getPathDelay(Path path, Map<LinkEntry<DatapathId, DatapathId>, Integer> linkDelay){
+        List<Path> pathList = pathcache.get(id);
+        if (!pathList.isEmpty()) {
+            for (int i = 0; i < pathList.size(); i++){
+                Path newPath = pathList.get(i);
+                //zzy: test
+                System.out.println("===================000000000=====================");
+                if (getPathDelay(newPath, linkDelayMsp) < 1500){
+                    System.out.println("===================11111111=====================");
+                    if (getPathPKLoss(newPath, pkLossMap) < 5) {
+                        System.out.println("===================2222222=====================");
+                        if ()
+                        return newPath;
+                    }
+                }
+            }
+        }
+        return null;
+    }
+
+    private static Integer getPathDelay(Path path, Map<String, Integer> linkDelay){
+        //zzy test
+        System.out.println("zzy");
+
         Integer delay = 0;
         List<NodePortTuple> nodePortTupleList = path.getPath();
-        for (int index = 1; index < nodePortTupleList.size(); index += 2) {
+        for (int index = 0; index < nodePortTupleList.size(); index += 2) {
             DatapathId HeadDatapathId = nodePortTupleList.get(index).getNodeId();
             DatapathId TailDatapathId = nodePortTupleList.get(index + 1).getNodeId();
             LinkEntry linkEntry = new LinkEntry(HeadDatapathId, TailDatapathId);
-            delay += linkDelay.get(linkEntry);
+            delay += linkDelay.get(linkEntry.toString());
         }
         return delay;
     }
 
-    private Integer getPathPKLoss(Path path, Map<NodePortTuple, SwitchPortPkLoss> pkLoss){
+    private static Integer getPathPKLoss(Path path, Map<NodePortTuple, SwitchPortPkLoss> pkLoss){
         Integer pklossRatio = 0;
         double pksucessRatio = 1;
         List<NodePortTuple> nodePortTupleList = path.getPath();
@@ -1315,6 +1331,13 @@ public class TopologyInstance {
         }
         pklossRatio = (int)(1-pksucessRatio);
         return pklossRatio;
+    }
+
+    private static Integer getPathJitter(Path path, Map<String, Integer> linkJitter){
+        Integer jitter = 0;
+        List<NodePortTuple> nodePortTupleList = path.getPath();
+        for (int index = 0; index < nodePortTupleList.size(); index +=2){
+        }
     }
     /**
      * Get the fastest path from the pathcache.

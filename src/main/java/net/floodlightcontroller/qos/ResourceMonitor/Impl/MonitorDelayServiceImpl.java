@@ -17,6 +17,7 @@ import org.slf4j.LoggerFactory;
 
 import java.util.*;
 import java.util.Map.Entry;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 
@@ -28,11 +29,11 @@ public class MonitorDelayServiceImpl implements MonitorDelayService, IFloodlight
 
     private static final Logger logger = LoggerFactory.getLogger(MonitorDelayServiceImpl.class);
     private ILinkDiscoveryService linkDiscoveryService;
-    private Map<LinkEntry<DatapathId, DatapathId>, Integer> linkDelaySecMap;
-    private Map<LinkEntry<DatapathId, DatapathId>, Integer> linkJitterSecMap;
+    private ConcurrentHashMap<String, Integer> linkDelaySecMap;
+    private ConcurrentHashMap<String, Integer> linkJitterSecMap;
 
-    private Map<LinkEntry<DatapathId, DatapathId>, Integer> first_JitterStampMap;
-    private Map<LinkEntry<DatapathId, DatapathId>, Integer> sceond_JitterStampMap;
+    private Map<String, Integer> first_JitterStampMap;
+    private Map<String, Integer> sceond_JitterStampMap;
 
     private static IThreadPoolService threadPoolService;
     private static ScheduledFuture<?> jitterCollector;
@@ -95,8 +96,8 @@ public class MonitorDelayServiceImpl implements MonitorDelayService, IFloodlight
     @Override
     public void init(FloodlightModuleContext context) throws FloodlightModuleException {
         linkDiscoveryService = context.getServiceImpl(ILinkDiscoveryService.class);
-        linkDelaySecMap =  new HashMap<>();
-        linkJitterSecMap = new HashMap<>();
+        linkDelaySecMap =  new ConcurrentHashMap<>();
+        linkJitterSecMap = new ConcurrentHashMap<>();
     }
 
     /**
@@ -147,7 +148,7 @@ public class MonitorDelayServiceImpl implements MonitorDelayService, IFloodlight
 //    }
 
     @Override
-    public Map<LinkEntry<DatapathId, DatapathId>, Integer> getLinkDelay() {
+    public ConcurrentHashMap<String, Integer> getLinkDelay() {
         if (!this.linkDelaySecMap.isEmpty()){
             this.linkDelaySecMap.clear();
         }
@@ -164,7 +165,7 @@ public class MonitorDelayServiceImpl implements MonitorDelayService, IFloodlight
                 logger.warn("link.getValue().getCurrentLatency() return null");
             }else {
                 Integer ansValue = new Long(link.getValue().getCurrentLatency().getValue()).intValue();
-                linkDelaySecMap.put(ansKey,ansValue);
+                linkDelaySecMap.put(ansKey.toString(),ansValue);
             }
         }
         return this.linkDelaySecMap;
@@ -191,9 +192,9 @@ public class MonitorDelayServiceImpl implements MonitorDelayService, IFloodlight
                 //两个stamp 有效
                 if (first_JitterStampMap.size() == sceond_JitterStampMap.size()){
                     //计算jitter
-                    Iterator<LinkEntry<DatapathId, DatapathId>> iterator = first_JitterStampMap.keySet().iterator();
+                    Iterator<String> iterator = first_JitterStampMap.keySet().iterator();
                     while (iterator.hasNext()){
-                        LinkEntry<DatapathId, DatapathId> key = iterator.next();
+                        String key = iterator.next();
                         linkJitterSecMap.put(key,Math.abs(first_JitterStampMap.get(key) - sceond_JitterStampMap.get(key)));
                     }
                 }
@@ -207,7 +208,7 @@ public class MonitorDelayServiceImpl implements MonitorDelayService, IFloodlight
     }
 
     @Override
-    public Map<LinkEntry<DatapathId, DatapathId>, Integer> getLinkJitter() {
+    public ConcurrentHashMap<String, Integer> getLinkJitter() {
         return this.linkJitterSecMap;
     }
 }

@@ -8,14 +8,17 @@ import net.floodlightcontroller.core.types.NodePortTuple;
 import net.floodlightcontroller.qos.ResourceMonitor.MonitorDelayService;
 import net.floodlightcontroller.qos.ResourceMonitor.MonitorPkLossService;
 import net.floodlightcontroller.qos.ResourceMonitor.QosResourceMonitor;
-import net.floodlightcontroller.qos.ResourceMonitor.pojo.LinkEntry;
 import net.floodlightcontroller.qos.ResourceMonitor.pojo.SwitchPortPkLoss;
 import net.floodlightcontroller.statistics.IStatisticsService;
 import net.floodlightcontroller.statistics.SwitchPortBandwidth;
 import org.projectfloodlight.openflow.types.DatapathId;
 import org.projectfloodlight.openflow.types.OFPort;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * sub services: IStatisticsService, MonitorDelayService, MonitorPkLossService
@@ -30,7 +33,7 @@ public class QosResourceMonitorImpl implements QosResourceMonitor, IFloodlightMo
     private static MonitorPkLossService pkLossService;
 
     private static Map<NodePortTuple,SwitchPortBandwidth> bandwidthMap;
-    private static Map<LinkEntry<DatapathId, DatapathId>, Integer> linkDelaySecMap;
+    private static ConcurrentHashMap<String, Integer> linkDelaySecMap;
     private static Map<NodePortTuple, SwitchPortPkLoss> pklossMap;
 
     /**
@@ -57,9 +60,10 @@ public class QosResourceMonitorImpl implements QosResourceMonitor, IFloodlightMo
 
     /**
      * linkdelay services
+     * @return
      */
     @Override
-    public Map<LinkEntry<DatapathId, DatapathId>, Integer> getLinkDelay() {
+    public ConcurrentHashMap<String, Integer> getLinkDelay() {
         linkDelaySecMap = delayService.getLinkDelay();
         return linkDelaySecMap;
     }
