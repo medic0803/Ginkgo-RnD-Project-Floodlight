@@ -5,6 +5,7 @@ import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.routing.Path;
 import net.floodlightcontroller.util.OFMessageUtils;
 import org.projectfloodlight.openflow.protocol.OFFlowAdd;
+import org.projectfloodlight.openflow.protocol.OFFlowMod;
 import org.projectfloodlight.openflow.protocol.OFPacketIn;
 import org.projectfloodlight.openflow.protocol.action.*;
 import org.projectfloodlight.openflow.protocol.instruction.OFInstruction;
@@ -29,11 +30,17 @@ public class StaticCacheStrategy {
     public int priority = 0;
 
     // Complements
+    public TransportPort tp_src;
     public TransportPort tp_dst;
     public OFPort src_inPort;
     public OFPort dst_outPort;
     public DatapathId src_dpid;
     public DatapathId dst_dpid;
+    public OFFlowAdd flowAdd_host;
+    public OFFlowAdd flowAdd_cache;
+    public Match match_host;
+    public Match match_cache;
+
     //Constructor
     public StaticCacheStrategy() {
         this.strategyid = this.genID();
@@ -54,16 +61,24 @@ public class StaticCacheStrategy {
         return uid;
     }
 
-    public StaticCacheStrategy ifMatch(IPv4Address srcAddress, IPv4Address dstAddress, TransportPort tp_dst) {
-        if (srcAddress.equals(this.nw_src_ipv4) && dstAddress.equals(this.nw_dst_ipv4) && tp_dst.equals(this.tp_dst)) {
-            return this;
+    public StaticCacheStrategy ifMatch(IPv4Address srcAddress, IPv4Address dstAddress, TransportPort tp_dst, String hostOrCache) {
+        switch (hostOrCache) {
+            case "HOST":
+                if (srcAddress.equals(this.nw_src_ipv4) && dstAddress.equals(this.nw_dst_ipv4) && tp_dst.equals(this.tp_dst)) {
+                    return this;
+                }
+                break;
+            case "CACHE":
+                if (srcAddress.equals(this.nw_cache_ipv4) && dstAddress.equals(this.nw_src_ipv4) && tp_dst.equals(this.tp_src)) {
+                    return this;
+                }
+                break;
         }
         return null;
     }
 
     //wrf: 下发策略
-    public void applyStrategy(IOFSwitch sw, OFPacketIn pi, Path path) {
-        // push Route
+    public void completeStrategy_host(IOFSwitch sw, OFPacketIn pi) {
 
         OFActionSetField host_setEthDst = sw.getOFFactory().actions().buildSetField()
                 .setField(
@@ -79,30 +94,31 @@ public class StaticCacheStrategy {
                                 .build()
                 )
                 .build();
-        List<OFAction> actions = new ArrayList<>();
-        actions.add(host_setEthDst);
-        actions.add(host_setIpv4Dst);
-        actions.add(sw.getOFFactory().actions().buildOutput().setPort(dst_outPort).build());
+        List<OFAction> actions_host = new ArrayList<>();
+        actions_host.add(host_setEthDst);
+        actions_host.add(host_setIpv4Dst);
+        actions_host.add(sw.getOFFactory().actions().buildOutput().setPort(dst_outPort).build());
 
         OFInstructionApplyActions host_instruction = sw.getOFFactory().instructions().buildApplyActions()
-                .setActions(actions)
+                .setActions(actions_host)
                 .build();
 
         List<OFInstruction> instructions = new ArrayList<>();
         instructions.add(host_instruction);
         System.out.println("---------------------------Apply the strategy Successfully-------------------------------------------");
-        Match match = sw.getOFFactory().buildMatch()
+        match_host = sw.getOFFactory().buildMatch()
                 .setExact(MatchField.IN_PORT, this.src_inPort)
                 .setExact(MatchField.ETH_TYPE, EthType.IPv4)
                 .setExact(MatchField.IPV4_SRC, this.nw_src_ipv4)
                 .setExact(MatchField.IP_PROTO, IpProtocol.TCP)
                 .setExact(MatchField.IPV4_DST, this.nw_dst_ipv4)
+                .setExact(MatchField.TCP_SRC, this.tp_src)
                 .setExact(MatchField.TCP_DST, this.tp_dst)
                 .build();
 
         //wrf: change the hardtimeout
-        OFFlowAdd flowAdd = sw.getOFFactory().buildFlowAdd()
-                .setMatch(match)
+        flowAdd_host = sw.getOFFactory().buildFlowAdd()
+                .setMatch(match_host)
                 .setIdleTimeout(3600)
                 .setHardTimeout(3600)
                 .setBufferId(OFBufferId.NO_BUFFER)
@@ -111,10 +127,10 @@ public class StaticCacheStrategy {
                 .setInstructions(instructions)
                 .setTableId(TableId.ZERO)
                 .build();
+    }
 
-        sw.write(flowAdd);
+    public void completeStrategy_cache(IOFSwitch sw, OFPacketIn pi) {
 
-        //wrf:逆着回来的流表
         OFActionSetField cache_setEthSrc = sw.getOFFactory().actions().buildSetField()
                 .setField(
                         sw.getOFFactory().oxms().buildEthSrc()
@@ -140,18 +156,19 @@ public class StaticCacheStrategy {
 
         List<OFInstruction> instructions_cache = new ArrayList<>();
         instructions_cache.add(instruction_cache);
-        System.out.println("---------------------------Apply the Cache strategy Successfully-------------------------------------------");
-        Match match_cache = sw.getOFFactory().buildMatch()
+
+        match_cache = sw.getOFFactory().buildMatch()
                 .setExact(MatchField.IN_PORT, dst_outPort)
                 .setExact(MatchField.ETH_TYPE, EthType.IPv4)
                 .setExact(MatchField.IPV4_SRC, this.nw_cache_ipv4)
                 .setExact(MatchField.IP_PROTO, IpProtocol.TCP)
                 .setExact(MatchField.IPV4_DST, this.nw_src_ipv4)
-                .setExact(MatchField.TCP_SRC, TransportPort.of(8080))
+                .setExact(MatchField.TCP_SRC, this.tp_dst)
+                .setExact(MatchField.TCP_DST, this.tp_src)
                 .build();
 
         //wrf: change the hardtimeout
-        OFFlowAdd flowAdd_cache = sw.getOFFactory().buildFlowAdd()
+        flowAdd_cache = sw.getOFFactory().buildFlowAdd()
                 .setMatch(match_cache)
                 .setIdleTimeout(3600)
                 .setHardTimeout(3600)
@@ -162,8 +179,6 @@ public class StaticCacheStrategy {
                 .setTableId(TableId.ZERO)
                 .build();
 
-        // OFBadMatchErrorMsgVer13, code=BAD_PREREQ
-        sw.write(flowAdd_cache);
 
     }
 
