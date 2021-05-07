@@ -1015,8 +1015,7 @@ ITopologyManagerBackend, ILinkDiscoveryListener, IOFMessageListener {
                 allPorts,
                 interClusterLinks);
 
-        //zzy
-        nt.set(qosResourceMonitor.getPkLoss());
+
         nt.compute();
         currentInstance = nt;
 

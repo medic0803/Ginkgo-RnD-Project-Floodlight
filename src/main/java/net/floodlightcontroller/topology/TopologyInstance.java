@@ -22,7 +22,6 @@ import net.floodlightcontroller.core.types.NodePortTuple;
 import net.floodlightcontroller.linkdiscovery.Link;
 import net.floodlightcontroller.qos.DSCPField;
 import net.floodlightcontroller.qos.ResourceMonitor.pojo.LinkEntry;
-import net.floodlightcontroller.qos.ResourceMonitor.pojo.SwitchPortCounter;
 import net.floodlightcontroller.routing.BroadcastTree;
 import net.floodlightcontroller.routing.Path;
 import net.floodlightcontroller.routing.PathId;
@@ -1274,7 +1273,7 @@ public class TopologyInstance {
     private Path getPathByDelayAndPkloss(PathId id,
         Map<LinkEntry<DatapathId, DatapathId>, Integer> linkDelayMsp,
         Map<LinkEntry<DatapathId,DatapathId>,Double> pkLossMap) {
-
+        System.out.println(pkLossMap);
         List<Path> pathList = pathcache.get(id);
         if (!pathList.isEmpty()) {
             for (int i = 0; i < pathList.size(); i++){
@@ -1305,17 +1304,21 @@ public class TopologyInstance {
         return delay;
     }
 
-    private Integer getPathPKLoss(Path path, Map<LinkEntry<DatapathId,DatapathId>,Double> pkLoss){
-        Integer pklossRatio = 0;
+    private double getPathPKLoss(Path path, Map<LinkEntry<DatapathId,DatapathId>,Double> pkLoss){
+        double pklossRatio = 0;
         double pksucessRatio = 1;
         List<NodePortTuple> nodePortTupleList = path.getPath();
         //zzy: check the pkloss is right
-        for (int i = 0; i < nodePortTupleList.size(); i++) {
+        for (int index = 0; index < nodePortTupleList.size(); index += 2) {
             //zzy:todo use new map of pkloss
+            DatapathId HeadDatapathId = nodePortTupleList.get(index).getNodeId();
+            DatapathId TailDatapathId = nodePortTupleList.get(index + 1).getNodeId();
+            LinkEntry linkEntry = new LinkEntry(HeadDatapathId, TailDatapathId);
+            pklossRatio += pkLoss.get(linkEntry);
 //            double lossRatio = pkLoss.get(nodePortTupleList.get(i)).getPkLossPerSec()/100.0;
 //            pksucessRatio = pksucessRatio*(1-lossRatio);
         }
-        pklossRatio = (int)(1-pksucessRatio);
+//        pklossRatio = (int)(1-pksucessRatio);
         return pklossRatio;
     }
     /**
