@@ -90,8 +90,11 @@ public class QosResourceMonitorImpl implements QosResourceMonitor, IFloodlightMo
             NodePortTuple headPortTuple = new NodePortTuple(linkEntry.getSrc(), linkEntry.getSrcPort());
             NodePortTuple tailPortTuple = new NodePortTuple(linkEntry.getDst(), linkEntry.getDstPort());
             LinkEntry<DatapathId,DatapathId> linkAsKey = new LinkEntry<>(headPortTuple.getNodeId(),tailPortTuple.getNodeId());
-            U64 tx = portStatsMap.get(headPortTuple).getTx();
-            U64 rx = portStatsMap.get(tailPortTuple).getRx();
+
+//            U64 tx = portStatsMap.get(headPortTuple).getTx();
+//            U64 rx = portStatsMap.get(tailPortTuple).getRx();
+            U64 tx = getBandwidthMap().get(headPortTuple).getBitsPerSecondTx();
+            U64 rx = getBandwidthMap().get(tailPortTuple).getBitsPerSecondRx();
             pklossMap.put(linkAsKey,countPkloss(tx.getValue(),rx.getValue()));
         }
         return pklossMap;

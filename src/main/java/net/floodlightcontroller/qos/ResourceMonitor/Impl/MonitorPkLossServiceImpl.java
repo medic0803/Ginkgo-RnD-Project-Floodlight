@@ -90,8 +90,9 @@ public class MonitorPkLossServiceImpl implements IFloodlightModule,MonitorPkLoss
 
         private SwitchPortCounter getSwitchPortPkloss(NodePortTuple npt){
             SwitchPortCounter switchPortCounter = new SwitchPortCounter();
-            if (needUpdate(npt)) { switchPortCounter = portStats.get(npt);}
-            if (isToPutFirstValue(npt)) {
+            if (needUpdate(npt)) {
+                switchPortCounter = portStats.get(npt);
+            }else if (isToPutFirstValue(npt)) {
                 switchPortCounter = tentativePortStats.get(npt);
                 tentativePortStats.remove(npt);
             } else {
