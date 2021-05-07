@@ -97,7 +97,7 @@ public class QosResourceMonitorImpl implements QosResourceMonitor, IFloodlightMo
         return pklossMap;
     }
     private double countPkloss(long send, long receive){
-        return 1-(receive*100.0)/send;
+        return 1-(receive*1.0)/send;
     }
 
 
