@@ -18,6 +18,22 @@ public class SwitchPortCounter {
     private U64 txValue;
     private U64 tx;
 
+    public U64 getRx() {
+        return rx;
+    }
+
+    public void setRx(U64 rx) {
+        this.rx = rx;
+    }
+
+    public U64 getTx() {
+        return tx;
+    }
+
+    public void setTx(U64 tx) {
+        this.tx = tx;
+    }
+
     public SwitchPortCounter() {
     }
 

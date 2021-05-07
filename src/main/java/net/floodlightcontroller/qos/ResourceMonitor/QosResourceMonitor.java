@@ -37,6 +37,5 @@ public interface QosResourceMonitor extends IFloodlightService{
      * shape the method of the StatisticsCollector used in bandwith to collect Parket loss
      */
     public void setPkLossCollection (boolean collect);
-    public Map<NodePortTuple, SwitchPortCounter> getPkLoss();
-    public SwitchPortCounter getPkLoss(DatapathId dpid, OFPort p);
+    public Map<LinkEntry<DatapathId,DatapathId>,Double> getPkLoss();
 }
