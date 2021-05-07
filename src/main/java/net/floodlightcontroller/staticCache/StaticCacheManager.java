@@ -34,8 +34,6 @@ public class StaticCacheManager implements IOFMessageListener, IFloodlightModule
     // Floodlight Service
     protected IFloodlightProviderService floodlightProvider;
     protected IOFSwitchService switchService;
-    protected ITopologyService topologyService;
-    protected OFMessageDamper messageDamper;
     protected IRestApiService restApi;
     protected IDeviceService deviceService;
 

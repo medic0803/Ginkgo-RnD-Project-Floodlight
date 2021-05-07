@@ -21,7 +21,8 @@ import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.types.NodePortTuple;
 import net.floodlightcontroller.linkdiscovery.Link;
 import net.floodlightcontroller.qos.DSCPField;
-import net.floodlightcontroller.qos.ResourceMonitor.pojo.SwitchPortPkLoss;
+import net.floodlightcontroller.qos.ResourceMonitor.pojo.LinkEntry;
+import net.floodlightcontroller.qos.ResourceMonitor.pojo.SwitchPortCounter;
 import net.floodlightcontroller.routing.BroadcastTree;
 import net.floodlightcontroller.routing.Path;
 import net.floodlightcontroller.routing.PathId;
@@ -84,9 +85,9 @@ public class TopologyInstance {
     private Map<DatapathId, Set<NodePortTuple>> portsBroadcastPerArchipelago; /* broadcast ports in each archipelago ID */
     private ConcurrentHashMap<PathId, List<Path>>             pathcache; /* contains computed paths ordered best to worst */
 
-    Map<NodePortTuple, SwitchPortPkLoss> pkLossMap;
+    Map<LinkEntry<DatapathId,DatapathId>,Double> pkLossMap;
 
-    protected void set(Map<NodePortTuple, SwitchPortPkLoss> map){
+    protected void set(Map<LinkEntry<DatapathId,DatapathId>,Double> map){
         this.pkLossMap = map;
     }
 
@@ -704,14 +705,7 @@ public class TopologyInstance {
                             (int)link.getLatency().getValue() > MAX_LINK_WEIGHT) {
                         linkCost.put(link, MAX_LINK_WEIGHT);
                     } else {
-                        for (NodePortTuple nodePortTuple : pkLossMap.keySet()){
-                            if (npt.equals(nodePortTuple)){
-                                pkloss = pkLossMap.get(nodePortTuple).getPkLossPerSec();
-                            }
-                        }
-                        int latency = (int)link.getLatency().getValue();
-                        normalization = (double) (latency/30 + pkloss/10)*100;
-                        linkCost.put(link,(int)normalization);
+                        linkCost.put(link,(int)link.getLatency().getValue());
                     }
                 }
             }
@@ -1231,9 +1225,8 @@ public class TopologyInstance {
     //zzy
     public Path getPath(DatapathId srcId, OFPort srcPort,
                         DatapathId dstId, OFPort dstPort,
-                        Map<NodePortTuple, SwitchPortPkLoss> pkLoss,
-                        Map<LinkEntry<DatapathId, DatapathId>, Integer> linkDelay,
-                        Map<NodePortTuple, SwitchPortPkLoss> linkJitter) {
+                        Map<LinkEntry<DatapathId,DatapathId>,Double> pkLoss,
+                        Map<LinkEntry<DatapathId, DatapathId>, Integer> linkDelay) {
         //zzy: Add jitter
         Path r = getPath(srcId, dstId, pkLoss, linkDelay);
 
@@ -1255,7 +1248,7 @@ public class TopologyInstance {
     }
 
     public Path getPath(DatapathId srcId, DatapathId dstId,
-                        Map<NodePortTuple, SwitchPortPkLoss> pkLoss,
+                        Map<LinkEntry<DatapathId,DatapathId>,Double> pkLoss,
                         Map<LinkEntry<DatapathId, DatapathId>, Integer> linkDelay) {
         PathId id = new PathId(srcId, dstId);
 
@@ -1280,7 +1273,7 @@ public class TopologyInstance {
 
     private Path getPathByDelayAndPkloss(PathId id,
         Map<LinkEntry<DatapathId, DatapathId>, Integer> linkDelayMsp,
-        Map<NodePortTuple, SwitchPortPkLoss> pkLossMap) {
+        Map<LinkEntry<DatapathId,DatapathId>,Double> pkLossMap) {
 
         List<Path> pathList = pathcache.get(id);
         if (!pathList.isEmpty()) {
@@ -1312,14 +1305,15 @@ public class TopologyInstance {
         return delay;
     }
 
-    private Integer getPathPKLoss(Path path, Map<NodePortTuple, SwitchPortPkLoss> pkLoss){
+    private Integer getPathPKLoss(Path path, Map<LinkEntry<DatapathId,DatapathId>,Double> pkLoss){
         Integer pklossRatio = 0;
         double pksucessRatio = 1;
         List<NodePortTuple> nodePortTupleList = path.getPath();
         //zzy: check the pkloss is right
         for (int i = 0; i < nodePortTupleList.size(); i++) {
-            double lossRatio = pkLoss.get(nodePortTupleList.get(i)).getPkLossPerSec()/100.0;
-            pksucessRatio = pksucessRatio*(1-lossRatio);
+            //zzy:todo use new map of pkloss
+//            double lossRatio = pkLoss.get(nodePortTupleList.get(i)).getPkLossPerSec()/100.0;
+//            pksucessRatio = pksucessRatio*(1-lossRatio);
         }
         pklossRatio = (int)(1-pksucessRatio);
         return pklossRatio;

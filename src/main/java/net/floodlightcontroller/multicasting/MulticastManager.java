@@ -17,7 +17,6 @@ import net.floodlightcontroller.qos.DSCPField;
 import net.floodlightcontroller.qos.ResourceMonitor.MonitorDelayService;
 import net.floodlightcontroller.qos.ResourceMonitor.QosResourceMonitor;
 import net.floodlightcontroller.qos.ResourceMonitor.pojo.LinkEntry;
-import net.floodlightcontroller.qos.ResourceMonitor.pojo.SwitchPortPkLoss;
 import net.floodlightcontroller.routing.*;
 import net.floodlightcontroller.threadpool.IThreadPoolService;
 import net.floodlightcontroller.topology.ITopologyService;
@@ -983,11 +982,11 @@ public class MulticastManager implements IOFMessageListener, IFloodlightModule, 
         DatapathId bp = null;
         Stack<DatapathId> tempBP = new Stack<>();
         Stack<DatapathId> possibleBP = new Stack<>();
-        Map<NodePortTuple, SwitchPortPkLoss> pkLoss = qosResourceMonitor.getPkLoss();
+        Map<LinkEntry<DatapathId,DatapathId>,Double> pkLoss = qosResourceMonitor.getPkLoss();
         Map<LinkEntry<DatapathId, DatapathId>, Integer> linkDelay = qosResourceMonitor.getLinkDelay();
         //zzy: Add jitter
-        Map<NodePortTuple, SwitchPortPkLoss> linkJitter = qosResourceMonitor.getPkLoss();
-        Path newPath = routingService.getPath(src, srcPort, dst, dstPort, pkLoss, linkDelay, linkJitter);
+//        Map<LinkEntry<DatapathId,DatapathId>,Double> linkJitter = qosResourceMonitor.getPkLoss();
+        Path newPath = routingService.getPath(src, srcPort, dst, dstPort, pkLoss, linkDelay);
 
         if (multicastTree.getPathList().isEmpty()) {
             multicastTree.getPathList().put(hostAddress, newPath);
