@@ -1295,7 +1295,7 @@ public class TopologyInstance {
     private Integer getPathDelay(Path path, Map<LinkEntry<DatapathId, DatapathId>, Integer> linkDelay){
         Integer delay = 0;
         List<NodePortTuple> nodePortTupleList = path.getPath();
-        for (int index = 1; index < nodePortTupleList.size(); index += 2) {
+        for (int index = 0; index < nodePortTupleList.size(); index += 2) {
             DatapathId HeadDatapathId = nodePortTupleList.get(index).getNodeId();
             DatapathId TailDatapathId = nodePortTupleList.get(index + 1).getNodeId();
             LinkEntry linkEntry = new LinkEntry(HeadDatapathId, TailDatapathId);

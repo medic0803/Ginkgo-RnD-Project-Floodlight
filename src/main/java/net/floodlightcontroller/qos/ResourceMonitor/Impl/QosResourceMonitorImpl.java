@@ -15,7 +15,6 @@ import net.floodlightcontroller.qos.ResourceMonitor.pojo.SwitchPortCounter;
 import net.floodlightcontroller.statistics.IStatisticsService;
 import net.floodlightcontroller.statistics.SwitchPortBandwidth;
 import org.projectfloodlight.openflow.types.DatapathId;
-import org.projectfloodlight.openflow.types.OFPort;
 import org.projectfloodlight.openflow.types.U64;
 
 import java.util.*;
@@ -96,6 +95,10 @@ public class QosResourceMonitorImpl implements QosResourceMonitor, IFloodlightMo
             U64 tx = getBandwidthMap().get(headPortTuple).getBitsPerSecondTx();
             U64 rx = getBandwidthMap().get(tailPortTuple).getBitsPerSecondRx();
             pklossMap.put(linkAsKey,countPkloss(tx.getValue(),rx.getValue()));
+            System.out.println("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+            System.out.println(tx);
+            System.out.println(rx);
+            System.out.println(countPkloss(tx.getValue(),rx.getValue()));
         }
         return pklossMap;
     }
