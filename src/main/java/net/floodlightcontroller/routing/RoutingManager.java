@@ -6,7 +6,6 @@ import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.module.FloodlightModuleException;
 import net.floodlightcontroller.core.module.IFloodlightModule;
 import net.floodlightcontroller.core.module.IFloodlightService;
-import net.floodlightcontroller.core.types.NodePortTuple;
 import net.floodlightcontroller.qos.DSCPField;
 import net.floodlightcontroller.qos.ResourceMonitor.pojo.LinkEntry;
 import net.floodlightcontroller.topology.ITopologyManagerBackend;
@@ -111,8 +110,8 @@ public class RoutingManager implements IFloodlightModule, IRoutingService {
     }
 
     @Override
-    public Path getPath(DatapathId src, OFPort srcPort, DatapathId dst, OFPort dstPort, Map<LinkEntry<DatapathId,DatapathId>,Double> pkLoss, Map<LinkEntry<DatapathId, DatapathId>, Integer> linkDelay) {
-        return tm.getCurrentTopologyInstance().getPath(src, srcPort, dst, dstPort, pkLoss, linkDelay);
+    public Path getPath(DatapathId src, OFPort srcPort, DatapathId dst, OFPort dstPort, Map<LinkEntry<DatapathId,DatapathId>,Double> pkLoss, Map<LinkEntry<DatapathId, DatapathId>, Integer> linkDelay, DSCPField dscpField) {
+        return tm.getCurrentTopologyInstance().getPath(src, srcPort, dst, dstPort, pkLoss, linkDelay, dscpField);
     }
 
     public Path getPath(DatapathId src, OFPort srcPort, DatapathId dst, OFPort dstPort, DSCPField dscpField) {

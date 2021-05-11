@@ -1222,12 +1222,25 @@ public class TopologyInstance {
     }
 
     //zzy
+
+    /**
+     * Computes the whole path that satisfied different requirements
+     * @param srcId
+     * @param srcPort
+     * @param dstId
+     * @param dstPort
+     * @param pkLoss
+     * @param linkDelay
+     * @param dscpField
+     * @return A whole path that satisfied with the requirements
+     */
     public Path getPath(DatapathId srcId, OFPort srcPort,
                         DatapathId dstId, OFPort dstPort,
                         Map<LinkEntry<DatapathId,DatapathId>,Double> pkLoss,
-                        Map<LinkEntry<DatapathId, DatapathId>, Integer> linkDelay) {
+                        Map<LinkEntry<DatapathId, DatapathId>, Integer> linkDelay,
+                        DSCPField dscpField) {
         //zzy: Add jitter
-        Path r = getPath(srcId, dstId, pkLoss, linkDelay);
+        Path r = getPath(srcId, dstId, pkLoss, linkDelay, dscpField);
 
         /* Path cannot be null, but empty b/t 2 diff DPIDs -> not found */
         if (! srcId.equals(dstId) && r.getPath().isEmpty()) {
@@ -1245,10 +1258,21 @@ public class TopologyInstance {
         r = new Path(id, nptList);
         return r;
     }
+    //zzy: DSCP process
 
+    /**
+     * Based on DSCP field, calculates the path to meet different priorities
+     * @param srcId
+     * @param dstId
+     * @param pkLoss
+     * @param linkDelay
+     * @param dscpField
+     * @return Part of the path
+     */
     public Path getPath(DatapathId srcId, DatapathId dstId,
                         Map<LinkEntry<DatapathId,DatapathId>,Double> pkLoss,
-                        Map<LinkEntry<DatapathId, DatapathId>, Integer> linkDelay) {
+                        Map<LinkEntry<DatapathId, DatapathId>, Integer> linkDelay,
+                        DSCPField dscpField) {
         PathId id = new PathId(srcId, dstId);
 
         /* Return empty route if srcId equals dstId */

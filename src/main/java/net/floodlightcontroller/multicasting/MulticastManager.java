@@ -283,7 +283,7 @@ public class MulticastManager implements IOFMessageListener, IFloodlightModule, 
         return Command.CONTINUE;
     }
 
-
+    //zzy: based on IPaddress, add Dscp filed and set priority for it
     private void processIGMPJoinMsg(IPv4Address multicastAddress, IPv4Address hostIPAddress, IOFSwitch sw, OFPacketIn pi, DatapathId pinSwitchId, FloodlightContext cntx) {
         boolean ifExist = false;
 
@@ -984,9 +984,9 @@ public class MulticastManager implements IOFMessageListener, IFloodlightModule, 
         Stack<DatapathId> possibleBP = new Stack<>();
         Map<LinkEntry<DatapathId,DatapathId>,Double> pkLoss = qosResourceMonitor.getPkLoss();
         Map<LinkEntry<DatapathId, DatapathId>, Integer> linkDelay = qosResourceMonitor.getLinkDelay();
-        //zzy: Add jitter
-//        Map<LinkEntry<DatapathId,DatapathId>,Double> linkJitter = qosResourceMonitor.getPkLoss();
-        Path newPath = routingService.getPath(src, srcPort, dst, dstPort, pkLoss, linkDelay);
+//        Map<LinkEntry<DatapathId, DatapathId>, Integer> linkJitter =
+        //zzy: Replace linkDelay with jitter
+        Path newPath = routingService.getPath(src, srcPort, dst, dstPort, pkLoss, linkDelay, dscpField);
 
         if (multicastTree.getPathList().isEmpty()) {
             multicastTree.getPathList().put(hostAddress, newPath);
