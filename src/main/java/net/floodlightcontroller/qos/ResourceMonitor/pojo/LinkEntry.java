@@ -41,4 +41,12 @@ public class LinkEntry<K,V> implements Entry<K,V>{
     public int hashCode() {
         return Objects.hash(source, destination);
     }
+
+    @Override
+    public String toString() {
+        return "LinkEntry{" +
+                "source=" + source +
+                ", destination=" + destination +
+                '}';
+    }
 }

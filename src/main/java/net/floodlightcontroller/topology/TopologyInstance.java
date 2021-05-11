@@ -700,7 +700,7 @@ public class TopologyInstance {
                     if (link == null) {
                         continue;
                     }
-                    if ((int)link.getLatency().getValue() < 0 || 
+                    if ((int)link.getLatency().getValue() < 0 ||
                             (int)link.getLatency().getValue() > MAX_LINK_WEIGHT) {
                         linkCost.put(link, MAX_LINK_WEIGHT);
                     } else {

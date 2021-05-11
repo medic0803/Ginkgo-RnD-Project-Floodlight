@@ -41,7 +41,8 @@ public class QosResourceMonitorImpl implements QosResourceMonitor, IFloodlightMo
      */
     @Override
     public Map<NodePortTuple, SwitchPortBandwidth> getBandwidthMap() {
-        bandwidthMap = bandwidthService.getBandwidthConsumption();
+        bandwidthMap.clear();
+        bandwidthMap.putAll(bandwidthService.getBandwidthConsumption());
 //        Iterator<Map.Entry<NodePortTuple,SwitchPortBandwidth>> iter = bandwidth.entrySet().iterator();
 //        while (iter.hasNext()) {
 //            Map.Entry<NodePortTuple,SwitchPortBandwidth> entry = iter.next();
@@ -95,14 +96,30 @@ public class QosResourceMonitorImpl implements QosResourceMonitor, IFloodlightMo
             U64 tx = getBandwidthMap().get(headPortTuple).getBitsPerSecondTx();
             U64 rx = getBandwidthMap().get(tailPortTuple).getBitsPerSecondRx();
             pklossMap.put(linkAsKey,countPkloss(tx.getValue(),rx.getValue()));
-            System.out.println("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
-            System.out.println(tx);
-            System.out.println(rx);
+
+            System.out.println("------------------------below is tx and rx-----------------------");
+            System.out.println(headPortTuple);
+            System.out.println(tailPortTuple);
+
+            System.out.println(tx.getValue());
+            System.out.println(rx.getValue());
             System.out.println(countPkloss(tx.getValue(),rx.getValue()));
+            System.out.println("--------------------");
+            System.out.println(bandwidthService.getBandwidthConsumption().get(headPortTuple).getBitsPerSecondTx().getValue());
+            System.out.println(bandwidthService.getBandwidthConsumption().get(tailPortTuple).getBitsPerSecondRx().getValue());
+            System.out.println(countPkloss(bandwidthService.getBandwidthConsumption().get(headPortTuple).getBitsPerSecondTx().getValue(),
+                    bandwidthService.getBandwidthConsumption().get(tailPortTuple).getBitsPerSecondRx().getValue()));
+            System.out.println("------------------------------get pkloss end-----------------------------------------");
+            System.out.println();
         }
         return pklossMap;
     }
     private double countPkloss(long send, long receive){
+        //kwmtodo: if send ==0
+        System.out.println("==========computing========");
+        System.out.println(receive);
+        System.out.println(send);
+        System.out.println("==========compute out========");
         return 1-(receive*1.0)/send;
     }
 
@@ -192,6 +209,32 @@ public class QosResourceMonitorImpl implements QosResourceMonitor, IFloodlightMo
         System.out.println("----------------QosResourceMonitor actived-------------------");
         this.setBandwidthCollection(true);
         this.setPkLossCollection(true);
-        
+        //kwmtodo: test the out put
+        new Thread(() -> {
+            for (int i = 0; i < 100; i++) {
+                try {
+                    Thread.sleep(10000);
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+                if (i<3) continue;
+                System.out.println("----------------------------------below is what floodligth get--------------------------------------");
+//                System.out.println("+++++++++pkloss++++++++++");
+//                for (Map.Entry<LinkEntry<DatapathId, DatapathId>, Double> entries : this.getPkLoss().entrySet()){
+//                    System.out.println(entries.getKey().toString() +"=="+ entries.getValue());
+//                }
+                System.out.println("+++++++++++bandwith++++++++");
+                for (Map.Entry<NodePortTuple, SwitchPortBandwidth> entries:this.getBandwidthMap().entrySet()){
+                    System.out.println(entries.getKey().toString() +"=="+ entries.getValue().getBitsPerSecondTx().getValue()/1024/1024+"Mbits/sec");
+                    System.out.println(entries.getKey().toString() +"=="+ entries.getValue().getBitsPerSecondRx().getValue()/1024/1024+"Mbits/sec");
+                }
+//                System.out.println("+++++++++linkdelay++++++++++");
+//                for (Map.Entry<LinkEntry<DatapathId, DatapathId>, Integer> entries: this.getLinkDelay().entrySet()) {
+//                    System.out.println(entries.getKey().toString() +"=="+ entries.getValue());
+//                }
+                System.out.println("--------------------------------------floodlight thread out--------------------------------------");
+
+            }
+        }).start();
     }
 }
