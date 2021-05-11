@@ -62,47 +62,47 @@
             </div>
             <!-- /.col-lg-12 -->
         </div>
-        <!-- /.row -->
-        <div class="row">
+<!--        &lt;!&ndash; /.row &ndash;&gt;-->
+<!--        <div class="row">-->
 
-            <div class="col-lg-6 col-md-12">
-                <div class="panel" id="firewallStatusPanel">
-                    <div class="panel-heading">
-                        <div class="row">
-                            <div class="col-xs-3">
-                                <i id="firewallStatusIcon"></i>
-                            </div>
-                            <div class="col-xs-9 text-right">
-                                <div class="huge" id="firewallStatus">...</div>
-                                <div>QoS Strategy Status <a href="#" class="btn btn-xs btn-default"
-                                                        data-toggle="modal"
-                                                        data-target="#status-modal">Change</a></div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
+<!--            <div class="col-lg-6 col-md-12">-->
+<!--                <div class="panel" id="firewallStatusPanel">-->
+<!--                    <div class="panel-heading">-->
+<!--                        <div class="row">-->
+<!--                            <div class="col-xs-3">-->
+<!--                                <i id="firewallStatusIcon"></i>-->
+<!--                            </div>-->
+<!--                            <div class="col-xs-9 text-right">-->
+<!--                                <div class="huge" id="firewallStatus">...</div>-->
+<!--                                <div>QoS Strategy Status <a href="#" class="btn btn-xs btn-default"-->
+<!--                                                        data-toggle="modal"-->
+<!--                                                        data-target="#status-modal">Change</a></div>-->
+<!--                            </div>-->
+<!--                        </div>-->
+<!--                    </div>-->
+<!--                </div>-->
+<!--            </div>-->
 
-            <div class="col-lg-6 col-md-12">
-                <div class="panel panel-yellow">
-                    <div class="panel-heading">
-                        <div class="row">
-                            <div class="col-xs-3">
-                                <i class="fa fa-info fa-5x"></i>
-                            </div>
-                            <div class="col-xs-9 text-right">
-                                <div class="huge" id="subnetMask">...</div>
-                                <div>Subnet Mask <a href="#" class="btn btn-xs btn-default"
-                                                    data-toggle="modal"
-                                                    data-target="#subnet-modal">Change</a></div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
+<!--            <div class="col-lg-6 col-md-12">-->
+<!--                <div class="panel panel-yellow">-->
+<!--                    <div class="panel-heading">-->
+<!--                        <div class="row">-->
+<!--                            <div class="col-xs-3">-->
+<!--                                <i class="fa fa-info fa-5x"></i>-->
+<!--                            </div>-->
+<!--                            <div class="col-xs-9 text-right">-->
+<!--                                <div class="huge" id="subnetMask">...</div>-->
+<!--                                <div>Subnet Mask <a href="#" class="btn btn-xs btn-default"-->
+<!--                                                    data-toggle="modal"-->
+<!--                                                    data-target="#subnet-modal">Change</a></div>-->
+<!--                            </div>-->
+<!--                        </div>-->
+<!--                    </div>-->
+<!--                </div>-->
+<!--            </div>-->
 
-            <!-- /.col-lg-12 -->
-        </div>
+<!--            &lt;!&ndash; /.col-lg-12 &ndash;&gt;-->
+<!--        </div>-->
         <!-- /.row -->
         <!-- Small modal -->
         <div class="modal fade bs-example-modal-sm" tabindex="-1" role="dialog" aria-hidden="true" id="status-modal">
@@ -196,7 +196,7 @@
                                 <th>Dest Port</th>
                                 <th>Priority</th>
                                 <th>Cache IP</th>
-                                <th>Cache Mac</th>
+<!--                                <th>Cache Mac</th>-->
                                 <th>Delete</th>
                             </tr>
                             </thead>
@@ -233,8 +233,8 @@
                             <input class="form-control" type="text" id="priority" placeholder="Priority">
                             <label>Cache IPv4</label>
                             <input class="form-control" type="text" id="cache-ip" placeholder="A.B.C.D">
-                            <label>Cache Mac</label>
-                            <input class="form-control" type="text" id="cache-mac" placeholder="xx:xx:xx:xx:xx:xx">
+<!--                            <label>Cache Mac</label>-->
+<!--                            <input class="form-control" type="text" id="cache-mac" placeholder="xx:xx:xx:xx:xx:xx">-->
                         </div>
                     </div>
                     <div class="modal-footer">
@@ -454,10 +454,10 @@
         var dst_port = $("#dst-port").val();
         var priority = $("#priority").val();
         var cache_ip = $("#cache-ip").val();
-        var cache_mac = $("#cache-mac").val();
+        // var cache_mac = $("#cache-mac").val();
 
         if (src_ip != "" || dst_ip != "" || dst_port != "" || priority != "" || cache_ip != "" || cache_mac!= "") {
-            AddStrategy(src_ip, dst_ip, dst_port, priority, cache_ip,cache_mac);
+            AddStrategy(src_ip, dst_ip, dst_port, priority, cache_ip);
         }
         else {
             new PNotify({
@@ -469,14 +469,13 @@
         }
     });
 
-    function AddStrategy(src_ip, dst_ip, dst_port, priority, cache_ip, cache_mac) {
+    function AddStrategy(src_ip, dst_ip, dst_port, priority, cache_ip) {
         var postData = "";
         postData = '{ "src-ip":' + "\"" + src_ip + "\""
             + ',"dst-ip" :' + "\"" + dst_ip + "\""
             + ',"tp-dst" :' + "\"" + dst_port + "\""
             + ',"priority" :' + "\"" + priority + "\""
-            + ',"cache-ip":' + "\"" + cache_ip + "\""
-            + ',"cache-mac" :' + "\"" + cache_mac + "\""+ '}';
+            + ',"cache-ip":' + "\"" + cache_ip + "\"" + '}';
 
         $.ajax({
             type    : "POST",
@@ -541,7 +540,7 @@
                         "render" : function (data, type, row) {
                             return "<a class='btn btn-xs btn-danger' onclick='DeleteStrategy(" + data + ")' >Delete</<a>";
                         },
-                        "targets": 7
+                        "targets": 6
                     }
 
                 ],
@@ -553,7 +552,6 @@
                     {data: 'tp_dst'},
                     {data: 'priority'},
                     {data: 'cache_ip'},
-                    {data: 'cache_mac'},
                     {data: 'strategyid'}
                 ]
             });
