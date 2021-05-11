@@ -1,10 +1,13 @@
 package net.floodlightcontroller.staticCache;
 
+import com.google.common.primitives.UnsignedLong;
+import com.google.common.util.concurrent.ListenableFuture;
 import net.floodlightcontroller.core.FloodlightContext;
 import net.floodlightcontroller.core.IFloodlightProviderService;
 import net.floodlightcontroller.core.IOFMessageListener;
 import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.internal.IOFSwitchService;
+import net.floodlightcontroller.core.internal.OFSwitch;
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.module.FloodlightModuleException;
 import net.floodlightcontroller.core.module.IFloodlightModule;
@@ -28,13 +31,19 @@ import org.projectfloodlight.openflow.protocol.action.OFAction;
 import org.projectfloodlight.openflow.protocol.action.OFActionOutput;
 import org.projectfloodlight.openflow.protocol.match.Match;
 import org.projectfloodlight.openflow.protocol.match.MatchField;
+import org.projectfloodlight.openflow.protocol.queueprop.OFQueueProp;
+import org.projectfloodlight.openflow.protocol.queueprop.OFQueuePropMaxRate;
+import org.projectfloodlight.openflow.protocol.queueprop.OFQueuePropMinRate;
+import org.projectfloodlight.openflow.protocol.ver13.OFFactoryVer13;
+import org.projectfloodlight.openflow.protocol.ver13.OFQueuePropertiesSerializerVer13;
 import org.projectfloodlight.openflow.types.*;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import sun.lwawt.macosx.CPrinterDevice;
 
 import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.*;
 
 import static net.floodlightcontroller.routing.ForwardingBase.FORWARDING_APP_ID;
 
@@ -223,7 +232,6 @@ public class StaticCacheManager implements IOFMessageListener, IFloodlightModule
     @Override
     public Command receive(IOFSwitch sw, OFMessage msg, FloodlightContext cntx) {
         Ethernet eth = IFloodlightProviderService.bcStore.get(cntx, IFloodlightProviderService.CONTEXT_PI_PAYLOAD);
-
         switch (msg.getType()) {
             case PACKET_IN:
                 // TODO:
@@ -237,8 +245,10 @@ public class StaticCacheManager implements IOFMessageListener, IFloodlightModule
                         int tp_dst = ((TCP) eth.getPayload().getPayload()).getDestinationPort().getPort();
 
                         if (tp_dst == 80 || tp_dst == 8080 || tp_dst == 8081 || tp_dst == 9098) {
+                            getQueueInfo(sw);
                             return process_http_from_host(srcAddress, dstAddress, tp_src, tp_dst, sw, pi, cntx);
                         } else if (tp_src == 80 || tp_src == 8080 || tp_src == 8081 || tp_src == 9098) {
+                            getQueueInfo(sw);
                             return process_http_from_cache(srcAddress, dstAddress, tp_src, tp_dst, sw, pi, cntx);
                         }
                     }
@@ -248,12 +258,14 @@ public class StaticCacheManager implements IOFMessageListener, IFloodlightModule
         }
         return Command.CONTINUE;
     }
+
     /**
      * The destination transport is already be determined as a HTTP packet,
      * which is then needed to be matched with a exist strategy to do the following processes,
      * e.g. getPath, pushRoute
-     * @param tp_src                            Transport for source
-     * @param tp_dst                            Transport for destination
+     *
+     * @param tp_src Transport for source
+     * @param tp_dst Transport for destination
      * @return Command.STOP if match any strategy, otherwise return Command.CONTINUE
      */
     private Command process_http_from_host(IPv4Address srcAddress, IPv4Address dstAddress, int tp_src, int tp_dst, IOFSwitch sw, OFPacketIn pi, FloodlightContext cntx) {
@@ -295,8 +307,9 @@ public class StaticCacheManager implements IOFMessageListener, IFloodlightModule
      * The source transport is already be determined as a HTTP packet,
      * which is then needed to be matched with a exist strategy to do the following processes,
      * e.g. getPath, pushRoute
-     * @param tp_src                            Transport for source
-     * @param tp_dst                            Transport for destination
+     *
+     * @param tp_src Transport for source
+     * @param tp_dst Transport for destination
      * @return Command.STOP if match any strategy, otherwise return Command.CONTINUE
      */
     private Command process_http_from_cache(IPv4Address srcAddress, IPv4Address dstAddress, int tp_src, int tp_dst, IOFSwitch sw, OFPacketIn pi, FloodlightContext cntx) {
@@ -364,6 +377,7 @@ public class StaticCacheManager implements IOFMessageListener, IFloodlightModule
                 new ArrayList<Class<? extends IFloodlightService>>();
         l.add(IFloodlightProviderService.class);
         l.add(IRestApiService.class);
+        l.add(IOFSwitchService.class);
         return l;
     }
 
@@ -388,8 +402,7 @@ public class StaticCacheManager implements IOFMessageListener, IFloodlightModule
     }
 
     /**
-     *
-     * @param strategy                  A new strategy, which needed to be complemented some information
+     * @param strategy A new strategy, which needed to be complemented some information
      */
     @Override
     public void addStrategy(StaticCacheStrategy strategy) {
@@ -408,7 +421,6 @@ public class StaticCacheManager implements IOFMessageListener, IFloodlightModule
     }
 
     /**
-     *
      * @return strategies arraylist to present on the WEB UI
      */
     @Override
@@ -419,11 +431,11 @@ public class StaticCacheManager implements IOFMessageListener, IFloodlightModule
     /**
      * Push routes from back to front
      *
-     * @param route                         Route to push
-     * @param strategy                      Matched strategy to write flow with flow item modification
-     * @param cookie                        The cookie to set in each flow_mod
-     * @param cntx                          The floodlight context
-     * @param hostOrCache                   Determine which flowMod should be generated and write into the switch, host or cache
+     * @param route       Route to push
+     * @param strategy    Matched strategy to write flow with flow item modification
+     * @param cookie      The cookie to set in each flow_mod
+     * @param cntx        The floodlight context
+     * @param hostOrCache Determine which flowMod should be generated and write into the switch, host or cache
      * @return true if a packet out was sent on the first-hop switch of this route
      */
     public boolean pushRoute(Path route, OFPacketIn pi, StaticCacheStrategy strategy,
@@ -447,7 +459,7 @@ public class StaticCacheManager implements IOFMessageListener, IFloodlightModule
                 return false;
             }
             //
-            if (pinSwitch.equals(switchDPID)){
+            if (pinSwitch.equals(switchDPID)) {
                 switch (hostOrCache) {
                     case "HOST":
                         strategy.completeStrategy_host(sw, pi, outPort);
@@ -585,6 +597,7 @@ public class StaticCacheManager implements IOFMessageListener, IFloodlightModule
         OFMessageUtils.setInPort(pob, OFMessageUtils.getInPort(pi));
         messageDamper.write(sw, pob.build());
     }
+
     /**
      * Instead of using the Firewall's routing decision Match, which might be as general
      * as "in_port" and inadvertently Match packets erroneously, construct a more
@@ -754,4 +767,52 @@ public class StaticCacheManager implements IOFMessageListener, IFloodlightModule
         }
         return mb.build();
     }
+
+    public void getQueueInfo(IOFSwitch sw) {
+        try {
+            Thread.sleep(5000);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+        OFQueueGetConfigRequest cr = sw.getOFFactory().buildQueueGetConfigRequest()
+                .setPort(OFPort.of(1))
+                .build(); /* Request queues on any port (i.e. don't care) */
+//        ListenableFuture<OFQueueGetConfigReply> future = sw.writeRequest(cr); /* Send request to switch 1 */
+        FutureTask<OFQueueGetConfigReply> f = (FutureTask<OFQueueGetConfigReply>) sw.writeRequest(cr); /* Send request to switch 1 */;
+        try {
+            /* Wait up to 10s for a reply; return when received; else exception thrown */
+            OFQueueGetConfigReply reply = f.get(10, TimeUnit.SECONDS);
+//            OFQueueGetConfigReply reply = future.get();
+            /* Iterate over all queues */
+            for (OFPacketQueue q : reply.getQueues()) {
+                OFPort p = q.getPort(); /* The switch port the queue is on */
+                long id = q.getQueueId(); /* The ID of the queue */
+                System.out.println("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! QueueId is " + id);
+
+                /* Determine if the queue rates */
+                for (OFQueueProp qp : q.getProperties()) {
+                    int rate;
+                    /* This is a bit clunky now -- need to improve API in Loxi */
+                    switch (qp.getType()) {
+                        case OFQueuePropertiesSerializerVer13.MIN_RATE_VAL: /* min rate */
+                            OFQueuePropMinRate min = (OFQueuePropMinRate) qp;
+                            rate = min.getRate();
+
+                            System.out.println("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! Min rate is " + rate);
+                            break;
+                        case OFQueuePropertiesSerializerVer13.MAX_RATE_VAL: /* max rate */
+                            OFQueuePropMaxRate max = (OFQueuePropMaxRate) qp;
+                            rate = max.getRate();
+
+                            System.out.println("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! Max rate is " + rate);
+                            break;
+                    }
+                }
+            }
+        } catch (InterruptedException | ExecutionException | TimeoutException e) { /* catch e.g. timeout */
+            System.out.println("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! Catch the exception");
+            e.printStackTrace();
+        }
+    }
+
 }
