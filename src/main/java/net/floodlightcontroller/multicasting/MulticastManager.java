@@ -14,7 +14,6 @@ import net.floodlightcontroller.core.util.AppCookie;
 import net.floodlightcontroller.core.util.SingletonTask;
 import net.floodlightcontroller.packet.*;
 import net.floodlightcontroller.qos.DSCPField;
-import net.floodlightcontroller.qos.ResourceMonitor.MonitorDelayService;
 import net.floodlightcontroller.qos.ResourceMonitor.QosResourceMonitor;
 import net.floodlightcontroller.qos.ResourceMonitor.pojo.LinkEntry;
 import net.floodlightcontroller.routing.*;
@@ -45,7 +44,6 @@ public class MulticastManager implements IOFMessageListener, IFloodlightModule, 
     protected ITopologyService topologyService;
     protected OFMessageDamper messageDamper;
     protected QosResourceMonitor qosResourceMonitor;
-    protected MonitorDelayService monitorDelayService;
 
     // Multicast Data structure
     private ConcurrentHashMap<IPv4Address, MulticastGroup> multicastGroupInfoTable = new ConcurrentHashMap<>();
@@ -933,7 +931,6 @@ public class MulticastManager implements IOFMessageListener, IFloodlightModule, 
         topologyService = context.getServiceImpl(ITopologyService.class);
         threadPoolService = context.getServiceImpl(IThreadPoolService.class);
         qosResourceMonitor = context.getServiceImpl(QosResourceMonitor.class);
-        monitorDelayService = context.getServiceImpl(MonitorDelayService.class);
         messageDamper = new OFMessageDamper(OFMESSAGE_DAMPER_CAPACITY,
                 EnumSet.of(OFType.FLOW_MOD),
                 OFMESSAGE_DAMPER_TIMEOUT);
@@ -988,13 +985,16 @@ public class MulticastManager implements IOFMessageListener, IFloodlightModule, 
             if (dscpField == 46){
                 System.out.println(dscpField);
             }
+        }else if (hostAddress.toString().equals("10.0.0.3")){
+            dscpField = (byte) 0b000000;
+            System.out.println(dscpField);
         }
 
-        Map<LinkEntry<DatapathId,DatapathId>,Double> pkLoss = qosResourceMonitor.getPkLoss();
+//        Map<LinkEntry<DatapathId,DatapathId>,Double> pkLoss = qosResourceMonitor.getPkLoss();
         Map<LinkEntry<DatapathId, DatapathId>, Integer> linkDelay = qosResourceMonitor.getLinkDelay();
-//        Map<LinkEntry<DatapathId, DatapathId>, Integer> linkJitter =
+        Map<LinkEntry<DatapathId, DatapathId>, Integer> linkJitter = qosResourceMonitor.getLinkJitter();
         //zzy: Replace linkDelay with jitter
-        Path newPath = routingService.getPath(src, srcPort, dst, dstPort, pkLoss, linkDelay, dscpField);
+        Path newPath = routingService.getPath(src, srcPort, dst, dstPort, linkJitter, linkDelay, dscpField);
 
         if (multicastTree.getPathList().isEmpty()) {
             multicastTree.getPathList().put(hostAddress, newPath);
