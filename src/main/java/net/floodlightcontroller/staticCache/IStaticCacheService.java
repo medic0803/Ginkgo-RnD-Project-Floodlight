@@ -14,4 +14,6 @@ public interface IStaticCacheService extends IFloodlightService {
     public void addStrategy (StaticCacheStrategy strategy);
 
     public List<StaticCacheStrategy> getStrategies();
+
+    public void deleteRule(int id);
 }

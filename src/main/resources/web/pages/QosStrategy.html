@@ -567,18 +567,25 @@
             $.ajax({
                 type    : "DELETE",
                 dataType: 'json',
-                url     : "http://" + ipaddress + ":" + restport + "/wm/firewall/rules/json",
+                url     : "http://" + ipaddress + ":" + restport + "/wm/staticcachepusher/strategies/json",
                 data    : '{ "strategyid":' + "\"" + strategyid + "\"" + '}',
                 success : function (data) {
-                    new PNotify({
-                        title: 'Strategy deleted!',
-                        text : 'Strategy is successfully deleted.',
-                        type : 'success',
-                        hide : true
-                    });
-
-                    GetGetStrategies();
-
+                    if (data["status"] == "Strategy deleted"){
+                        new PNotify({
+                            title: 'Strategy deleted!',
+                            text : 'Strategy is successfully deleted.',
+                            type : 'success',
+                            hide : true
+                        });
+                    }else {
+                        new PNotify({
+                            title: 'Error Occured.',
+                            text : data["status"],
+                            type : 'error',
+                            hide : true
+                        });
+                    }
+                    GetStrategies();
                 },
                 error   : function (jqXHR, textStatus, errorThrown) {
                     alert('Error: ' + " " + jqXHR.responseText + " \n Status: "

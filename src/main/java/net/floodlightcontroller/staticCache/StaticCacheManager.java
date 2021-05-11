@@ -13,6 +13,7 @@ import net.floodlightcontroller.core.types.NodePortTuple;
 import net.floodlightcontroller.core.util.AppCookie;
 import net.floodlightcontroller.devicemanager.IDevice;
 import net.floodlightcontroller.devicemanager.IDeviceService;
+import net.floodlightcontroller.firewall.FirewallRule;
 import net.floodlightcontroller.packet.*;
 import net.floodlightcontroller.restserver.IRestApiService;
 import net.floodlightcontroller.routing.IRoutingDecision;
@@ -414,6 +415,19 @@ public class StaticCacheManager implements IOFMessageListener, IFloodlightModule
     @Override
     public List<StaticCacheStrategy> getStrategies() {
         return this.strategies;
+    }
+
+    @Override
+    public void deleteRule(int id) {
+        Iterator<StaticCacheStrategy> iter = this.strategies.iterator();
+        while (iter.hasNext()) {
+            StaticCacheStrategy cacheStrategy = iter.next();
+            if (cacheStrategy.strategyid == id) {
+                // found the rule, now remove it
+                iter.remove();
+                break;
+            }
+        }
     }
 
     /**
