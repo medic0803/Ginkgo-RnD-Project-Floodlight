@@ -65,7 +65,8 @@ public class QosResourceMonitorImpl implements QosResourceMonitor, IFloodlightMo
      */
     @Override
     public Map<LinkEntry<DatapathId, DatapathId>, Integer> getLinkDelay() {
-        linkDelaySecMap = delayService.getLinkDelay();
+        linkDelaySecMap.clear();
+        linkDelaySecMap.putAll(delayService.getLinkDelay());
         return linkDelaySecMap;
     }
 
@@ -227,21 +228,26 @@ public class QosResourceMonitorImpl implements QosResourceMonitor, IFloodlightMo
                     e.printStackTrace();
                 }
                 if (i<3) continue;
-                System.out.println("----------------------------------below is what floodligth get--------------------------------------");
+//                System.out.println("----------------------------------below is what floodligth get--------------------------------------");
 //                System.out.println("+++++++++pkloss++++++++++");
 //                for (Map.Entry<LinkEntry<DatapathId, DatapathId>, Double> entries : this.getPkLoss().entrySet()){
 //                    System.out.println(entries.getKey().toString() +"=="+ entries.getValue());
 //                }
-                System.out.println("+++++++++++bandwith++++++++");
-                for (Map.Entry<NodePortTuple, SwitchPortBandwidth> entries:this.getBandwidthMap().entrySet()){
-                    System.out.println(entries.getKey().toString() +"=="+ entries.getValue().getBitsPerSecondTx().getValue()/1024/1024+"Mbits/sec");
-                    System.out.println(entries.getKey().toString() +"=="+ entries.getValue().getBitsPerSecondRx().getValue()/1024/1024+"Mbits/sec");
-                }
+//                System.out.println("+++++++++++bandwith++++++++");
+//                for (Map.Entry<NodePortTuple, SwitchPortBandwidth> entries:this.getBandwidthMap().entrySet()){
+//                    System.out.println(entries.getKey().toString() +"=="+ entries.getValue().getBitsPerSecondTx().getValue()/1024/1024+"Mbits/sec");
+//                    System.out.println(entries.getKey().toString() +"=="+ entries.getValue().getBitsPerSecondRx().getValue()/1024/1024+"Mbits/sec");
+//                }
 //                System.out.println("+++++++++linkdelay++++++++++");
 //                for (Map.Entry<LinkEntry<DatapathId, DatapathId>, Integer> entries: this.getLinkDelay().entrySet()) {
 //                    System.out.println(entries.getKey().toString() +"=="+ entries.getValue());
 //                }
-                System.out.println("--------------------------------------floodlight thread out--------------------------------------");
+//
+//                System.out.println("+++++++++jitter++++++++++");
+//                for (Map.Entry<LinkEntry<DatapathId, DatapathId>, Integer> entries: this.getLinkJitter().entrySet()) {
+//                    System.out.println(entries.getKey().toString() +"=="+ entries.getValue());
+//                }
+//                System.out.println("--------------------------------------floodlight thread out--------------------------------------");
 
             }
         }).start();
