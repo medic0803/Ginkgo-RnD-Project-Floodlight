@@ -1014,8 +1014,8 @@ ITopologyManagerBackend, ILinkDiscoveryListener, IOFMessageListener {
                 switchPortLinks,
                 allPorts,
                 interClusterLinks);
-
-
+        
+        //zzy
         nt.compute();
         currentInstance = nt;
 

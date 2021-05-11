@@ -90,9 +90,7 @@ public class MonitorPkLossServiceImpl implements IFloodlightModule,MonitorPkLoss
 
         private SwitchPortCounter getSwitchPortPkloss(NodePortTuple npt){
             SwitchPortCounter switchPortCounter = new SwitchPortCounter();
-            if (needUpdate(npt)) {
-                switchPortCounter = portStats.get(npt);
-            }else if (isToPutFirstValue(npt)) {
+            if (needUpdate(npt)) { switchPortCounter = portStats.get(npt);}else if (isToPutFirstValue(npt)) {
                 switchPortCounter = tentativePortStats.get(npt);
                 tentativePortStats.remove(npt);
             } else {
@@ -125,7 +123,7 @@ public class MonitorPkLossServiceImpl implements IFloodlightModule,MonitorPkLoss
                     npt.getNodeId(),
                     npt.getPortId(),
                     switchPortReply.getRxBytes(),rxCounted,
-                    switchPortReply.getTxBytes(), txCounted)
+                    switchPortReply.getTxBytes(),txCounted)
             );
         }
         private U64 count(U64 x ,U64 y){
@@ -217,7 +215,6 @@ public class MonitorPkLossServiceImpl implements IFloodlightModule,MonitorPkLoss
             throws FloodlightModuleException {
         switchService = context.getServiceImpl(IOFSwitchService.class);
         threadPoolService = context.getServiceImpl(IThreadPoolService.class);
-
         log.info("Port Qos Parket Loss collection interval set to {}s", portStatsInterval);
     }
 

@@ -95,6 +95,8 @@ public class MonitorDelayServiceImpl implements MonitorDelayService, IFloodlight
     @Override
     public void init(FloodlightModuleContext context) throws FloodlightModuleException {
         linkDiscoveryService = context.getServiceImpl(ILinkDiscoveryService.class);
+        first_JitterStampMap = new HashMap<>();
+        sceond_JitterStampMap = new HashMap<>();
         linkDelaySecMap =  new HashMap<>();
         linkJitterSecMap = new HashMap<>();
     }
@@ -183,18 +185,21 @@ public class MonitorDelayServiceImpl implements MonitorDelayService, IFloodlight
         //kwmtodo: calculate the jitter here
         @Override
         public void run() {
-            if (linkJitterSecMap.isEmpty()){
+            if (first_JitterStampMap.isEmpty()){
                 initialLinkJitterMap();
             }else{
                 //获取第二个stamp
                 sceond_JitterStampMap = getLinkDelay();
                 //两个stamp 有效
                 if (first_JitterStampMap.size() == sceond_JitterStampMap.size()){
+                    if (!linkJitterSecMap.isEmpty()){
+                        linkJitterSecMap.clear();
+                    }
                     //计算jitter
                     Iterator<LinkEntry<DatapathId, DatapathId>> iterator = first_JitterStampMap.keySet().iterator();
                     while (iterator.hasNext()){
                         LinkEntry<DatapathId, DatapathId> key = iterator.next();
-                        linkJitterSecMap.put(key,Math.abs(first_JitterStampMap.get(key) - sceond_JitterStampMap.get(key)));
+                        linkJitterSecMap.put(key,Math.abs(first_JitterStampMap.get(key) - sceond_JitterStampMap.get(key))/jitterInterval);
                     }
                 }
                 //更新firstStamp
