@@ -51,6 +51,18 @@ public class StaticCacheStrategy {
         this.tp_dst = TransportPort.NONE;
         this.priority = 0;
     }
+    //kwm: method to check if is same
+    public boolean isSameAs(StaticCacheStrategy scs){
+        if (!this.nw_cache_dl_dst.equals(scs.nw_cache_dl_dst)
+        ||!this.nw_cache_ipv4.equals(scs.nw_cache_ipv4)
+        ||!this.nw_src_ipv4.equals(scs.nw_src_ipv4)
+        ||!this.nw_dst_ipv4.equals(scs.nw_dst_ipv4)
+        ||!this.tp_dst.equals(scs.tp_dst)
+        ||this.priority != scs.priority){
+            return false;
+        }
+        return true;
+    }
 
     public int genID() {
         int uid = this.hashCode();

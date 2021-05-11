@@ -36,15 +36,28 @@ public class StaticCacheStrategiesResource extends ServerResource {
 
         //kwmtodo: json translation function
         StaticCacheStrategy strategy = jsonToStaticCacheStrategy(scJson);
-        System.out.println(strategy);
+
         String status = null;
         //kwmtodo: status determiner
-        staticCache.addStrategy(strategy);
-        status = "Strategy added";
-        //kwmtodo: return statement
-        return ("{\"status\" : \"" + status + "\", \"strategy-id\" : \""+ Integer.toString(strategy.strategyid) + "\"}");
+        if (checkStrategyExist(strategy,staticCache.getStrategies())){
+            status = "A similar Strategy has already exist";
+            return ("{\"status\" : \"" + status + "\", \"strategy-id\" : \""+ strategy.strategyid + "\"}");
+        }else {
+            staticCache.addStrategy(strategy);
+            status = "Strategy added";
+            //kwmtodo: return statement
+            return ("{\"status\" : \"" + status + "\", \"strategy-id\" : \""+ strategy.strategyid + "\"}");
+        }
     }
-
+    private static boolean checkStrategyExist(StaticCacheStrategy strategy, List<StaticCacheStrategy> strategies){
+        for (StaticCacheStrategy scs:
+             strategies) {
+            if (scs.isSameAs(strategy)){
+                return true;
+            }
+        }
+        return false;
+    }
 
     public static StaticCacheStrategy jsonToStaticCacheStrategy(String fmJson) {
         StaticCacheStrategy strategy = new StaticCacheStrategy();
@@ -145,14 +158,6 @@ public class StaticCacheStrategiesResource extends ServerResource {
                         strategy.priority = Integer.parseInt(jsonParser.getText());
                     } catch (IllegalArgumentException e) {
                         log.error("Unable to parse priority: {}", jsonParser.getText());
-                        //TODO should return some error message via HTTP message
-                    }
-                }
-                else if (currentName.equalsIgnoreCase("cache-mac")) {
-                    try {
-                        strategy.nw_cache_dl_dst = MacAddress.of(jsonParser.getText());
-                    } catch (IllegalArgumentException e) {
-                        log.error("Unable to parse Mac Address: {}", jsonParser.getText());
                         //TODO should return some error message via HTTP message
                     }
                 }
