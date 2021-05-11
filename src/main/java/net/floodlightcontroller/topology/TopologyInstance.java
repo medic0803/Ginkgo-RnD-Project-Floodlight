@@ -1238,7 +1238,7 @@ public class TopologyInstance {
                         DatapathId dstId, OFPort dstPort,
                         Map<LinkEntry<DatapathId,DatapathId>,Double> pkLoss,
                         Map<LinkEntry<DatapathId, DatapathId>, Integer> linkDelay,
-                        DSCPField dscpField) {
+                        byte dscpField) {
         //zzy: Add jitter
         Path r = getPath(srcId, dstId, pkLoss, linkDelay, dscpField);
 
@@ -1272,7 +1272,7 @@ public class TopologyInstance {
     public Path getPath(DatapathId srcId, DatapathId dstId,
                         Map<LinkEntry<DatapathId,DatapathId>,Double> pkLoss,
                         Map<LinkEntry<DatapathId, DatapathId>, Integer> linkDelay,
-                        DSCPField dscpField) {
+                        byte dscpField) {
         PathId id = new PathId(srcId, dstId);
 
         /* Return empty route if srcId equals dstId */
@@ -1283,7 +1283,7 @@ public class TopologyInstance {
         Path result = null;
 
         try {
-            result = getPathByDelayAndPkloss(id,linkDelay,pkLoss);
+            result = getPathByDelayAndPkloss(id,linkDelay,pkLoss, dscpField);
         } catch (Exception e) {
             log.warn("Could not find route from {} to {}. If the path exists, wait for the topology to settle, and it will be detected", srcId, dstId);
         }
@@ -1296,7 +1296,7 @@ public class TopologyInstance {
 
     private Path getPathByDelayAndPkloss(PathId id,
         Map<LinkEntry<DatapathId, DatapathId>, Integer> linkDelayMsp,
-        Map<LinkEntry<DatapathId,DatapathId>,Double> pkLossMap) {
+        Map<LinkEntry<DatapathId,DatapathId>,Double> pkLossMap, byte dscpfield) {
         System.out.println(pkLossMap);
         List<Path> pathList = pathcache.get(id);
         if (!pathList.isEmpty()) {

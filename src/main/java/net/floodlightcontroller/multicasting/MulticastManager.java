@@ -977,11 +977,19 @@ public class MulticastManager implements IOFMessageListener, IFloodlightModule, 
 
     private Path getMulticastRoutingDecision(DatapathId src, OFPort srcPort,
                                              DatapathId dst, OFPort dstPort,
-                                             DSCPField dscpField,
+                                             DSCPField dscpField1,
                                              IPv4Address hostAddress, MulticastTree multicastTree) {
         DatapathId bp = null;
         Stack<DatapathId> tempBP = new Stack<>();
         Stack<DatapathId> possibleBP = new Stack<>();
+        byte dscpField = 0;
+        if (hostAddress.toString().equals("10.0.0.2")){
+            dscpField = (byte) 0b101110;
+            if (dscpField == 46){
+                System.out.println(dscpField);
+            }
+        }
+
         Map<LinkEntry<DatapathId,DatapathId>,Double> pkLoss = qosResourceMonitor.getPkLoss();
         Map<LinkEntry<DatapathId, DatapathId>, Integer> linkDelay = qosResourceMonitor.getLinkDelay();
 //        Map<LinkEntry<DatapathId, DatapathId>, Integer> linkJitter =
