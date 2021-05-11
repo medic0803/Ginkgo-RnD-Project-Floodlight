@@ -194,7 +194,7 @@ public class MonitorDelayServiceImpl implements MonitorDelayService, IFloodlight
                     Iterator<LinkEntry<DatapathId, DatapathId>> iterator = first_JitterStampMap.keySet().iterator();
                     while (iterator.hasNext()){
                         LinkEntry<DatapathId, DatapathId> key = iterator.next();
-                        linkJitterSecMap.put(key,Math.abs(first_JitterStampMap.get(key) - sceond_JitterStampMap.get(key)));
+                        linkJitterSecMap.put(key,Math.abs(first_JitterStampMap.get(key) - sceond_JitterStampMap.get(key))/jitterInterval);
                     }
                 }
                 //更新firstStamp

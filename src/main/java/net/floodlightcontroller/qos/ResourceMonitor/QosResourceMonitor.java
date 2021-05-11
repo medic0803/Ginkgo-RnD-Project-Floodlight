@@ -31,6 +31,7 @@ public interface QosResourceMonitor extends IFloodlightService{
      * @return key-value ==> Link-delay （ms）
      */
     public Map<LinkEntry<DatapathId,DatapathId>,Integer> getLinkDelay();
+    public Map<LinkEntry<DatapathId,DatapathId>,Integer> getLinkJitter();
 
     /**
      * MonitorPkLossServices

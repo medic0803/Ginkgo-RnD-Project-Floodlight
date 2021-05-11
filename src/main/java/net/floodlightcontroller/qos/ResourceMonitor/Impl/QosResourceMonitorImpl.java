@@ -34,6 +34,7 @@ public class QosResourceMonitorImpl implements QosResourceMonitor, IFloodlightMo
 
     private static Map<NodePortTuple,SwitchPortBandwidth> bandwidthMap;
     private static Map<LinkEntry<DatapathId, DatapathId>, Integer> linkDelaySecMap;
+    private static Map<LinkEntry<DatapathId, DatapathId>, Integer> linkJitterSecMap;
     private static Map<LinkEntry<DatapathId, DatapathId>, Double> pklossMap;
 
     /**
@@ -66,6 +67,13 @@ public class QosResourceMonitorImpl implements QosResourceMonitor, IFloodlightMo
     public Map<LinkEntry<DatapathId, DatapathId>, Integer> getLinkDelay() {
         linkDelaySecMap = delayService.getLinkDelay();
         return linkDelaySecMap;
+    }
+
+    @Override
+    public Map<LinkEntry<DatapathId, DatapathId>, Integer> getLinkJitter() {
+        linkJitterSecMap.clear();
+        linkJitterSecMap.putAll(delayService.getLinkJitter());
+        return linkJitterSecMap;
     }
 
     /**
@@ -192,6 +200,7 @@ public class QosResourceMonitorImpl implements QosResourceMonitor, IFloodlightMo
         pklossMap = new HashMap<>();
         bandwidthMap = new HashMap<>();
         linkDelaySecMap = new HashMap<>();
+        linkJitterSecMap = new HashMap<>();
     }
 
     /**
