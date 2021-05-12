@@ -13,7 +13,6 @@ import net.floodlightcontroller.core.types.NodePortTuple;
 import net.floodlightcontroller.core.util.AppCookie;
 import net.floodlightcontroller.core.util.SingletonTask;
 import net.floodlightcontroller.packet.*;
-import net.floodlightcontroller.qos.DSCPField;
 import net.floodlightcontroller.qos.ResourceMonitor.QosResourceMonitor;
 import net.floodlightcontroller.qos.ResourceMonitor.pojo.LinkEntry;
 import net.floodlightcontroller.routing.*;
@@ -281,7 +280,6 @@ public class MulticastManager implements IOFMessageListener, IFloodlightModule, 
         return Command.CONTINUE;
     }
 
-    //zzy: based on IPaddress, add Dscp filed and set priority for it
     private void processIGMPJoinMsg(IPv4Address multicastAddress, IPv4Address hostIPAddress, IOFSwitch sw, OFPacketIn pi, DatapathId pinSwitchId, FloodlightContext cntx) {
         boolean ifExist = false;
 
@@ -321,7 +319,6 @@ public class MulticastManager implements IOFMessageListener, IFloodlightModule, 
         // And it is not the first host who really begins to receive the packet from source
         if (!ifExist && !multicastGroupInfoTable.get(multicastAddress).getMulticastSources().isEmpty() && multicastGroupInfoTable.get(multicastAddress).getMulticastHosts().size() > 1) {
             //wrf: push Route
-            DSCPField dscpField = DSCPField.Default;
             DatapathId dstId = sw.getId();
             OFPort dstPort = OFMessageUtils.getInPort(pi);
 
@@ -330,7 +327,7 @@ public class MulticastManager implements IOFMessageListener, IFloodlightModule, 
                 OFPort srcPort = multicastSource.getSrcPort();
 
                 MulticastTree tempMulticastTree = multicastGroupInfoTable.get(multicastAddress).getMulticastTreeInfoTable().get(multicastSource.getSrcAddress());
-                Path path = getMulticastRoutingDecision(srcId, srcPort, dstId, dstPort, dscpField, hostIPAddress, tempMulticastTree);
+                Path path = getMulticastRoutingDecision(srcId, srcPort, dstId, dstPort, hostIPAddress, tempMulticastTree);
                 pushMulticastingRoute(path, multicastSource.getMatch(), pi, pinSwitchId, multicastSource.getCookie(), cntx, tempMulticastTree.getAltBPRegister(), false, false);
             }
         }
@@ -447,7 +444,6 @@ public class MulticastManager implements IOFMessageListener, IFloodlightModule, 
         DatapathId dstId = null;
         OFPort srcPort = OFMessageUtils.getInPort(pi);
         OFPort dstPort = null;
-        DSCPField dscpField = DSCPField.Default;
         Path path = null;
 
         if (!topologyService.isEdge(srcId, srcPort)) {
@@ -465,7 +461,7 @@ public class MulticastManager implements IOFMessageListener, IFloodlightModule, 
         for (IPv4Address hostAddress : multicastGroupInfoTable.get(multicastAddress).getMulticastHosts()) {
             dstId = pinSwitchInfoMap.get(hostAddress).getPinSwitchId();
             dstPort = pinSwitchInfoMap.get(hostAddress).getPinSwitchInPort();
-            path = getMulticastRoutingDecision(srcId, srcPort, dstId, dstPort, dscpField, hostAddress, multicastGroupInfoTable.get(multicastAddress).getMulticastTreeInfoTable().get(sourceAddress));
+            path = getMulticastRoutingDecision(srcId, srcPort, dstId, dstPort, hostAddress, multicastGroupInfoTable.get(multicastAddress).getMulticastTreeInfoTable().get(sourceAddress));
             pushMulticastingRoute(path, match, pi, sw.getId(), cookie, cntx, multicastGroupInfoTable.get(multicastAddress).getMulticastTreeInfoTable().get(sourceAddress).getAltBPRegister(), false, false);
         }
 
@@ -972,28 +968,36 @@ public class MulticastManager implements IOFMessageListener, IFloodlightModule, 
         return this.multicastGroupInfoTable.containsKey(dstAddress);
     }
 
+    /**
+     * Get the multicast routing decision
+     * @param src
+     * @param srcPort
+     * @param dst
+     * @param dstPort
+     * @param hostAddress
+     * @param multicastTree
+     * @return a path which has the shortest weight between host and source
+     */
     private Path getMulticastRoutingDecision(DatapathId src, OFPort srcPort,
                                              DatapathId dst, OFPort dstPort,
-                                             DSCPField dscpField1,
                                              IPv4Address hostAddress, MulticastTree multicastTree) {
         DatapathId bp = null;
         Stack<DatapathId> tempBP = new Stack<>();
         Stack<DatapathId> possibleBP = new Stack<>();
         byte dscpField = 0;
-        if (hostAddress.toString().equals("10.0.0.2")){
+        if (hostAddress.toString().equals("10.0.0.2")){ // this is a teacher
             dscpField = (byte) 0b101110;
             if (dscpField == 46){
                 System.out.println(dscpField);
             }
-        }else if (hostAddress.toString().equals("10.0.0.3")){
+        }else if (hostAddress.toString().equals("10.0.0.3")){ //this is a student
             dscpField = (byte) 0b000000;
             System.out.println(dscpField);
         }
 
-//        Map<LinkEntry<DatapathId,DatapathId>,Double> pkLoss = qosResourceMonitor.getPkLoss();
         Map<LinkEntry<DatapathId, DatapathId>, Integer> linkDelay = qosResourceMonitor.getLinkDelay();
         Map<LinkEntry<DatapathId, DatapathId>, Integer> linkJitter = qosResourceMonitor.getLinkJitter();
-        //zzy: Replace linkDelay with jitter
+
         Path newPath = routingService.getPath(src, srcPort, dst, dstPort, linkJitter, linkDelay, dscpField);
 
         if (multicastTree.getPathList().isEmpty()) {

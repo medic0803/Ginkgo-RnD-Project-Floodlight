@@ -1215,8 +1215,6 @@ public class TopologyInstance {
         return r;
     }
 
-    //zzy
-
     /**
      * Computes the whole path that satisfied different requirements
      * @param srcId
@@ -1252,7 +1250,6 @@ public class TopologyInstance {
         r = new Path(id, nptList);
         return r;
     }
-    //zzy: DSCP process
 
     /**
      * Based on DSCP field, calculates the path to meet different priorities
@@ -1277,7 +1274,7 @@ public class TopologyInstance {
         Path result = null;
 
         try {
-            result = getPathByDelayAndPkloss(id,linkDelay,linkJitter, dscpField);
+            result = getPathByDelayAndJitter(id,linkDelay,linkJitter, dscpField);
         } catch (Exception e) {
             log.warn("Could not find route from {} to {}. If the path exists, wait for the topology to settle, and it will be detected", srcId, dstId);
         }
@@ -1288,24 +1285,43 @@ public class TopologyInstance {
         return result == null ? new Path(id, ImmutableList.of()) : result;
     }
 
-    private Path getPathByDelayAndPkloss(PathId id,
+    /**
+     * Based on Delay and Jitter, return a path
+     * @param id
+     * @param linkDelayMap
+     * @param linkJitterMap
+     * @param dscpfield
+     * @return a path that considered the delay and jitter
+     */
+    private Path getPathByDelayAndJitter(PathId id,
         Map<LinkEntry<DatapathId, DatapathId>, Integer> linkDelayMap,
         Map<LinkEntry<DatapathId, DatapathId>, Integer> linkJitterMap, byte dscpfield) {
         List<Path> pathList = pathcache.get(id);
         if (!pathList.isEmpty()) {
             for (int i = 0; i < pathList.size(); i++){
                 Path newPath = pathList.get(i);
-                //zzy: test
-//                if (dscpfield == 46) {
+                //zzy: get DSCP field value and
+                if (dscpfield == 46) { //from teachers
                     if (getPathDelay(newPath, linkDelayMap) < 150 && getPathJitter(newPath, linkJitterMap) < 30) {
                         return newPath;
                     }
-//                }
+                }
+                else if (dscpfield == 0){ //from students
+                    if (getPathDelay(newPath, linkDelayMap) < 4000 && getPathJitter(newPath, linkJitterMap) < 30){
+                        return newPath;
+                    }
+                }
             }
         }
         return null;
 }
 
+    /**
+     * Get the whole path delay
+     * @param path
+     * @param linkDelay
+     * @return the value of Delay
+     */
     private Integer getPathDelay(Path path, Map<LinkEntry<DatapathId, DatapathId>, Integer> linkDelay){
         Integer delay = 0;
         List<NodePortTuple> nodePortTupleList = path.getPath();
@@ -1318,6 +1334,12 @@ public class TopologyInstance {
         return delay;
     }
 
+    /**
+     * Get the whole path jitter
+     * @param path
+     * @param linkJitter
+     * @return the value of Jitter
+     */
     private Integer getPathJitter(Path path, Map<LinkEntry<DatapathId, DatapathId>, Integer> linkJitter){
         Integer jitter = 0;
         List<NodePortTuple> nodePortTupleList = path.getPath();
