@@ -13,9 +13,9 @@ import net.floodlightcontroller.core.types.NodePortTuple;
 import net.floodlightcontroller.core.util.AppCookie;
 import net.floodlightcontroller.core.util.SingletonTask;
 import net.floodlightcontroller.packet.*;
+import net.floodlightcontroller.qos.QoSManager.IQoSManagerService;
 import net.floodlightcontroller.qos.ResourceMonitor.QosResourceMonitor;
 import net.floodlightcontroller.qos.ResourceMonitor.pojo.LinkEntry;
-import net.floodlightcontroller.qos.DSCPField;
 import net.floodlightcontroller.routing.*;
 import net.floodlightcontroller.threadpool.IThreadPoolService;
 import net.floodlightcontroller.topology.ITopologyService;
@@ -44,6 +44,7 @@ public class MulticastManager implements IOFMessageListener, IFloodlightModule, 
     protected ITopologyService topologyService;
     protected OFMessageDamper messageDamper;
     protected QosResourceMonitor qosResourceMonitor;
+    protected IQoSManagerService qoSManagerService;
 
     // Multicast Data structure
     private ConcurrentHashMap<IPv4Address, MulticastGroup> multicastGroupInfoTable = new ConcurrentHashMap<>();
@@ -927,6 +928,8 @@ public class MulticastManager implements IOFMessageListener, IFloodlightModule, 
         routingService = context.getServiceImpl(IRoutingService.class);
         topologyService = context.getServiceImpl(ITopologyService.class);
         threadPoolService = context.getServiceImpl(IThreadPoolService.class);
+        qoSManagerService = context.getServiceImpl(IQoSManagerService.class);
+
         messageDamper = new OFMessageDamper(OFMESSAGE_DAMPER_CAPACITY,
                 EnumSet.of(OFType.FLOW_MOD),
                 OFMESSAGE_DAMPER_TIMEOUT);
