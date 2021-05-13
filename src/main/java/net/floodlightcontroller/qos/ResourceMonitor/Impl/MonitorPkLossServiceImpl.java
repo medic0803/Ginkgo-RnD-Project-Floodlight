@@ -10,7 +10,7 @@ import net.floodlightcontroller.core.module.IFloodlightModule;
 import net.floodlightcontroller.core.module.IFloodlightService;
 import net.floodlightcontroller.core.types.NodePortTuple;
 import net.floodlightcontroller.qos.ResourceMonitor.MonitorPkLossService;
-import net.floodlightcontroller.qos.ResourceMonitor.pojo.SwitchPortPkLoss;
+import net.floodlightcontroller.qos.ResourceMonitor.pojo.SwitchPortCounter;
 import net.floodlightcontroller.restserver.IRestApiService;
 import net.floodlightcontroller.threadpool.IThreadPoolService;
 import org.projectfloodlight.openflow.protocol.*;
@@ -50,106 +50,135 @@ public class MonitorPkLossServiceImpl implements IFloodlightModule,MonitorPkLoss
     private static final String INTERVAL_PORT_STATS_STR = "collectionIntervalPortStatsSeconds";
     private static final String ENABLED_STR = "enable";
 
-    private static final HashMap<NodePortTuple, SwitchPortPkLoss> portStats = new HashMap<NodePortTuple, SwitchPortPkLoss>();
-    private static final HashMap<NodePortTuple, SwitchPortPkLoss> tentativePortStats = new HashMap<NodePortTuple, SwitchPortPkLoss>();
+    private static final HashMap<NodePortTuple, SwitchPortCounter> portStats = new HashMap<NodePortTuple, SwitchPortCounter>();
+    private static final HashMap<NodePortTuple, SwitchPortCounter> tentativePortStats = new HashMap<NodePortTuple, SwitchPortCounter>();
 
 
     protected class PortStatsCollector implements Runnable {
 
-        //kwm: count the pkloss ratio base on the change data in a period
-        private int getPkLossRatio(long rx, long rx_drop, long tx, long tx_drop){
-            double ratio = 0;
-            if (rx == 0 && 0 == tx){
-                return 0;
-            }
-            if (rx == 0 || 0 == tx){
-                if (rx != 0){
-                    ratio = (int) rx_drop*100.0/rx;
-                    return (int)ratio;
-                }
-                ratio = (int) tx_drop*100.0/tx;
-                return (int)ratio;
-            }
-
-            ratio = rx_drop*100.0/rx;
-            if (tx_drop*100.0/tx > ratio){
-                ratio = tx_drop*100.0/tx;
-            }
-            return (int)ratio;
-        }
         @Override
         public void run() {
             Map<DatapathId, List<OFStatsReply>> replies = getSwitchStatistics(switchService.getAllSwitchDpids(), OFStatsType.PORT);
-            for (Entry<DatapathId, List<OFStatsReply>> e : replies.entrySet()) {
-                for (OFStatsReply r : e.getValue()) {
-                    OFPortStatsReply psr = (OFPortStatsReply) r;
-                    for (OFPortStatsEntry pse : psr.getEntries()) {
-                        NodePortTuple npt = new NodePortTuple(e.getKey(), pse.getPortNo());
-                        SwitchPortPkLoss spl;
-                        if (portStats.containsKey(npt) || tentativePortStats.containsKey(npt)) {
-                            if (portStats.containsKey(npt)) { /* update */
-                                spl = portStats.get(npt);
-                            } else if (tentativePortStats.containsKey(npt)) { /* finish */
-                                spl = tentativePortStats.get(npt);
-                                tentativePortStats.remove(npt);
-                            } else {
-                                log.error("Inconsistent state between tentative and official port stats lists.");
-                                return;
-                            }
+            this.handleAllSwitchReplies(replies);
+        }
 
-                            /* Get counted bytes over the elapsed period. Check for counter overflow. */
-                            U64 rxBytesCounted;
-                            U64 rx_dropBytesNum;
-                            U64 txBytesCounted;
-                            U64 tx_dropBytesNum;
-                            if (spl.getPriorByteValueRx().compareTo(pse.getRxBytes()) > 0) { /* overflow */
-                                U64 upper = U64.NO_MASK.subtract(spl.getPriorByteValueRx());
-                                U64 lower = pse.getRxBytes();
-                                rxBytesCounted = upper.add(lower);
-                            } else {
-                                rxBytesCounted = pse.getRxBytes().subtract(spl.getPriorByteValueRx());
-                            }
-                            if (spl.getPriorRx_DropValue().compareTo(pse.getRxDropped()) > 0){
-                                U64 upper = U64.NO_MASK.subtract(spl.getPriorRx_DropValue());
-                                U64 lower = pse.getRxDropped();
-                                rx_dropBytesNum = upper.add(lower);
-                            } else {
-                                rx_dropBytesNum = pse.getRxDropped().subtract(spl.getPriorRx_DropValue());
-                            }
-                            if (spl.getPriorByteValueTx().compareTo(pse.getTxBytes()) > 0) { /* overflow */
-                                U64 upper = U64.NO_MASK.subtract(spl.getPriorByteValueTx());
-                                U64 lower = pse.getTxBytes();
-                                txBytesCounted = upper.add(lower);
-                            } else {
-                                txBytesCounted = pse.getTxBytes().subtract(spl.getPriorByteValueTx());
-                            }
-                            if (spl.getPriorTx_DropValue().compareTo(pse.getTxDropped()) > 0) {
-                                U64 upper = U64.NO_MASK.subtract(spl.getPriorTx_DropValue());
-                                U64 lower = pse.getTxDropped();
-                                tx_dropBytesNum = upper.add(lower);
-                            } else {
-                                tx_dropBytesNum = pse.getTxDropped().subtract(spl.getPriorTx_DropValue());
-                            }
-
-                            int pkLossRatio = getPkLossRatio(rxBytesCounted.getValue(), rx_dropBytesNum.getValue(),
-                                    txBytesCounted.getValue(), tx_dropBytesNum.getValue());
-                            portStats.put(npt, SwitchPortPkLoss.of(npt.getNodeId(), npt.getPortId(),
-                                    pkLossRatio,
-                                    pse.getRxBytes(),pse.getRxDropped(),
-                                    pse.getTxBytes(), pse.getTxDropped())
-                            );
-
-                        } else { /* initialize */
-                            tentativePortStats.put(npt, SwitchPortPkLoss.of(npt.getNodeId(), npt.getPortId(),
-                                    new Integer(-1),
-                                    pse.getRxBytes(),pse.getRxDropped(), pse.getTxBytes(),pse.getTxDropped()));
-                        }
-                    }
+        private void handleAllSwitchReplies( Map<DatapathId, List<OFStatsReply>> replies ){
+            for (Entry<DatapathId, List<OFStatsReply>> switchPortsReplyEntry : replies.entrySet()) {
+                for (OFStatsReply switchPortStatsReplies : switchPortsReplyEntry.getValue()) {
+                    DatapathId switchId = switchPortsReplyEntry.getKey();
+                    OFPortStatsReply switchPortsStatsReplies = (OFPortStatsReply) switchPortStatsReplies;
+                    handleSingleSwitchReply(switchId,switchPortsStatsReplies);
                 }
             }
         }
+        private void handleSingleSwitchReply(DatapathId switchId,
+                                             OFPortStatsReply switchPortsStatsReplies){
+            for (OFPortStatsEntry switchPortReply : switchPortsStatsReplies.getEntries()) {
+                handleSinglePortReply(switchId,switchPortReply);
+            }
+        }
+
+        private void handleSinglePortReply(DatapathId switchId, OFPortStatsEntry switchPortReply){
+            NodePortTuple npt = new NodePortTuple(switchId, switchPortReply.getPortNo());
+            if (alreadySeeTheNodePort(npt)) {
+                SwitchPortCounter switchPortCounter = getSwitchPortPkloss(npt);
+                secondOperation(npt,switchPortReply, switchPortCounter);
+            } else {
+                initialAndFirstRecord(npt,switchPortReply);
+            }
+        }
+
+        private SwitchPortCounter getSwitchPortPkloss(NodePortTuple npt){
+            SwitchPortCounter switchPortCounter = new SwitchPortCounter();
+            if (needUpdate(npt)) { switchPortCounter = portStats.get(npt);}else if (isToPutFirstValue(npt)) {
+                switchPortCounter = tentativePortStats.get(npt);
+                tentativePortStats.remove(npt);
+            } else {
+                log.error("Inconsistent state between tentative and official port stats lists.");
+            }
+            return switchPortCounter;
+        }
+        private boolean alreadySeeTheNodePort(NodePortTuple npt){
+            return (portStats.containsKey(npt) || tentativePortStats.containsKey(npt));
+        }
+        private boolean needUpdate(NodePortTuple npt){
+            return portStats.containsKey(npt);
+        }
+        private boolean isToPutFirstValue(NodePortTuple npt){
+            return tentativePortStats.containsKey(npt);
+        }
+
+        /**
+         * Get counted bytes over the elapsed period.
+         * @param npt
+         * @param switchPortReply
+         * @param switchPortCounter
+         */
+        private void secondOperation(NodePortTuple npt, OFPortStatsEntry switchPortReply, SwitchPortCounter switchPortCounter){
+
+            U64 rxCounted = count(switchPortCounter.getPriorByteValueRx(),switchPortReply.getRxBytes());
+            U64 txCounted = count(switchPortCounter.getPriorByteValueTx(),switchPortReply.getTxBytes());
+
+            portStats.put(npt, SwitchPortCounter.of(
+                    npt.getNodeId(),
+                    npt.getPortId(),
+                    switchPortReply.getRxBytes(),rxCounted,
+                    switchPortReply.getTxBytes(),txCounted)
+            );
+        }
+        private U64 count(U64 x ,U64 y){
+            /* Check for counter overflow. */
+            U64 answer = U64.of(0);
+            if (x.compareTo(y) > 0) { /* overflow */
+                U64 upper = U64.NO_MASK.subtract(x);
+                U64 lower = y;
+                answer = upper.add(lower);
+            } else {
+                answer = y.subtract(x);
+            }
+            return answer;
+        }
+
+        private void initialAndFirstRecord(NodePortTuple npt,OFPortStatsEntry switchPortReply){
+            tentativePortStats.put(npt, SwitchPortCounter.of(
+                    npt.getNodeId(),
+                    npt.getPortId(),
+                    switchPortReply.getRxBytes(),U64.of(0),
+                    switchPortReply.getTxBytes(),U64.of(0)));
+        }
     }
 
+    /**
+     * Single thread for collecting switch statistics and
+     * containing the reply.
+     *
+     * @author Ryan Izard, ryan.izard@bigswitch.com, rizard@g.clemson.edu
+     *
+     */
+    private class GetStatisticsThread extends Thread {
+        private List<OFStatsReply> statsReply;
+        private DatapathId switchId;
+        private OFStatsType statType;
+
+        public GetStatisticsThread(DatapathId switchId, OFStatsType statType) {
+            this.switchId = switchId;
+            this.statType = statType;
+            this.statsReply = null;
+        }
+
+        public List<OFStatsReply> getStatisticsReply() {
+            return statsReply;
+        }
+
+        public DatapathId getSwitchId() {
+            return switchId;
+        }
+
+        @Override
+        public void run() {
+            statsReply = getSwitchStatistics(switchId, statType);
+        }
+    }
 
     /*
      * IFloodlightModule implementation
@@ -186,7 +215,6 @@ public class MonitorPkLossServiceImpl implements IFloodlightModule,MonitorPkLoss
             throws FloodlightModuleException {
         switchService = context.getServiceImpl(IOFSwitchService.class);
         threadPoolService = context.getServiceImpl(IThreadPoolService.class);
-
         log.info("Port Qos Parket Loss collection interval set to {}s", portStatsInterval);
     }
 
@@ -199,18 +227,10 @@ public class MonitorPkLossServiceImpl implements IFloodlightModule,MonitorPkLoss
         }
     }
 
-    /*
-     * MonitorPkLossService implementation
-     */
-
-    @Override
-    public SwitchPortPkLoss getPkLoss(DatapathId dpid, OFPort p) {
-        return portStats.get(new NodePortTuple(dpid, p));
-    }
 
 
     @Override
-    public Map<NodePortTuple, SwitchPortPkLoss> getPkLoss() {
+    public Map<NodePortTuple, SwitchPortCounter> getPortStatsMap() {
         return Collections.unmodifiableMap(portStats);
     }
 
@@ -236,7 +256,7 @@ public class MonitorPkLossServiceImpl implements IFloodlightModule,MonitorPkLoss
     private void startStatisticsCollection() {
         portStatsCollector = threadPoolService.getScheduledExecutor().scheduleAtFixedRate(new PortStatsCollector(), portStatsInterval, portStatsInterval, TimeUnit.SECONDS);
         tentativePortStats.clear(); /* must clear out, otherwise might have huge BW result if present and wait a long time before re-enabling stats */
-        log.warn("pkloss collection thread(s) started");
+        log.warn("Statistics collection thread(s) started");
     }
 
     /**
@@ -247,38 +267,6 @@ public class MonitorPkLossServiceImpl implements IFloodlightModule,MonitorPkLoss
             log.error("Could not cancel port stats thread");
         } else {
             log.warn("Statistics collection thread(s) stopped");
-        }
-    }
-
-    /**
-     * Single thread for collecting switch statistics and
-     * containing the reply.
-     *
-     * @author Ryan Izard, ryan.izard@bigswitch.com, rizard@g.clemson.edu
-     *
-     */
-    private class GetStatisticsThread extends Thread {
-        private List<OFStatsReply> statsReply;
-        private DatapathId switchId;
-        private OFStatsType statType;
-
-        public GetStatisticsThread(DatapathId switchId, OFStatsType statType) {
-            this.switchId = switchId;
-            this.statType = statType;
-            this.statsReply = null;
-        }
-
-        public List<OFStatsReply> getStatisticsReply() {
-            return statsReply;
-        }
-
-        public DatapathId getSwitchId() {
-            return switchId;
-        }
-
-        @Override
-        public void run() {
-            statsReply = getSwitchStatistics(switchId, statType);
         }
     }
 

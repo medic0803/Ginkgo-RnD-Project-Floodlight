@@ -16,4 +16,6 @@ public interface MonitorDelayService extends IFloodlightService {
      * @return Map<MyEntry<DatapathId,DatapathId>,Integer> Link : Delay(ms)
      */
     public Map<LinkEntry<DatapathId,DatapathId>,Integer> getLinkDelay();
+
+    public Map<LinkEntry<DatapathId,DatapathId>,Integer> getLinkJitter();
 }
