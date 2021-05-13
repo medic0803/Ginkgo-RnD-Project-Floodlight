@@ -12,8 +12,10 @@ import net.floodlightcontroller.core.module.IFloodlightService;
 import net.floodlightcontroller.core.types.NodePortTuple;
 import net.floodlightcontroller.core.util.AppCookie;
 import net.floodlightcontroller.core.util.SingletonTask;
+import net.floodlightcontroller.multicasting.web.GinkgoRouteable;
 import net.floodlightcontroller.packet.*;
 import net.floodlightcontroller.qos.DSCPField;
+import net.floodlightcontroller.restserver.IRestApiService;
 import net.floodlightcontroller.routing.*;
 import net.floodlightcontroller.threadpool.IThreadPoolService;
 import net.floodlightcontroller.topology.ITopologyService;
@@ -31,10 +33,13 @@ import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.function.BiConsumer;
 
 import static net.floodlightcontroller.routing.ForwardingBase.FORWARDING_APP_ID;
 
 public class MulticastManager implements IOFMessageListener, IFloodlightModule, IFetchMulticastGroupService {
+
+    protected IRestApiService restApi;
 
     // Instance field
     protected IFloodlightProviderService floodlightProvider;
@@ -917,6 +922,7 @@ public class MulticastManager implements IOFMessageListener, IFloodlightModule, 
         Collection<Class<? extends IFloodlightService>> l =
                 new ArrayList<Class<? extends IFloodlightService>>();
         l.add(IFloodlightProviderService.class);
+        l.add(IRestApiService.class);
         return l;
     }
 
@@ -927,6 +933,7 @@ public class MulticastManager implements IOFMessageListener, IFloodlightModule, 
         routingService = context.getServiceImpl(IRoutingService.class);
         topologyService = context.getServiceImpl(ITopologyService.class);
         threadPoolService = context.getServiceImpl(IThreadPoolService.class);
+        restApi = context.getServiceImpl(IRestApiService.class);
         messageDamper = new OFMessageDamper(OFMESSAGE_DAMPER_CAPACITY,
                 EnumSet.of(OFType.FLOW_MOD),
                 OFMESSAGE_DAMPER_TIMEOUT);
@@ -936,6 +943,30 @@ public class MulticastManager implements IOFMessageListener, IFloodlightModule, 
 
     @Override
     public void startUp(FloodlightModuleContext context) throws FloodlightModuleException {
+
+        //kwmtodo: something happening unexpected, just use the thread for get the returnMap
+
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                while (true){
+                    try {
+                        Thread.sleep(10000);
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                    }
+                    getGroupPathTree();
+                    if (returnMap.isEmpty()){
+                        //continue get the returnMap;
+//                        System.out.println("empty");
+                        continue;
+                    }else{
+                        break;
+                    }
+                }
+            }
+        }).start();
+        restApi.addRestletRoutable(new GinkgoRouteable());
         floodlightProvider.addOFMessageListener(OFType.PACKET_IN, this);
         ScheduledExecutorService ses = threadPoolService.getScheduledExecutor();
 
@@ -966,6 +997,28 @@ public class MulticastManager implements IOFMessageListener, IFloodlightModule, 
     @Override
     public boolean ifMulticastAddressExist(IPv4Address dstAddress) {
         return this.multicastGroupInfoTable.containsKey(dstAddress);
+    }
+
+    //kwmtodo:
+    LinkedHashMap<IPv4Address,MulticastTree> returnMap = new LinkedHashMap<>();
+    @Override
+    public HashMap<IPv4Address, MulticastTree> getGroupPathTree() {
+        IPv4Address groupIP = null;
+        MulticastGroup group = null;
+        HashMap<IPv4Address, MulticastTree> multicastTreeInfoTable = new HashMap<>();
+        MulticastTree value = null;
+        Set<Map.Entry<IPv4Address, MulticastGroup>> entrySet = this.multicastGroupInfoTable.entrySet();
+        for (Map.Entry<IPv4Address, MulticastGroup> entry: entrySet){
+            groupIP = entry.getKey();
+            group = entry.getValue();
+            multicastTreeInfoTable = group.getMulticastTreeInfoTable();
+            Set<Map.Entry<IPv4Address, MulticastTree>> pathTable = multicastTreeInfoTable.entrySet();
+            for (Map.Entry<IPv4Address, MulticastTree> path : pathTable){
+                value = path.getValue();
+                returnMap.put(groupIP,value);
+            }
+        }
+        return returnMap;
     }
 
     private Path getMulticastRoutingDecision(DatapathId src, OFPort srcPort,
