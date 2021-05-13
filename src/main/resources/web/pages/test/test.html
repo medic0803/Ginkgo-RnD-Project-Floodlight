@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+    <!-- jQuery -->
+    <script src="../../bower_components/jquery/dist/jquery.min.js"></script>
+    <script src="../../bower_components/flot/excanvas.min.js"></script>
+    <script src="../../bower_components/flot/jquery.flot.js"></script>
+
+    <script type="text/javascript">
+        $(function () {
+            //kwmtodo: this total Points?
+            var data = [], totalPoints = 500;
+            function getbandwithStatsData() {
+                if (data.length > 0)
+                    //kwmtodo: this is the Sampling rate
+                    data = data.slice(1);
+                while (data.length < totalPoints) {
+                    var y = 1;
+                    var switchID = $("#switchDropdown1").val();
+                    var port = $("#portDropdown1").val();
+                    y = getBandwith(switchID,port);
+                    data.push(y);
+                }
+                var res = [];
+                for (var i = 0; i < data.length; ++i)
+                    res.push([i, data[i]])
+                return res;
+            }
+            //kwmtodo: gett he bandwith
+            function getBandwith(switchID,port){
+                var rx_tx = "tx";
+                var count;
+                $.ajax({
+                    url: "http://" + ipaddress + ":" + restport + "/wm/statistics/bandwidth/"+switchID+"/"+port+"/json",
+                    async: false,
+                    success: function (data) {
+                        if (switchID !== "default" && port !== "default" && switchID!=-1 && port!=-1){
+                            if (rx_tx == "tx"){
+                                //kwm: Mbits
+                                count = data[0]["bits-per-second-tx"]/1000/1000;
+                            } else if (rx_tx == "rx"){
+                                count = data[0]["bits-per-second-tx"]/1000/1000;
+                            }
+                        }else {
+                            count = 0;
+                        }
+
+                    },
+                    error: function () {
+                        alert("Failed to load switches");
+                    }
+                });
+
+                return count;
+            }
+
+            var updateInterval = 100; // 刷新间隔ms
+            var options = {
+                series: { shadowSize: 1 }, // 绘制线的阴影，不绘制设置 0
+                yaxis: { min: 0, max: 10 }, // Y
+                xaxis: { show: false} // 不显示 X 轴
+            };
+            var dataset = [
+                { label: "Port 1", data:getbandwithStatsData() , color: "#00FF00" }
+            ];
+
+            // 绘图对象 参数为：绘制地点、数据、属性
+            var plot = $.plot($("#placeholder"),dataset, options);
+            function update() {
+                // 要实现动态绘图，只需重新设置其数据即可
+                plot.setData([ getbandwithStatsData() ]); // 设置数据
+                dataset = [
+                    { label: "Port 1", data: getbandwithStatsData() , color: "#00FF00" },
+                ];
+                plot.setData(dataset);
+                plot.draw();
+                setTimeout(update, updateInterval);
+            }
+
+            //start
+            update();
+        });
+    </script>
+
+    <div id="placeholder" style="width:600px;height:300px;"></div>
+</head>
+
+<body>
+
+<!--kwmtodo drop down-->
+<div class="test">
+    <p>
+        <label>switch one</label>
+        <select name="Switch" id="switchDropdown1" class="form-control">
+            <option>default</option>
+        </select>
+        <select name="Switch" id="portDropdown1" class="form-control">
+            <option>default</option>
+        </select>
+    </p>
+</div>
+
+</body>
+
+<script>
+    ipaddress = "192.168.33.1";
+    restport = "8080";
+    // var s = document.getElementById("sourceSwitchDropdown");
+    // var src = String(s.options[s.selectedIndex].value);
+
+
+    $().ready(function () {
+        console.log('load switches');
+        $.ajax({
+            url: "http://" + ipaddress + ":" + restport + "/wm/core/controller/switches/json",
+            async: false,
+            success: function (data) {
+                $("#switchDropdown1").get(0).options.length = 0;
+                $("#switchDropdown1").get(0).options[0] = new Option("Select One Switch", "-1");
+
+                $.each(data, function (index, item) {
+                    $("#switchDropdown1").get(0).options[$("#switchDropdown1").get(0).options.length] = new Option(item.switchDPID, item.switchDPID);
+                });
+            },
+            error: function () {
+                alert("Failed to load switches");
+            }
+        });
+
+        $("#switchDropdown1").change(function(){
+            console.log('load ports');
+            var opt=$("#switchDropdown1").val();
+            $.ajax({
+                url: "http://" + ipaddress + ":" + restport + "/wm/core/switch/"+opt+"/port/json",
+                success: function (data) {
+                    $("#portDropdown1").get(0).options.length = 0;
+                    $("#portDropdown1").get(0).options[0] = new Option("Select One Port", "-1");
+                    $.each(data.port_reply[0].port, function (index, item) {
+                        $("#portDropdown1").get(0).options[$("#portDropdown1").get(0).options.length] = new Option(item.port_number, item.port_number);
+                    });
+                },
+                error: function () {
+                    alert("Failed to load ports");
+                }
+            });
+        });
+    });
+
+</script>
+
+</html>
