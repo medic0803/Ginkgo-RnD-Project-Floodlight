@@ -245,10 +245,8 @@ public class StaticCacheManager implements IOFMessageListener, IFloodlightModule
                         int tp_dst = ((TCP) eth.getPayload().getPayload()).getDestinationPort().getPort();
 
                         if (tp_dst == 80 || tp_dst == 8080 || tp_dst == 8081 || tp_dst == 9098) {
-                            getQueueInfo(sw);
                             return process_http_from_host(srcAddress, dstAddress, tp_src, tp_dst, sw, pi, cntx);
                         } else if (tp_src == 80 || tp_src == 8080 || tp_src == 8081 || tp_src == 9098) {
-                            getQueueInfo(sw);
                             return process_http_from_cache(srcAddress, dstAddress, tp_src, tp_dst, sw, pi, cntx);
                         }
                     }
@@ -766,53 +764,6 @@ public class StaticCacheManager implements IOFMessageListener, IFloodlightModule
             }
         }
         return mb.build();
-    }
-
-    public void getQueueInfo(IOFSwitch sw) {
-        try {
-            Thread.sleep(5000);
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }
-        OFQueueGetConfigRequest cr = sw.getOFFactory().buildQueueGetConfigRequest()
-                .setPort(OFPort.of(1))
-                .build(); /* Request queues on any port (i.e. don't care) */
-//        ListenableFuture<OFQueueGetConfigReply> future = sw.writeRequest(cr); /* Send request to switch 1 */
-        FutureTask<OFQueueGetConfigReply> f = (FutureTask<OFQueueGetConfigReply>) sw.writeRequest(cr); /* Send request to switch 1 */;
-        try {
-            /* Wait up to 10s for a reply; return when received; else exception thrown */
-            OFQueueGetConfigReply reply = f.get(10, TimeUnit.SECONDS);
-//            OFQueueGetConfigReply reply = future.get();
-            /* Iterate over all queues */
-            for (OFPacketQueue q : reply.getQueues()) {
-                OFPort p = q.getPort(); /* The switch port the queue is on */
-                long id = q.getQueueId(); /* The ID of the queue */
-                System.out.println("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! QueueId is " + id);
-
-                /* Determine if the queue rates */
-                for (OFQueueProp qp : q.getProperties()) {
-                    int rate;
-                    /* This is a bit clunky now -- need to improve API in Loxi */
-                    switch (qp.getType()) {
-                        case OFQueuePropertiesSerializerVer13.MIN_RATE_VAL: /* min rate */
-                            OFQueuePropMinRate min = (OFQueuePropMinRate) qp;
-                            rate = min.getRate();
-
-                            System.out.println("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! Min rate is " + rate);
-                            break;
-                        case OFQueuePropertiesSerializerVer13.MAX_RATE_VAL: /* max rate */
-                            OFQueuePropMaxRate max = (OFQueuePropMaxRate) qp;
-                            rate = max.getRate();
-
-                            System.out.println("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! Max rate is " + rate);
-                            break;
-                    }
-                }
-            }
-        } catch (InterruptedException | ExecutionException | TimeoutException e) { /* catch e.g. timeout */
-            System.out.println("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! Catch the exception");
-            e.printStackTrace();
-        }
     }
 
 }
