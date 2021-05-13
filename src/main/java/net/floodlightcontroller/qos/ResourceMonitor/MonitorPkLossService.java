@@ -10,7 +10,7 @@ import java.util.Map;
 
 /**
  * @author Michael Kang
- * @create 2021-01-29 下午 04:12
+ * @create 2021-01-29 04:12 PM
  */
 public interface MonitorPkLossService extends IFloodlightService{
     public void collectStatistics(boolean collect);

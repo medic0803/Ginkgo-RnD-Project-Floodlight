@@ -150,9 +150,7 @@ public class MonitorDelayServiceImpl implements MonitorDelayService, IFloodlight
 
     @Override
     public Map<LinkEntry<DatapathId, DatapathId>, Integer> getLinkDelay() {
-        if (!this.linkDelaySecMap.isEmpty()){
-            this.linkDelaySecMap.clear();
-        }
+        this.linkDelaySecMap.clear();
         Map<Link, LinkInfo> linksMap = linkDiscoveryService.getLinks();
         Iterator<Entry<Link, LinkInfo>> iterator = linksMap.entrySet().iterator();
         while (iterator.hasNext()){

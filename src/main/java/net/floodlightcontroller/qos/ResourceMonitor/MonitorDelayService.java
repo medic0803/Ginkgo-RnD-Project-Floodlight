@@ -8,12 +8,12 @@ import java.util.Map;
 
 /**
  * @author Michael Kang
- * @create 2021-01-29 下午 06:01
+ * @create 2021-01-29 06:01 PM
  */
 public interface MonitorDelayService extends IFloodlightService {
     /**
-     * 获取链路之间的时间延迟
-     * @return Map<MyEntry<DatapathId,DatapathId>,Integer> 链路：时延(b)
+     * Fetech the delay between the links
+     * @return Map<MyEntry<DatapathId,DatapathId>,Integer> Link : Delay(ms)
      */
     public Map<LinkEntry<DatapathId,DatapathId>,Integer> getLinkDelay();
 

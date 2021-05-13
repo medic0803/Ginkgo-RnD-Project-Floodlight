@@ -714,7 +714,7 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
 
             // determine the PHB of DSCPField
             for (DSCPField dscp: DSCPField.values()){
-                if ((byte) dscp.getDscpField() == diffServ){
+                if ((byte) dscp.getDSCPField() == diffServ){
                     dscpField = dscp;
                 }
             }
