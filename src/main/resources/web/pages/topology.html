@@ -445,11 +445,43 @@
 <script>
     var group;
     //kwmtodo for test
-
+    // var dataSrc = {
+    //     "224.0.0.3": [
+    //         [
+    //             {
+    //                 "switch": "00:00:00:00:00:00:00:01",
+    //                 "port": "2"
+    //             },
+    //             {
+    //                 "switch": "00:00:00:00:00:00:00:01",
+    //                 "port": "1"
+    //             },
+    //             {
+    //                 "switch": "00:00:00:00:00:00:00:02",
+    //                 "port": "1"
+    //             },
+    //             {
+    //                 "switch": "00:00:00:00:00:00:00:02",
+    //                 "port": "2"
+    //             }
+    //         ],
+    //         [
+    //             {
+    //                 "switch": "00:00:00:00:00:00:00:02",
+    //                 "port": "1"
+    //             },
+    //             {
+    //                 "switch": "00:00:00:00:00:00:00:02",
+    //                 "port": "3"
+    //             }
+    //         ]
+    //     ]
+    // };
     function loadGroup() {
         var url = "http://" + ipaddress + ":" + restport + "/ginkgo/showLinks/json";
         $.ajax({
             url: url,
+            async: false,
             success: function (data) {
                 console.log(data);
                 setGoup(data);
@@ -468,7 +500,7 @@
         loadGroup()
         loadButton(group)
     }
-    function loadButton() {
+    function loadButton(group) {
         var index = 1;
         for (var groupID in group) {
             $('#button'+index).text(groupID);
