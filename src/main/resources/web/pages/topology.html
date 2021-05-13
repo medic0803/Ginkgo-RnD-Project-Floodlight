@@ -95,6 +95,16 @@
     </nav>
 
     <div id="page-wrapper">
+        <!--    kwmtodo: buttton-->
+        <div> <p>
+            <button id ="button1" type="button" class="btn btn-outline btn-primary" onclick="test()">Primary</button>
+            <button id ="button2" type="button" class="btn btn-outline btn-success">Success</button>
+            <button id ="button3" type="button" class="btn btn-outline btn-default">Default</button>
+            <button id ="button4" type="button" class="btn btn-outline btn-info">Info</button>
+            <button id ="button5" type="button" class="btn btn-outline btn-warning">Warning</button>
+            <button id ="button6" type="button" class="btn btn-outline btn-danger">Danger</button>
+        </p></div>
+
          <!--/.row-->
         <!--<div class="row">-->
             <div id="mynetwork"></div>
@@ -427,6 +437,90 @@
             }
         });
 
+    }
+
+
+</script>
+
+<script>
+    var group;
+    //kwmtodo for test
+
+    function loadGroup() {
+        var url = "http://" + ipaddress + ":" + restport + "/ginkgo/showLinks/json";
+        $.ajax({
+            url: url,
+            success: function (data) {
+                console.log(data);
+                setGoup(data);
+            }
+        });
+    }
+    function setGoup(x) {
+        group = x;
+    }
+
+    function initial() {
+        //kwm: hide the button
+        for (var i = 1; i <= 6; i++) {$('#button'+i).hide();}
+        //kwmtodo： 初始化
+        // group = dataSrc;
+        loadGroup()
+        loadButton(group)
+    }
+    function loadButton() {
+        var index = 1;
+        for (var groupID in group) {
+            $('#button'+index).text(groupID);
+            $('#button'+index).show();
+            index++;
+        }
+    }
+
+    initial();
+
+    // kwmtodo: test the js function
+    function test() {
+        showGroup(group)
+    }
+
+
+    function showGroup(group) {
+        for (var groupID in group){
+            for (var pathID in group[groupID]){
+                colorLinks(group[groupID][pathID]);
+            }
+        }
+        console.log(edges);
+        updateEdges(edges);
+    }
+
+    function colorLinks(path) {
+        var color = "orange";
+        var nodePortSet = new Set();
+        for (var j in path){
+            nodePortSet.add(path[j].switch+"/"+path[j].port);
+        }
+
+        for (var i = 0; i < edges.length; i++) {
+            if (edges[i].title.search("br") != -1){
+                var npts = edges[i].title.split("<br>");
+                var npt1 = npts[0];
+                var npt2 = npts[1];
+                if (nodePortSet.has(npt1) || nodePortSet.has(npt2)){
+                    edges[i].color = color;
+                }
+            }else {
+                if (nodePortSet.has(edges[i].title)){
+                    edges[i].color = color;
+                }
+            }
+        }
+
+    }
+
+    function updateEdges(edges){
+        network.body.data.edges.update(edges);
     }
 
 
