@@ -1,13 +1,10 @@
 package net.floodlightcontroller.staticCache;
 
-import com.google.common.primitives.UnsignedLong;
-import com.google.common.util.concurrent.ListenableFuture;
 import net.floodlightcontroller.core.FloodlightContext;
 import net.floodlightcontroller.core.IFloodlightProviderService;
 import net.floodlightcontroller.core.IOFMessageListener;
 import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.internal.IOFSwitchService;
-import net.floodlightcontroller.core.internal.OFSwitch;
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.module.FloodlightModuleException;
 import net.floodlightcontroller.core.module.IFloodlightModule;
@@ -18,6 +15,8 @@ import net.floodlightcontroller.devicemanager.IDevice;
 import net.floodlightcontroller.devicemanager.IDeviceService;
 import net.floodlightcontroller.firewall.FirewallRule;
 import net.floodlightcontroller.packet.*;
+import net.floodlightcontroller.qos.ResourceMonitor.QosResourceMonitor;
+import net.floodlightcontroller.qos.ResourceMonitor.pojo.LinkEntry;
 import net.floodlightcontroller.restserver.IRestApiService;
 import net.floodlightcontroller.routing.IRoutingDecision;
 import net.floodlightcontroller.routing.IRoutingService;
@@ -25,28 +24,23 @@ import net.floodlightcontroller.routing.Path;
 import net.floodlightcontroller.routing.RoutingDecision;
 import net.floodlightcontroller.staticCache.web.StaticCacheStrategy;
 import net.floodlightcontroller.staticCache.web.StaticCacheWebRoutable;
-import net.floodlightcontroller.topology.ITopologyService;
 import net.floodlightcontroller.util.*;
 import org.projectfloodlight.openflow.protocol.*;
 import org.projectfloodlight.openflow.protocol.action.OFAction;
 import org.projectfloodlight.openflow.protocol.action.OFActionOutput;
+import org.projectfloodlight.openflow.protocol.action.OFActionSetQueue;
 import org.projectfloodlight.openflow.protocol.match.Match;
 import org.projectfloodlight.openflow.protocol.match.MatchField;
-import org.projectfloodlight.openflow.protocol.queueprop.OFQueueProp;
-import org.projectfloodlight.openflow.protocol.queueprop.OFQueuePropMaxRate;
-import org.projectfloodlight.openflow.protocol.queueprop.OFQueuePropMinRate;
-import org.projectfloodlight.openflow.protocol.ver13.OFFactoryVer13;
-import org.projectfloodlight.openflow.protocol.ver13.OFQueuePropertiesSerializerVer13;
 import org.projectfloodlight.openflow.types.*;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import sun.lwawt.macosx.CPrinterDevice;
 
 import java.util.*;
-import java.util.concurrent.*;
+import java.util.concurrent.ConcurrentHashMap;
 
 import static net.floodlightcontroller.routing.ForwardingBase.FORWARDING_APP_ID;
+
+//import sun.lwawt.macosx.CPrinterDevice;
 
 public class StaticCacheManager implements IOFMessageListener, IFloodlightModule, IStaticCacheService {
 
@@ -54,13 +48,12 @@ public class StaticCacheManager implements IOFMessageListener, IFloodlightModule
     // Floodlight Service
     protected IFloodlightProviderService floodlightProvider;
     protected IOFSwitchService switchService;
-    protected ITopologyService topologyService;
-    protected OFMessageDamper messageDamper;
     protected IRestApiService restApi;
     protected IDeviceService deviceService;
     protected IRoutingService routingEngineService;
     protected List<StaticCacheStrategy> strategies;
-
+    protected OFMessageDamper messageDamper;
+    protected QosResourceMonitor qosResourceMonitor;
     protected static Logger log = LoggerFactory.getLogger(StaticCacheManager.class);
 
 
@@ -235,7 +228,6 @@ public class StaticCacheManager implements IOFMessageListener, IFloodlightModule
         Ethernet eth = IFloodlightProviderService.bcStore.get(cntx, IFloodlightProviderService.CONTEXT_PI_PAYLOAD);
         switch (msg.getType()) {
             case PACKET_IN:
-                // TODO:
                 OFPacketIn pi = (OFPacketIn) msg;
                 if (eth.getEtherType() == EthType.IPv4) {
                     if (((IPv4) eth.getPayload()).getProtocol() == IpProtocol.TCP) {
@@ -246,9 +238,9 @@ public class StaticCacheManager implements IOFMessageListener, IFloodlightModule
                         int tp_dst = ((TCP) eth.getPayload().getPayload()).getDestinationPort().getPort();
 
                         if (tp_dst == 80 || tp_dst == 8080 || tp_dst == 8081 || tp_dst == 9098) {
-                            return process_http_from_host(srcAddress, dstAddress, tp_src, tp_dst, sw, pi, cntx);
+                            return process_http_from_host(srcAddress, dstAddress, tp_src, tp_dst, sw, pi, cntx, eth);
                         } else if (tp_src == 80 || tp_src == 8080 || tp_src == 8081 || tp_src == 9098) {
-                            return process_http_from_cache(srcAddress, dstAddress, tp_src, tp_dst, sw, pi, cntx);
+                            return process_http_from_cache(srcAddress, dstAddress, tp_src, tp_dst, sw, pi, cntx, eth);
                         }
                     }
 
@@ -267,7 +259,7 @@ public class StaticCacheManager implements IOFMessageListener, IFloodlightModule
      * @param tp_dst Transport for destination
      * @return Command.STOP if match any strategy, otherwise return Command.CONTINUE
      */
-    private Command process_http_from_host(IPv4Address srcAddress, IPv4Address dstAddress, int tp_src, int tp_dst, IOFSwitch sw, OFPacketIn pi, FloodlightContext cntx) {
+    private Command process_http_from_host(IPv4Address srcAddress, IPv4Address dstAddress, int tp_src, int tp_dst, IOFSwitch sw, OFPacketIn pi, FloodlightContext cntx, Ethernet eth) {
         StaticCacheStrategy matched_strategy = null;
         for (StaticCacheStrategy strategy : strategies) {
             StaticCacheStrategy temp_strategy = strategy.ifMatch(srcAddress, dstAddress, TransportPort.of(tp_dst), "HOST");
@@ -290,12 +282,15 @@ public class StaticCacheManager implements IOFMessageListener, IFloodlightModule
             matched_strategy.src_dpid = sw.getId();
             matched_strategy.src_inPort = OFMessageUtils.getInPort(pi);
 
-            Path path_forward = routingEngineService.getPath(matched_strategy.src_dpid, matched_strategy.src_inPort, matched_strategy.dst_dpid, matched_strategy.dst_inPort);
+            OFActionSetQueue setQueue = getQueueAction(srcAddress, eth, sw);
+            Map<LinkEntry<DatapathId, DatapathId>, Integer> linkDelay = qosResourceMonitor.getLinkDelay();
+            Map<LinkEntry<DatapathId, DatapathId>, Integer> linkJitter = qosResourceMonitor.getLinkJitter();
+
+            Path path_forward = routingEngineService.getPath(matched_strategy.src_dpid, matched_strategy.src_inPort, matched_strategy.dst_dpid, matched_strategy.dst_inPort, linkJitter, linkDelay, setQueue.getQueueId());
 
             U64 flowSetId = flowSetIdRegistry.generateFlowSetId();
             U64 cookie = makeForwardingCookie(RoutingDecision.rtStore.get(cntx, IRoutingDecision.CONTEXT_DECISION), flowSetId);
-
-            pushRoute(path_forward, pi, matched_strategy, sw.getId(), cookie, cntx, false, "HOST");
+            pushRoute(path_forward, pi, matched_strategy, sw.getId(), cookie, cntx, false, "HOST", setQueue);
 
             return Command.STOP;
         } else
@@ -311,7 +306,7 @@ public class StaticCacheManager implements IOFMessageListener, IFloodlightModule
      * @param tp_dst Transport for destination
      * @return Command.STOP if match any strategy, otherwise return Command.CONTINUE
      */
-    private Command process_http_from_cache(IPv4Address srcAddress, IPv4Address dstAddress, int tp_src, int tp_dst, IOFSwitch sw, OFPacketIn pi, FloodlightContext cntx) {
+    private Command process_http_from_cache(IPv4Address srcAddress, IPv4Address dstAddress, int tp_src, int tp_dst, IOFSwitch sw, OFPacketIn pi, FloodlightContext cntx, Ethernet eth) {
 
         StaticCacheStrategy matched_strategy = null;
         for (StaticCacheStrategy strategy : strategies) {
@@ -330,12 +325,16 @@ public class StaticCacheManager implements IOFMessageListener, IFloodlightModule
         // Matched strategy exists
         if (matched_strategy != null) {
             log.info("match one strategy");
-            Path path_inverse = routingEngineService.getPath(matched_strategy.dst_dpid, matched_strategy.dst_inPort, matched_strategy.src_dpid, matched_strategy.src_inPort);
+
+            OFActionSetQueue setQueue = getQueueAction(srcAddress, eth, sw);
+            Map<LinkEntry<DatapathId, DatapathId>, Integer> linkDelay = qosResourceMonitor.getLinkDelay();
+            Map<LinkEntry<DatapathId, DatapathId>, Integer> linkJitter = qosResourceMonitor.getLinkJitter();
+            Path path_inverse = routingEngineService.getPath(matched_strategy.dst_dpid, matched_strategy.dst_inPort, matched_strategy.src_dpid, matched_strategy.src_inPort, linkJitter, linkDelay, setQueue.getQueueId());
 
             U64 flowSetId = flowSetIdRegistry.generateFlowSetId();
             U64 cookie = makeForwardingCookie(RoutingDecision.rtStore.get(cntx, IRoutingDecision.CONTEXT_DECISION), flowSetId);
 
-            pushRoute(path_inverse, pi, matched_strategy, sw.getId(), cookie, cntx, false, "CACHE");
+            pushRoute(path_inverse, pi, matched_strategy, sw.getId(), cookie, cntx, false, "CACHE",setQueue);
 
             return Command.STOP;
         } else
@@ -389,6 +388,7 @@ public class StaticCacheManager implements IOFMessageListener, IFloodlightModule
         routingEngineService = context.getServiceImpl(IRoutingService.class);
         flowSetIdRegistry = FlowSetIdRegistry.getInstance();
         switchService = context.getServiceImpl(IOFSwitchService.class);
+        qosResourceMonitor = context.getServiceImpl(QosResourceMonitor.class);
         messageDamper = new OFMessageDamper(OFMESSAGE_DAMPER_CAPACITY,
                 EnumSet.of(OFType.FLOW_MOD),
                 OFMESSAGE_DAMPER_TIMEOUT);
@@ -452,7 +452,7 @@ public class StaticCacheManager implements IOFMessageListener, IFloodlightModule
      */
     public boolean pushRoute(Path route, OFPacketIn pi, StaticCacheStrategy strategy,
                              DatapathId pinSwitch, U64 cookie, FloodlightContext cntx,
-                             boolean requestFlowRemovedNotification, String hostOrCache) {
+                             boolean requestFlowRemovedNotification, String hostOrCache, OFActionSetQueue setQueue) {
 
         List<NodePortTuple> switchPortList = route.getPath();
 
@@ -470,16 +470,15 @@ public class StaticCacheManager implements IOFMessageListener, IFloodlightModule
                 }
                 return false;
             }
-            //
             if (pinSwitch.equals(switchDPID)) {
                 switch (hostOrCache) {
                     case "HOST":
-                        strategy.completeStrategy_host(sw, pi, outPort);
+                        strategy.completeStrategy_host(sw, pi, outPort, setQueue);
                         sw.write(strategy.flowAdd_host);
                         log.info("Redirect the packet from " + strategy.nw_dst_ipv4 + " to " + strategy.nw_cache_ipv4);
                         break;
                     case "CACHE":
-                        strategy.completeStrategy_cache(sw, pi, outPort);
+                        strategy.completeStrategy_cache(sw, pi, outPort, setQueue);
                         sw.write(strategy.flowAdd_cache);
                         log.info("Inverse proxy the packet from " + strategy.nw_dst_ipv4 + " to " + strategy.nw_cache_ipv4);
                         break;
@@ -505,6 +504,7 @@ public class StaticCacheManager implements IOFMessageListener, IFloodlightModule
                 // wrf:determine the src/dst switch
                 aob.setPort(outPort);
                 aob.setMaxLen(Integer.MAX_VALUE);
+                actions.add(setQueue);
                 actions.add(aob.build());
 
                 if (FLOWMOD_DEFAULT_SET_SEND_FLOW_REM_FLAG || requestFlowRemovedNotification) {
@@ -779,5 +779,42 @@ public class StaticCacheManager implements IOFMessageListener, IFloodlightModule
         }
         return mb.build();
     }
+    private OFActionSetQueue getQueueAction(IPv4Address hostIPAddress, Ethernet eth, IOFSwitch sw){
+        Long queueID;
 
+        if (hostIPAddress.toString().equals("192.168.2.2") || hostIPAddress.toString().equals("192.168.2.3")){
+
+            if (isRTP(eth) || ((IPv4) eth.getPayload()).getDestinationAddress().isMulticast()){
+                queueID = 0L;
+            }else {
+                queueID = 2L;
+            }
+        } else {
+            if (isRTP(eth)  || ((IPv4) eth.getPayload()).getDestinationAddress().isMulticast()){
+                queueID = 1L;
+            }else {
+                queueID = 3L;
+            }
+        }
+        return sw.getOFFactory().actions().buildSetQueue().setQueueId(queueID).build();
+
+    }
+    /**
+     * Judge this is an RTP
+     * @param eth
+     * @return
+     */
+    private boolean isRTP(Ethernet eth){
+        byte[] ipv4Packet = eth.getPayload().serialize();
+        byte[] rawDstPort = new byte[2];
+        System.arraycopy(ipv4Packet, 22, rawDstPort, 0, 2);
+
+        int dstPort= (int) ( ((rawDstPort[0] & 0xFF)<<8)
+                |(rawDstPort[1] & 0xFF));
+        if (dstPort == 5004){
+            log.info("This is a video stream");
+            return true;
+        }
+        return false;
+    }
 }

@@ -17,8 +17,6 @@
 
 package net.floodlightcontroller.routing;
 
-import java.util.*;
-
 import net.floodlightcontroller.core.FloodlightContext;
 import net.floodlightcontroller.core.IFloodlightProviderService;
 import net.floodlightcontroller.core.IOFMessageListener;
@@ -33,21 +31,20 @@ import net.floodlightcontroller.linkdiscovery.ILinkDiscoveryService;
 import net.floodlightcontroller.multicasting.IFetchMulticastGroupService;
 import net.floodlightcontroller.packet.Ethernet;
 import net.floodlightcontroller.packet.IPacket;
-import net.floodlightcontroller.packet.IPv4;
 import net.floodlightcontroller.restserver.IRestApiService;
 import net.floodlightcontroller.topology.ITopologyService;
 import net.floodlightcontroller.util.*;
-
 import org.projectfloodlight.openflow.protocol.*;
-import org.projectfloodlight.openflow.protocol.action.OFActionEnqueue;
+import org.projectfloodlight.openflow.protocol.action.OFAction;
+import org.projectfloodlight.openflow.protocol.action.OFActionOutput;
 import org.projectfloodlight.openflow.protocol.action.OFActionSetQueue;
 import org.projectfloodlight.openflow.protocol.match.Match;
 import org.projectfloodlight.openflow.protocol.match.MatchField;
-import org.projectfloodlight.openflow.protocol.action.OFAction;
-import org.projectfloodlight.openflow.protocol.action.OFActionOutput;
 import org.projectfloodlight.openflow.types.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.util.*;
 
 
 /**
@@ -162,8 +159,8 @@ public abstract class ForwardingBase implements IOFMessageListener {
      * Push routes from back to front
      * @param route Route to push
      * @param match OpenFlow fields to match on
-     * @param srcSwPort Source switch port for the first hop
-     * @param dstSwPort Destination switch port for final hop
+     * @param pi switch port for the first hop
+     * @param pinSwitch Destination switch port for final hop
      * @param cookie The cookie to set in each flow_mod
      * @param cntx The floodlight context
      * @param requestFlowRemovedNotification if set to true then the switch would
@@ -174,7 +171,7 @@ public abstract class ForwardingBase implements IOFMessageListener {
      */
     public boolean pushRoute(Path route, Match match, OFPacketIn pi,
             DatapathId pinSwitch, U64 cookie, FloodlightContext cntx,
-            boolean requestFlowRemovedNotification, OFFlowModCommand flowModCommand, boolean packetOutSent) {
+            boolean requestFlowRemovedNotification, OFFlowModCommand flowModCommand, boolean packetOutSent, Long queueID) {
 
         List<NodePortTuple> switchPortList = route.getPath();
 
@@ -221,6 +218,10 @@ public abstract class ForwardingBase implements IOFMessageListener {
             OFPort inPort = switchPortList.get(indx - 1).getPortId();
             if (FLOWMOD_DEFAULT_MATCH_IN_PORT) {
                 mb.setExact(MatchField.IN_PORT, inPort);
+            }
+            if (queueID >= 0){
+                OFActionSetQueue setQueue = sw.getOFFactory().actions().buildSetQueue().setQueueId(queueID).build();
+                actions.add(setQueue);
             }
             aob.setPort(outPort);
             aob.setMaxLen(Integer.MAX_VALUE);
@@ -343,7 +344,7 @@ public abstract class ForwardingBase implements IOFMessageListener {
      * @param packetData
      * @param sw
      * @param inPort
-     * @param ports
+     * @param outPorts
      * @param cntx
      */
     public void packetOutMultiPort(byte[] packetData, IOFSwitch sw, 
@@ -374,7 +375,7 @@ public abstract class ForwardingBase implements IOFMessageListener {
     }
 
     /**
-     * @see packetOutMultiPort
+     *
      * Accepts a PacketIn instead of raw packet data. Note that the inPort
      * and switch can be different than the packet in switch/port
      */
@@ -384,7 +385,7 @@ public abstract class ForwardingBase implements IOFMessageListener {
     }
 
     /**
-     * @see packetOutMultiPort
+     *
      * Accepts an IPacket instead of raw packet data. Note that the inPort
      * and switch can be different than the packet in switch/port
      */

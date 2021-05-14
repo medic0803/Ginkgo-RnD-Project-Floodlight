@@ -16,6 +16,8 @@ import net.floodlightcontroller.multicasting.web.GinkgoRouteable;
 import net.floodlightcontroller.packet.*;
 import net.floodlightcontroller.qos.DSCPField;
 import net.floodlightcontroller.restserver.IRestApiService;
+import net.floodlightcontroller.qos.ResourceMonitor.QosResourceMonitor;
+import net.floodlightcontroller.qos.ResourceMonitor.pojo.LinkEntry;
 import net.floodlightcontroller.routing.*;
 import net.floodlightcontroller.threadpool.IThreadPoolService;
 import net.floodlightcontroller.topology.ITopologyService;
@@ -23,6 +25,7 @@ import net.floodlightcontroller.util.*;
 import org.projectfloodlight.openflow.protocol.*;
 import org.projectfloodlight.openflow.protocol.action.OFAction;
 import org.projectfloodlight.openflow.protocol.action.OFActionOutput;
+import org.projectfloodlight.openflow.protocol.action.OFActionSetQueue;
 import org.projectfloodlight.openflow.protocol.match.Match;
 import org.projectfloodlight.openflow.protocol.match.MatchField;
 import org.projectfloodlight.openflow.types.*;
@@ -46,6 +49,7 @@ public class MulticastManager implements IOFMessageListener, IFloodlightModule, 
     protected IOFSwitchService switchService;
     protected ITopologyService topologyService;
     protected OFMessageDamper messageDamper;
+    protected QosResourceMonitor qosResourceMonitor;
 
     // Multicast Data structure
     private ConcurrentHashMap<IPv4Address, MulticastGroup> multicastGroupInfoTable = new ConcurrentHashMap<>();
@@ -268,7 +272,7 @@ public class MulticastManager implements IOFMessageListener, IFloodlightModule, 
         IPv4Address multicastAddress = IPv4Address.of(rawMulticastAddress);
         IPv4Address hostIPAddress = ((IPv4) eth.getPayload()).getSourceAddress();
 
-        // the total length of this packet is 54, the previous 14(0-13) is for header, the rest 40 is for payload, and the 46/32 is for record type
+        // the total length of this packet is 54, the previous 14(0-13) is for header, the rest 40 is for paylod, and the 46/32 is for record type
         if (igmpPayload[32] == 4) {
             log.info("Receive an IGMP Join Message from" + sw.getId() + ": "+ hostIPAddress + ", and send to " + multicastAddress);
             processIGMPJoinMsg(multicastAddress, hostIPAddress, sw, pi, sw.getId(), cntx);
@@ -283,9 +287,9 @@ public class MulticastManager implements IOFMessageListener, IFloodlightModule, 
         return Command.CONTINUE;
     }
 
-
     private void processIGMPJoinMsg(IPv4Address multicastAddress, IPv4Address hostIPAddress, IOFSwitch sw, OFPacketIn pi, DatapathId pinSwitchId, FloodlightContext cntx) {
         boolean ifExist = false;
+        Ethernet eth = IFloodlightProviderService.bcStore.get(cntx, IFloodlightProviderService.CONTEXT_PI_PAYLOAD);
 
         //  process IGMP message sender host
         if (multicastGroupInfoTable.isEmpty()) {    // no multicast group registerd
@@ -323,7 +327,6 @@ public class MulticastManager implements IOFMessageListener, IFloodlightModule, 
         // And it is not the first host who really begins to receive the packet from source
         if (!ifExist && !multicastGroupInfoTable.get(multicastAddress).getMulticastSources().isEmpty() && multicastGroupInfoTable.get(multicastAddress).getMulticastHosts().size() > 1) {
             //wrf: push Route
-            DSCPField dscpField = DSCPField.Default;
             DatapathId dstId = sw.getId();
             OFPort dstPort = OFMessageUtils.getInPort(pi);
 
@@ -332,8 +335,9 @@ public class MulticastManager implements IOFMessageListener, IFloodlightModule, 
                 OFPort srcPort = multicastSource.getSrcPort();
 
                 MulticastTree tempMulticastTree = multicastGroupInfoTable.get(multicastAddress).getMulticastTreeInfoTable().get(multicastSource.getSrcAddress());
-                Path path = getMulticastRoutingDecision(srcId, srcPort, dstId, dstPort, dscpField, hostIPAddress, tempMulticastTree);
-                pushMulticastingRoute(path, multicastSource.getMatch(), pi, pinSwitchId, multicastSource.getCookie(), cntx, tempMulticastTree.getAltBPRegister(), false, false);
+                OFActionSetQueue setQueue = getQueueAction(hostIPAddress, eth, sw);
+                Path path = getMulticastRoutingDecision(srcId, srcPort, dstId, dstPort, hostIPAddress, tempMulticastTree, eth, setQueue.getQueueId());
+                pushMulticastingRoute(path, multicastSource.getMatch(), pi, pinSwitchId, multicastSource.getCookie(), cntx, tempMulticastTree.getAltBPRegister(), false, false, setQueue);
             }
         }
     }
@@ -449,7 +453,6 @@ public class MulticastManager implements IOFMessageListener, IFloodlightModule, 
         DatapathId dstId = null;
         OFPort srcPort = OFMessageUtils.getInPort(pi);
         OFPort dstPort = null;
-        DSCPField dscpField = DSCPField.Default;
         Path path = null;
 
         if (!topologyService.isEdge(srcId, srcPort)) {
@@ -467,8 +470,9 @@ public class MulticastManager implements IOFMessageListener, IFloodlightModule, 
         for (IPv4Address hostAddress : multicastGroupInfoTable.get(multicastAddress).getMulticastHosts()) {
             dstId = pinSwitchInfoMap.get(hostAddress).getPinSwitchId();
             dstPort = pinSwitchInfoMap.get(hostAddress).getPinSwitchInPort();
-            path = getMulticastRoutingDecision(srcId, srcPort, dstId, dstPort, dscpField, hostAddress, multicastGroupInfoTable.get(multicastAddress).getMulticastTreeInfoTable().get(sourceAddress));
-            pushMulticastingRoute(path, match, pi, sw.getId(), cookie, cntx, multicastGroupInfoTable.get(multicastAddress).getMulticastTreeInfoTable().get(sourceAddress).getAltBPRegister(), false, false);
+            OFActionSetQueue setQueue = getQueueAction(hostAddress, eth, sw);
+            path = getMulticastRoutingDecision(srcId, srcPort, dstId, dstPort, hostAddress, multicastGroupInfoTable.get(multicastAddress).getMulticastTreeInfoTable().get(sourceAddress), eth, setQueue.getQueueId());
+            pushMulticastingRoute(path, match, pi, sw.getId(), cookie, cntx, multicastGroupInfoTable.get(multicastAddress).getMulticastTreeInfoTable().get(sourceAddress).getAltBPRegister(), false, false, setQueue);
         }
 
         return Command.CONTINUE;
@@ -485,7 +489,7 @@ public class MulticastManager implements IOFMessageListener, IFloodlightModule, 
      * @return
      */
     public boolean pushMulticastingRoute(Path route, Match match, OFPacketIn pi, DatapathId pinSwitch, U64 cookie, FloodlightContext cntx, HashMap<DatapathId, AltBP> currentAltBPSet,
-                                         boolean requestFlowRemovedNotification, boolean packetOutSent) {
+                                         boolean requestFlowRemovedNotification, boolean packetOutSent, OFActionSetQueue setQueue) {
 
         List<NodePortTuple> switchPortList = route.getPath();
         for (int indx = switchPortList.size() - 1; indx > 0; indx -= 2) {
@@ -556,6 +560,8 @@ public class MulticastManager implements IOFMessageListener, IFloodlightModule, 
 
                 // add all out ports as buckets
                 for (OFPort forwardPort : currentAltBPSet.get(switchDPID).getOutPortSet()) {
+                    List<OFAction> actions = new ArrayList<>();
+
                     bucketList.add(sw.getOFFactory().buildBucket()
                             .setWatchGroup(OFGroup.ANY)
                             .setWatchPort(OFPort.ANY)
@@ -564,6 +570,7 @@ public class MulticastManager implements IOFMessageListener, IFloodlightModule, 
                                     .setPort(forwardPort)
                                     .build()))
                             .build());
+
                 }
                 if (currentAltBPSet.get(switchDPID).getOutPortSet().size() > 2) {
                     OFGroupModify modifyGroup = sw.getOFFactory().buildGroupModify()
@@ -580,9 +587,15 @@ public class MulticastManager implements IOFMessageListener, IFloodlightModule, 
                             .build();
                     currentAltBPSet.get(switchDPID).setGroupNumber(groupNumber);
                     sw.write(addGroup);
-                    fmb.setActions(Collections.singletonList((OFAction) sw.getOFFactory().actions().buildGroup()
-                            .setGroup(OFGroup.of(groupNumber++))
-                            .build()));
+                    List<OFAction> actions = new ArrayList<>();
+                    actions.add(sw.getOFFactory().actions().buildGroup()
+                                .setGroup(OFGroup.of(groupNumber++))
+                                .build());
+                    actions.add(setQueue);
+//                    fmb.setActions(Collections.singletonList((OFAction) sw.getOFFactory().actions().buildGroup()
+//                            .setGroup(OFGroup.of(groupNumber++))
+//                            .build()));
+                    fmb.setActions(actions);
                 }
 
             } else {    // compose a normal forwarding action
@@ -590,6 +603,7 @@ public class MulticastManager implements IOFMessageListener, IFloodlightModule, 
                 List<OFAction> actions = new ArrayList<>();
                 aob.setPort(outPort);
                 aob.setMaxLen(Integer.MAX_VALUE);
+                actions.add(setQueue);
                 actions.add(aob.build());
                 FlowModUtils.setActions(fmb, actions, sw);
             }
@@ -1021,14 +1035,30 @@ public class MulticastManager implements IOFMessageListener, IFloodlightModule, 
         return returnMap;
     }
 
+    /**
+     * Get the multicast routing decision
+     * @param src
+     * @param srcPort
+     * @param dst
+     * @param dstPort
+     * @param hostAddress
+     * @param multicastTree
+     * @return a path which has the shortest weight between host and source
+     */
     private Path getMulticastRoutingDecision(DatapathId src, OFPort srcPort,
                                              DatapathId dst, OFPort dstPort,
-                                             DSCPField dscpField,
-                                             IPv4Address hostAddress, MulticastTree multicastTree) {
+                                             IPv4Address hostAddress, MulticastTree multicastTree,
+                                             Ethernet eth, Long queueID) {
         DatapathId bp = null;
         Stack<DatapathId> tempBP = new Stack<>();
         Stack<DatapathId> possibleBP = new Stack<>();
-        Path newPath = routingService.getPath(src, srcPort, dst, dstPort);
+
+
+        Map<LinkEntry<DatapathId, DatapathId>, Integer> linkDelay = qosResourceMonitor.getLinkDelay();
+        Map<LinkEntry<DatapathId, DatapathId>, Integer> linkJitter = qosResourceMonitor.getLinkJitter();
+
+        Path newPath = routingService.getPath(src, srcPort, dst, dstPort, linkJitter, linkDelay, queueID);
+
 
         if (multicastTree.getPathList().isEmpty()) {
             multicastTree.getPathList().put(hostAddress, newPath);
@@ -1076,5 +1106,44 @@ public class MulticastManager implements IOFMessageListener, IFloodlightModule, 
         }
         log.info("An initial path has been calculated " + newPath);
         return newPath;
+    }
+
+    private OFActionSetQueue getQueueAction(IPv4Address hostIPAddress, Ethernet eth, IOFSwitch sw){
+        Long queueID;
+
+        if (hostIPAddress.toString().equals("192.168.2.2") || hostIPAddress.toString().equals("192.168.2.3")){
+
+            if (isRTP(eth) || ((IPv4) eth.getPayload()).getDestinationAddress().isMulticast()){
+                queueID = 0L;
+            }else {
+                queueID = 2L;
+            }
+        } else {
+            if (isRTP(eth)  || ((IPv4) eth.getPayload()).getDestinationAddress().isMulticast()){
+                queueID = 1L;
+            }else {
+                queueID = 3L;
+            }
+        }
+        return sw.getOFFactory().actions().buildSetQueue().setQueueId(queueID).build();
+
+    }
+    /**
+     * Judge this is an RTP
+     * @param eth
+     * @return
+     */
+    private boolean isRTP(Ethernet eth){
+        byte[] ipv4Packet = eth.getPayload().serialize();
+        byte[] rawDstPort = new byte[2];
+        System.arraycopy(ipv4Packet, 22, rawDstPort, 0, 2);
+
+        int dstPort= (int) ( ((rawDstPort[0] & 0xFF)<<8)
+                |(rawDstPort[1] & 0xFF));
+        if (dstPort == 5004){
+            log.info("This is a video stream");
+            return true;
+        }
+        return false;
     }
 }

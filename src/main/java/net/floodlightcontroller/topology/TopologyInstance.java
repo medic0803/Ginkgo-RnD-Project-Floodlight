@@ -21,7 +21,7 @@ import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.types.NodePortTuple;
 import net.floodlightcontroller.linkdiscovery.Link;
 import net.floodlightcontroller.qos.DSCPField;
-import net.floodlightcontroller.qos.ResourceMonitor.pojo.SwitchPortPkLoss;
+import net.floodlightcontroller.qos.ResourceMonitor.pojo.LinkEntry;
 import net.floodlightcontroller.routing.BroadcastTree;
 import net.floodlightcontroller.routing.Path;
 import net.floodlightcontroller.routing.PathId;
@@ -84,11 +84,6 @@ public class TopologyInstance {
     private Map<DatapathId, Set<NodePortTuple>> portsBroadcastPerArchipelago; /* broadcast ports in each archipelago ID */
     private ConcurrentHashMap<PathId, List<Path>>             pathcache; /* contains computed paths ordered best to worst */
 
-    Map<NodePortTuple, SwitchPortPkLoss> pkLossMap;
-
-    protected void set(Map<NodePortTuple, SwitchPortPkLoss> map){
-        this.pkLossMap = map;
-    }
 
     protected TopologyInstance(Map<DatapathId, Set<OFPort>> portsWithLinks,
             Set<NodePortTuple> portsBlocked,
@@ -652,7 +647,6 @@ public class TopologyInstance {
 
     /*
      * Creates a map of links and the cost associated with each link
-     * kwmtodo: check the link cost ?
      */
     public Map<Link,Integer> initLinkCostMap() {
         Map<Link, Integer> linkCost = new HashMap<Link, Integer>();
@@ -701,18 +695,11 @@ public class TopologyInstance {
                     if (link == null) {
                         continue;
                     }
-                    if ((int)link.getLatency().getValue() < 0 || 
+                    if ((int)link.getLatency().getValue() < 0 ||
                             (int)link.getLatency().getValue() > MAX_LINK_WEIGHT) {
                         linkCost.put(link, MAX_LINK_WEIGHT);
                     } else {
-                        for (NodePortTuple nodePortTuple : pkLossMap.keySet()){
-                            if (npt.equals(nodePortTuple)){
-                                pkloss = pkLossMap.get(nodePortTuple).getPkLossPerSec();
-                            }
-                        }
-                        int latency = (int)link.getLatency().getValue();
-                        normalization = (double) (latency/30 + pkloss/10)*100;
-                        linkCost.put(link,(int)normalization);
+                        linkCost.put(link,(int)link.getLatency().getValue());
                     }
                 }
             }
@@ -1229,7 +1216,153 @@ public class TopologyInstance {
         return r;
     }
 
+    /**
+     * Computes the whole path that satisfied different requirements
+     * @param srcId
+     * @param srcPort
+     * @param dstId
+     * @param dstPort
+     * @param linkJitter
+     * @param linkDelay
+     * @param queueID
+     * @return A whole path that satisfied with the requirements
+     */
+    public Path getPath(DatapathId srcId, OFPort srcPort,
+                        DatapathId dstId, OFPort dstPort,
+                        Map<LinkEntry<DatapathId, DatapathId>, Integer> linkJitter,
+                        Map<LinkEntry<DatapathId, DatapathId>, Integer> linkDelay,
+                        Long queueID) {
+        //zzy: Add jitter
+        Path r = getPath(srcId, dstId, linkJitter, linkDelay, queueID);
 
+        /* Path cannot be null, but empty b/t 2 diff DPIDs -> not found */
+        if (! srcId.equals(dstId) && r.getPath().isEmpty()) {
+            return r;
+        }
+
+        /* Else, path is valid (len=0) on the same DPID or (len>0) diff DPIDs */
+        List<NodePortTuple> nptList = new ArrayList<NodePortTuple>(r.getPath());
+        NodePortTuple npt = new NodePortTuple(srcId, srcPort);
+        nptList.add(0, npt); // add src port to the front
+        npt = new NodePortTuple(dstId, dstPort);
+        nptList.add(npt); // add dst port to the end
+
+        PathId id = new PathId(srcId, dstId);
+        r = new Path(id, nptList);
+        return r;
+    }
+
+    /**
+     * Based on DSCP field, calculates the path to meet different priorities
+     * @param srcId
+     * @param dstId
+     * @param linkJitter
+     * @param linkDelay
+     * @param queueID
+     * @return Part of the path
+     */
+    public Path getPath(DatapathId srcId, DatapathId dstId,
+                        Map<LinkEntry<DatapathId, DatapathId>, Integer> linkJitter,
+                        Map<LinkEntry<DatapathId, DatapathId>, Integer> linkDelay,
+                        Long queueID) {
+        PathId id = new PathId(srcId, dstId);
+
+        /* Return empty route if srcId equals dstId */
+        if (srcId.equals(dstId)) {
+            return new Path(id, ImmutableList.of());
+        }
+
+        Path result = null;
+
+        try {
+            result = getPathByDelayAndJitter(id,linkDelay,linkJitter, queueID);
+        } catch (Exception e) {
+            log.warn("Could not find route from {} to {}. If the path exists, wait for the topology to settle, and it will be detected", srcId, dstId);
+        }
+
+        if (log.isTraceEnabled()) {
+            log.trace("getPath: {} -> {}", id, result);
+        }
+        return result == null ? new Path(id, ImmutableList.of()) : result;
+    }
+
+    /**
+     * Based on Delay and Jitter, return a path
+     * @param id
+     * @param linkDelayMap
+     * @param linkJitterMap
+     * @param queueID
+     * @return a path that considered the delay and jitter
+     */
+    private Path getPathByDelayAndJitter(PathId id,
+        Map<LinkEntry<DatapathId, DatapathId>, Integer> linkDelayMap,
+        Map<LinkEntry<DatapathId, DatapathId>, Integer> linkJitterMap, Long queueID) {
+        List<Path> pathList;
+        pathList = pathcache.get(id);
+        if (!pathList.isEmpty()) {
+            for (int i = 0; i < pathList.size(); i++){
+                Path newPath = pathList.get(i);
+                //zzy: get DSCP field value and
+                if (queueID == 0) { //from teachers
+                    if (getPathDelay(newPath, linkDelayMap) < 150 && getPathJitter(newPath, linkJitterMap) < 30) {
+                        System.out.println("success to find a route");
+                        return newPath;
+                    }else {
+                        System.out.println(newPath.toString()+"(teachers) not met the QoS");
+                    }
+                }
+                else if (queueID == 1){ //from students
+                    if (getPathDelay(newPath, linkDelayMap) < 40000 && getPathJitter(newPath, linkJitterMap) < 30){
+                        System.out.println("Path delay: "+getPathDelay(newPath, linkDelayMap));
+                        return newPath;
+                    }else {
+                        System.out.println(newPath.toString()+"(students) not met the QoS");
+                        System.out.println(getPathDelay(newPath, linkDelayMap) + getPathJitter(newPath, linkJitterMap));
+                    }
+                }
+                else {
+                    return newPath;
+                }
+            }
+        }
+        return null;
+}
+
+    /**
+     * Get the whole path delay
+     * @param path
+     * @param linkDelay
+     * @return the value of Delay
+     */
+    private Integer getPathDelay(Path path, Map<LinkEntry<DatapathId, DatapathId>, Integer> linkDelay){
+        Integer delay = 0;
+        List<NodePortTuple> nodePortTupleList = path.getPath();
+        for (int index = 0; index < nodePortTupleList.size(); index += 2) {
+            DatapathId HeadDatapathId = nodePortTupleList.get(index).getNodeId();
+            DatapathId TailDatapathId = nodePortTupleList.get(index + 1).getNodeId();
+            LinkEntry linkEntry = new LinkEntry(HeadDatapathId, TailDatapathId);
+            delay += linkDelay.get(linkEntry);
+        }
+        return delay;
+    }
+
+    /**
+     * Get the whole path jitter
+     * @param path
+     * @param linkJitter
+     * @return the value of Jitter
+     */
+    private Integer getPathJitter(Path path, Map<LinkEntry<DatapathId, DatapathId>, Integer> linkJitter){
+        Integer jitter = 0;
+        List<NodePortTuple> nodePortTupleList = path.getPath();
+        for (int index = 0; index < nodePortTupleList.size(); index += 2){
+            DatapathId HeadDatapathId = nodePortTupleList.get(index).getNodeId();
+            DatapathId TailDatapathId = nodePortTupleList.get(index + 1).getNodeId();
+            LinkEntry linkEntry = new LinkEntry(HeadDatapathId, TailDatapathId);
+            jitter += linkJitter.get(linkEntry);
+        }
+        return jitter;
+    }
     /**
      * Get the fastest path from the pathcache.
      * @param srcId
