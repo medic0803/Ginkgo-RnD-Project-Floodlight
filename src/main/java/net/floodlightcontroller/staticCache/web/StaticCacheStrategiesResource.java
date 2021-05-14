@@ -4,8 +4,11 @@ import com.fasterxml.jackson.core.JsonParseException;
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.JsonToken;
 import com.fasterxml.jackson.databind.MappingJsonFactory;
+import net.floodlightcontroller.firewall.FirewallRule;
+import net.floodlightcontroller.firewall.IFirewallService;
 import net.floodlightcontroller.staticCache.IStaticCacheService;
 import org.projectfloodlight.openflow.types.*;
+import org.restlet.resource.Delete;
 import org.restlet.resource.Get;
 import org.restlet.resource.Post;
 import org.restlet.resource.ServerResource;
@@ -13,6 +16,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.util.Iterator;
 import java.util.List;
 
 public class StaticCacheStrategiesResource extends ServerResource {
@@ -20,7 +24,6 @@ public class StaticCacheStrategiesResource extends ServerResource {
 
     @Get("json")
     public List<StaticCacheStrategy> retrieve() {
-//    public String retrieve() {
         IStaticCacheService staticCache =
                 (IStaticCacheService)getContext().getAttributes().
                         get(IStaticCacheService.class.getCanonicalName());
@@ -36,15 +39,28 @@ public class StaticCacheStrategiesResource extends ServerResource {
 
         //kwmtodo: json translation function
         StaticCacheStrategy strategy = jsonToStaticCacheStrategy(scJson);
-        System.out.println(strategy);
+
         String status = null;
         //kwmtodo: status determiner
-        staticCache.addStrategy(strategy);
-        status = "Strategy added";
-        //kwmtodo: return statement
-        return ("{\"status\" : \"" + status + "\", \"strategy-id\" : \""+ Integer.toString(strategy.strategyid) + "\"}");
+        if (checkStrategyExist(strategy,staticCache.getStrategies())){
+            status = "A similar Strategy has already exist";
+            return ("{\"status\" : \"" + status + "\", \"strategy-id\" : \""+ strategy.strategyid + "\"}");
+        }else {
+            staticCache.addStrategy(strategy);
+            status = "Strategy added";
+            //kwmtodo: return statement
+            return ("{\"status\" : \"" + status + "\", \"strategy-id\" : \""+ strategy.strategyid + "\"}");
+        }
     }
-
+    private static boolean checkStrategyExist(StaticCacheStrategy strategy, List<StaticCacheStrategy> strategies){
+        for (StaticCacheStrategy scs:
+             strategies) {
+            if (scs.isSameAs(strategy)){
+                return true;
+            }
+        }
+        return false;
+    }
 
     public static StaticCacheStrategy jsonToStaticCacheStrategy(String fmJson) {
         StaticCacheStrategy strategy = new StaticCacheStrategy();
@@ -74,7 +90,7 @@ public class StaticCacheStrategiesResource extends ServerResource {
                 }
 
                 // This is currently only applicable for remove().  In store(), ruleid takes a random number
-                if (currentName.equalsIgnoreCase("ruleid")) {
+                if (currentName.equalsIgnoreCase("strategyid")) {
                     try {
                         strategy.strategyid = Integer.parseInt(jsonParser.getText());
                     } catch (IllegalArgumentException e) {
@@ -91,8 +107,6 @@ public class StaticCacheStrategiesResource extends ServerResource {
 //                        }
                         try {
                             strategy.nw_src_ipv4 = IPv4Address.of(jsonParser.getText());
-                            System.out.println(jsonParser.getText());
-                            System.out.println(strategy.nw_src_ipv4);
                         } catch (IllegalArgumentException e) {
                             log.error("Unable to parse source IP: {}", jsonParser.getText());
                             //TODO should return some error message via HTTP message
@@ -148,14 +162,6 @@ public class StaticCacheStrategiesResource extends ServerResource {
                         //TODO should return some error message via HTTP message
                     }
                 }
-                else if (currentName.equalsIgnoreCase("cache-mac")) {
-                    try {
-                        strategy.nw_cache_dl_dst = MacAddress.of(jsonParser.getText());
-                    } catch (IllegalArgumentException e) {
-                        log.error("Unable to parse Mac Address: {}", jsonParser.getText());
-                        //TODO should return some error message via HTTP message
-                    }
-                }
             }
         } catch (IOException e) {
             log.error("Unable to parse JSON string: {}", e);
@@ -163,4 +169,38 @@ public class StaticCacheStrategiesResource extends ServerResource {
 
         return strategy;
     }
+
+    @Delete
+    public String remove(String fmJson) {
+        IStaticCacheService cacheService =
+                (IStaticCacheService)getContext().getAttributes().
+                        get(IStaticCacheService.class.getCanonicalName());
+
+        StaticCacheStrategy deleteStrategy = jsonToStaticCacheStrategy(fmJson);
+        if (deleteStrategy == null) {
+            //TODO compose the error with a json formatter
+            return "{\"status\" : \"Error! Could not parse firewall rule, see log for details.\"}";
+        }
+
+        String status = null;
+        boolean exists = false;
+        Iterator<StaticCacheStrategy> iter = cacheService.getStrategies().iterator();
+        while (iter.hasNext()) {
+            StaticCacheStrategy staticCacheStrategy = iter.next();
+            if (staticCacheStrategy.strategyid == deleteStrategy.strategyid) {
+                exists = true;
+                break;
+            }
+        }
+        if (!exists) {
+            status = "Error! Can't delete, a rule with this ID doesn't exist.";
+            log.error(status);
+        } else {
+            // delete rule from firewall
+            cacheService.deleteRule(deleteStrategy.strategyid);
+            status = "Strategy deleted";
+        }
+        return ("{\"status\" : \"" + status + "\"}");
+    }
+
 }
