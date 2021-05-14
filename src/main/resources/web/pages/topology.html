@@ -97,12 +97,12 @@
     <div id="page-wrapper">
         <!--    kwmtodo: buttton-->
         <div> <p>
-            <button id ="button1" type="button" class="btn btn-outline btn-primary" onclick="test()">Primary</button>
-            <button id ="button2" type="button" class="btn btn-outline btn-success">Success</button>
-            <button id ="button3" type="button" class="btn btn-outline btn-default">Default</button>
-            <button id ="button4" type="button" class="btn btn-outline btn-info">Info</button>
-            <button id ="button5" type="button" class="btn btn-outline btn-warning">Warning</button>
-            <button id ="button6" type="button" class="btn btn-outline btn-danger">Danger</button>
+            <button id ="button1" type="button" class="btn btn-outline btn-primary" onclick="action1()">Primary</button>
+            <button id ="button2" type="button" class="btn btn-outline btn-success" onclick="action2()">Success</button>
+            <button id ="button3" type="button" class="btn btn-outline btn-default" onclick="action3()">Default</button>
+            <button id ="button4" type="button" class="btn btn-outline btn-info" onclick="action4()">Info</button>
+            <button id ="button5" type="button" class="btn btn-outline btn-warning" onclick="action5()">Warning</button>
+            <button id ="button6" type="button" class="btn btn-outline btn-danger" onclick="action6()">Danger</button>
         </p></div>
 
          <!--/.row-->
@@ -525,23 +525,40 @@
     initial();
 
     // kwmtodo: test the js function
-    function test() {
-        showGroup(group)
+    function action1() {
+        var id = $("#button1").text();
+        showGroup(id,"red");
+    }
+    function action2() {
+        var id = $("#button2").text();
+        showGroup(id,"green");
+    }
+    function action3() {
+        var id = $("#button3").text();
+        showGroup(id,"blue");
+    }
+    function action4() {
+        var id = $("#button4").text();
+        showGroup(id,"yellow");
+    }
+    function action5() {
+        var id = $("#button5").text();
+        showGroup(id,"orange");
+    }
+    function action6() {
+        var id = $("#button6").text();
+        showGroup(id,"purple");
     }
 
 
-    function showGroup(group) {
-        for (var groupID in group){
-            for (var pathID in group[groupID]){
-                colorLinks(group[groupID][pathID]);
-            }
+    function showGroup(groupID, color) {
+        for (var pathID in group[groupID]){
+            colorLinks(group[groupID][pathID],color);
         }
-        console.log(edges);
         updateEdges(edges);
     }
 
-    function colorLinks(path) {
-        var color = "orange";
+    function colorLinks(path ,color) {
         var nodePortSet = new Set();
         for (var j in path){
             nodePortSet.add(path[j].switch+"/"+path[j].port);
