@@ -1224,16 +1224,16 @@ public class TopologyInstance {
      * @param dstPort
      * @param linkJitter
      * @param linkDelay
-     * @param dscpField
+     * @param queueID
      * @return A whole path that satisfied with the requirements
      */
     public Path getPath(DatapathId srcId, OFPort srcPort,
                         DatapathId dstId, OFPort dstPort,
                         Map<LinkEntry<DatapathId, DatapathId>, Integer> linkJitter,
                         Map<LinkEntry<DatapathId, DatapathId>, Integer> linkDelay,
-                        byte dscpField) {
+                        Long queueID) {
         //zzy: Add jitter
-        Path r = getPath(srcId, dstId, linkJitter, linkDelay, dscpField);
+        Path r = getPath(srcId, dstId, linkJitter, linkDelay, queueID);
 
         /* Path cannot be null, but empty b/t 2 diff DPIDs -> not found */
         if (! srcId.equals(dstId) && r.getPath().isEmpty()) {
@@ -1258,13 +1258,13 @@ public class TopologyInstance {
      * @param dstId
      * @param linkJitter
      * @param linkDelay
-     * @param dscpField
+     * @param queueID
      * @return Part of the path
      */
     public Path getPath(DatapathId srcId, DatapathId dstId,
                         Map<LinkEntry<DatapathId, DatapathId>, Integer> linkJitter,
                         Map<LinkEntry<DatapathId, DatapathId>, Integer> linkDelay,
-                        byte dscpField) {
+                        Long queueID) {
         PathId id = new PathId(srcId, dstId);
 
         /* Return empty route if srcId equals dstId */
@@ -1275,7 +1275,7 @@ public class TopologyInstance {
         Path result = null;
 
         try {
-            result = getPathByDelayAndJitter(id,linkDelay,linkJitter, dscpField);
+            result = getPathByDelayAndJitter(id,linkDelay,linkJitter, queueID);
         } catch (Exception e) {
             log.warn("Could not find route from {} to {}. If the path exists, wait for the topology to settle, and it will be detected", srcId, dstId);
         }
@@ -1291,26 +1291,37 @@ public class TopologyInstance {
      * @param id
      * @param linkDelayMap
      * @param linkJitterMap
-     * @param dscpfield
+     * @param queueID
      * @return a path that considered the delay and jitter
      */
     private Path getPathByDelayAndJitter(PathId id,
         Map<LinkEntry<DatapathId, DatapathId>, Integer> linkDelayMap,
-        Map<LinkEntry<DatapathId, DatapathId>, Integer> linkJitterMap, byte dscpfield) {
-        List<Path> pathList = pathcache.get(id);
+        Map<LinkEntry<DatapathId, DatapathId>, Integer> linkJitterMap, Long queueID) {
+        List<Path> pathList;
+        pathList = pathcache.get(id);
         if (!pathList.isEmpty()) {
             for (int i = 0; i < pathList.size(); i++){
                 Path newPath = pathList.get(i);
                 //zzy: get DSCP field value and
-                if (dscpfield == 46) { //from teachers
+                if (queueID == 0) { //from teachers
                     if (getPathDelay(newPath, linkDelayMap) < 150 && getPathJitter(newPath, linkJitterMap) < 30) {
+                        System.out.println("success to find a route");
                         return newPath;
+                    }else {
+                        System.out.println(newPath.toString()+"(teachers) not met the QoS");
                     }
                 }
-                else if (dscpfield == 0){ //from students
-                    if (getPathDelay(newPath, linkDelayMap) < 4000 && getPathJitter(newPath, linkJitterMap) < 30){
+                else if (queueID == 1){ //from students
+                    if (getPathDelay(newPath, linkDelayMap) < 40000 && getPathJitter(newPath, linkJitterMap) < 30){
+                        System.out.println("Path delay: "+getPathDelay(newPath, linkDelayMap));
                         return newPath;
+                    }else {
+                        System.out.println(newPath.toString()+"(students) not met the QoS");
+                        System.out.println(getPathDelay(newPath, linkDelayMap) + getPathJitter(newPath, linkJitterMap));
                     }
+                }
+                else {
+                    return newPath;
                 }
             }
         }

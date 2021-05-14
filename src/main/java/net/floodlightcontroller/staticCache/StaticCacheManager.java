@@ -27,16 +27,16 @@ import org.projectfloodlight.openflow.protocol.action.OFAction;
 import org.projectfloodlight.openflow.protocol.action.OFActionOutput;
 import org.projectfloodlight.openflow.protocol.match.Match;
 import org.projectfloodlight.openflow.protocol.match.MatchField;
-
 import org.projectfloodlight.openflow.types.*;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.*;
-import java.util.concurrent.*;
+import java.util.concurrent.ConcurrentHashMap;
 
 import static net.floodlightcontroller.routing.ForwardingBase.FORWARDING_APP_ID;
+
+//import sun.lwawt.macosx.CPrinterDevice;
 
 public class StaticCacheManager implements IOFMessageListener, IFloodlightModule, IStaticCacheService {
 
@@ -49,6 +49,10 @@ public class StaticCacheManager implements IOFMessageListener, IFloodlightModule
     protected IRoutingService routingEngineService;
     protected List<StaticCacheStrategy> strategies;
     protected OFMessageDamper messageDamper;
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0fa64c42a7cdf5acd474589a102908ded89c37a3
     protected static Logger log = LoggerFactory.getLogger(StaticCacheManager.class);
 
 
