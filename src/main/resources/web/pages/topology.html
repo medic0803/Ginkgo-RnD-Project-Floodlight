@@ -584,7 +584,7 @@
     $(function () {
         var data1 = [],data2 = [],data3= [], totalPoints = 300;
 
-        var updateInterval = 10; // 刷新间隔ms
+        var updateInterval = 10; // interval ms
 
 
         function getbandwithStatsData01() {
@@ -653,7 +653,7 @@
                     }
                 });
             }else {
-                count = 0.05;
+                count = 0.1;
             }
 
             return count;
@@ -678,7 +678,7 @@
                     }
                 });
             }else {
-                count = 1;
+                count = 0.2;
             }
 
             return count;
@@ -703,7 +703,7 @@
                     }
                 });
             }else {
-                count = 3;
+                count = 0.3;
             }
 
             return count;
@@ -737,9 +737,9 @@
                     return markings;
                 }
             },
-            series: { shadowSize: 2 }, // 绘制线的阴影，不绘制设置 0
-            yaxis: { min: 0, max: 10 }, // Y
-            xaxis: { show: false}, // 不显示 X 轴
+            series: { shadowSize: 2 },
+            yaxis: { min: 0, max: 10 },
+            xaxis: { show: false},
             legend: {
                 show: true
             }
