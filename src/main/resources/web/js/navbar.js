@@ -7,8 +7,6 @@ document.getElementById("navMenu").innerHTML =
     '<li><a href="switches.html"><i class="fa fa-exchange"></i> Switches</a></li>'+
     '<li><a href="hosts.html"><i class="fa fa-desktop fa-fw"></i> Hosts</a></li>'+
     '<li><a href="links.html"><i class="fa fa-expand fa-fw"></i> Links</a></li>'+
-    //kwmtodo: there is a page to show the path in the pathche, but don't work
-    '<li><a href="routes.html"><i class="fa fa-link fa-fw"></i> Routes</a></li>'+
     //kwmtodo: add new navbar item of QoS Decision
     '<li><a href="QosStrategy.html"><i class="fa fa-cloud fa-fw"></i> QoS Routing Strategy</a></li>'+
     '<li><a href="topology.html"><i class="fa fa-sitemap fa-fw"></i> Topology</a></li>'+
