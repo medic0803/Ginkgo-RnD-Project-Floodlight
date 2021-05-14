@@ -716,23 +716,21 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
         if (eth.getEtherType() == EthType.IPv4){
             // translate from two's complement representation
             byte diffServ = (byte) ((((IPv4) eth.getPayload()).getDiffServ() >> 2) & 0x3f);
-            IPv4Address ip = ((IPv4) eth.getPayload()).getDestinationAddress();
-            if (ip.toString().equals("192.168.2.2") || ip.toString().equals("192.168.2.3")){
+            IPv4Address destinationAddress = ((IPv4) eth.getPayload()).getDestinationAddress();
+
+            if (destinationAddress.toString().equals("192.168.2.2") || destinationAddress.toString().equals("192.168.2.3")){
                 if (isRTP(eth)){
                     queueID = 0L;
                 }else {
                     queueID = 2L;
                 }
-                System.out.println("L2");
-                System.out.println(queueID);
             } else {
-                if (isRTP(eth)){
+                if (isRTP(eth)) {
                     queueID = 1L;
-                }else {
+                } else {
                     queueID = 3L;
                 }
             }
-
             // determine the PHB of DSCPField
             for (DSCPField dscp: DSCPField.values()){
                 if ((byte) dscp.getDSCPField() == diffServ){
@@ -780,7 +778,24 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
         } /* else no path was found */
     }
 
+    /**
+     * Judge this is an RTP
+     * @param eth
+     * @return
+     */
+    private boolean isRTP(Ethernet eth){
+        byte[] ipv4Packet = eth.getPayload().serialize();
+        byte[] rawDstPort = new byte[2];
+        System.arraycopy(ipv4Packet, 22, rawDstPort, 0, 2);
 
+        int dstPort= (int) ( ((rawDstPort[0] & 0xFF)<<8)
+                |(rawDstPort[1] & 0xFF));
+        if (dstPort == 5004){
+            log.info("This is a video stream");
+            return true;
+        }
+        return false;
+    }
     /**
      * Generate arp reply packet so virtual gateway can use it to response the cross-subnet ARP request sent from host
      *
@@ -1971,29 +1986,5 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
                 break;
         }
         return Command.CONTINUE;
-    }
-
-    /**
-     * Judge this is an RTP
-     * @param eth
-     * @return
-     */
-    private boolean isRTP(Ethernet eth){
-        byte[] ipv4Packet = eth.getPayload().serialize();
-        byte[] rawSrcPort = new byte[2];
-        byte[] rawDstPort = new byte[2];
-        System.arraycopy(ipv4Packet, 20, rawSrcPort, 0, 2);
-        System.arraycopy(ipv4Packet, 22, rawDstPort, 0, 2);
-
-        int srcPort= (int) ( ((rawSrcPort[0] & 0xFF)<<8)
-                |(rawSrcPort[1] & 0xFF));
-
-        int dstPort= (int) ( ((rawDstPort[0] & 0xFF)<<8)
-                |(rawDstPort[1] & 0xFF));
-        if (dstPort == 5004){
-            log.info("This is a video stream");
-            return true;
-        }
-        return false;
     }
 }

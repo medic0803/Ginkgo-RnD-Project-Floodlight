@@ -1059,13 +1059,14 @@ public class MulticastManager implements IOFMessageListener, IFloodlightModule, 
         Long queueID;
 
         if (hostIPAddress.toString().equals("192.168.2.2") || hostIPAddress.toString().equals("192.168.2.3")){
-            if (((TCP) eth.getPayload()).getDestinationPort() == TransportPort.of(5004) || ((IPv4) eth.getPayload()).getDestinationAddress().isMulticast()){
+
+            if (isRTP(eth) || ((IPv4) eth.getPayload()).getDestinationAddress().isMulticast()){
                 queueID = 0L;
             }else {
                 queueID = 2L;
             }
         } else {
-            if (((TCP) eth.getPayload()).getDestinationPort() == TransportPort.of(5004) || ((IPv4) eth.getPayload()).getDestinationAddress().isMulticast()){
+            if (isRTP(eth)  || ((IPv4) eth.getPayload()).getDestinationAddress().isMulticast()){
                 queueID = 1L;
             }else {
                 queueID = 3L;
@@ -1073,5 +1074,23 @@ public class MulticastManager implements IOFMessageListener, IFloodlightModule, 
         }
         return sw.getOFFactory().actions().buildSetQueue().setQueueId(queueID).build();
 
+    }
+    /**
+     * Judge this is an RTP
+     * @param eth
+     * @return
+     */
+    private boolean isRTP(Ethernet eth){
+        byte[] ipv4Packet = eth.getPayload().serialize();
+        byte[] rawDstPort = new byte[2];
+        System.arraycopy(ipv4Packet, 22, rawDstPort, 0, 2);
+
+        int dstPort= (int) ( ((rawDstPort[0] & 0xFF)<<8)
+                |(rawDstPort[1] & 0xFF));
+        if (dstPort == 5004){
+            log.info("This is a video stream");
+            return true;
+        }
+        return false;
     }
 }

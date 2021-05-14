@@ -96,7 +96,7 @@ public class StaticCacheStrategy {
      * set outPort to guide the flow
      * @param src_outPort                   Source(Host)'s out OFPort on it's attachment point switch
      */
-    public void completeStrategy_host(IOFSwitch sw, OFPacketIn pi, OFPort src_outPort) {
+    public void completeStrategy_host(IOFSwitch sw, OFPacketIn pi, OFPort src_outPort, OFActionSetQueue setQueue) {
         this.src_outPort = src_outPort;
 
         OFActionSetField host_setEthDst = sw.getOFFactory().actions().buildSetField()
@@ -117,6 +117,7 @@ public class StaticCacheStrategy {
         actions_host.add(host_setEthDst);
         actions_host.add(host_setIpv4Dst);
         actions_host.add(sw.getOFFactory().actions().buildOutput().setPort(src_outPort).build());
+        actions_host.add(setQueue);
 
         OFInstructionApplyActions host_instruction = sw.getOFFactory().instructions().buildApplyActions()
                 .setActions(actions_host)
@@ -156,7 +157,7 @@ public class StaticCacheStrategy {
      * set outPort to guide the flow
      * @param dst_outPort                   Destination(Cache server)'s out OFPort on it's attachment point switch
      */
-    public void completeStrategy_cache(IOFSwitch sw, OFPacketIn pi, OFPort dst_outPort) {
+    public void completeStrategy_cache(IOFSwitch sw, OFPacketIn pi, OFPort dst_outPort, OFActionSetQueue setQueue) {
         this.dst_outPort = dst_outPort;
 
         OFActionSetField cache_setEthSrc = sw.getOFFactory().actions().buildSetField()
@@ -177,6 +178,7 @@ public class StaticCacheStrategy {
         actions_Cache.add(cache_setEthSrc);
         actions_Cache.add(cache_setIpv4Src);
         actions_Cache.add(sw.getOFFactory().actions().buildOutput().setPort(dst_outPort).build());
+        actions_Cache.add(setQueue);
 
         OFInstructionApplyActions instruction_cache = sw.getOFFactory().instructions().buildApplyActions()
                 .setActions(actions_Cache)
