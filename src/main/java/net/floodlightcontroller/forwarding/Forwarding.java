@@ -362,6 +362,9 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
         DatapathId srcSw = sw.getId();
         IDevice dstDevice = IDeviceService.fcStore.get(cntx, IDeviceService.CONTEXT_DST_DEVICE);
         IDevice srcDevice = IDeviceService.fcStore.get(cntx, IDeviceService.CONTEXT_SRC_DEVICE);
+
+//        Vector<Long> queues = qoSManagerService.getQueues(sw);
+        Long queueID = 0L;
         
         if (dstDevice == null) {
             // Try one more time to retrieve dst device
@@ -461,6 +464,13 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
                 dstAp.getNodeId(),
                 dstAp.getPortId());
 
+        IPv4Address ip = ((IPv4) eth.getPayload()).getDestinationAddress();
+        if (ip.toString().equals("10.0.0.2")){
+//            queueID = queues.get(0);
+            System.out.println("L3");
+            System.out.println(queueID);
+//            System.out.println(queues.get(0));
+        }
 
         if (!eth.getDestinationMACAddress().equals(virtualGatewayMac)) { // Normal L2 forwarding
             Match m = createMatchFromPacket(sw, srcPort, pi, cntx);
@@ -477,7 +487,7 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
 
                 pushRoute(path, m, pi, sw.getId(), cookie,
                         cntx, requestFlowRemovedNotifn,
-                        OFFlowModCommand.ADD, false);
+                        OFFlowModCommand.ADD, false, queueID);
 
                 /*
                  * Register this flowset with ingress and egress ports for link down
@@ -509,7 +519,7 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
             Path newPath = getNewPath(path);
             pushRoute(newPath, match, pi, sw.getId(), cookie,
                     cntx, requestFlowRemovedNotifn,
-                    OFFlowModCommand.ADD, packetOutSent);
+                    OFFlowModCommand.ADD, packetOutSent, queueID);
 
             /* Register flow sets */
             for (NodePortTuple npt : path.getPath()) {
@@ -632,6 +642,9 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
         IDevice dstDevice = IDeviceService.fcStore.get(cntx, IDeviceService.CONTEXT_DST_DEVICE);
         IDevice srcDevice = IDeviceService.fcStore.get(cntx, IDeviceService.CONTEXT_SRC_DEVICE);
 
+//        Vector<Long> queues = qoSManagerService.getQueues(sw);
+        Long queueID = 0L;
+
         if (dstDevice == null) {
             log.debug("Destination device unknown. Flooding packet");
             doFlood(sw, pi, decision, cntx);
@@ -705,7 +718,22 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
         if (eth.getEtherType() == EthType.IPv4){
             // translate from two's complement representation
             byte diffServ = (byte) ((((IPv4) eth.getPayload()).getDiffServ() >> 2) & 0x3f);
-
+            IPv4Address ip = ((IPv4) eth.getPayload()).getDestinationAddress();
+            if (ip.toString().equals("192.168.2.2") || ip.toString().equals("192.168.2.3")){
+                if (isRTP(eth)){
+                    queueID = 0L;
+                }else {
+                    queueID = 2L;
+                }
+                System.out.println("L2");
+                System.out.println(queueID);
+            } else {
+                if (isRTP(eth)){
+                    queueID = 1L;
+                }else {
+                    queueID = 3L;
+                }
+            }
 
             // determine the PHB of DSCPField
             for (DSCPField dscp: DSCPField.values()){
@@ -739,10 +767,10 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
                                 dstAp.getPortId()});
                 log.debug("Creating flow rules on the route, match rule: {}", m);
             }
-
+//zzy
             pushRoute(path, m, pi, sw.getId(), cookie,
                     cntx, requestFlowRemovedNotifn,
-                    OFFlowModCommand.ADD, false);
+                    OFFlowModCommand.ADD, false, queueID);
 
             /*
              * Register this flowset with ingress and egress ports for link down
@@ -1948,4 +1976,27 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
         return Command.CONTINUE;
     }
 
+    /**
+     * Judge this is an RTP
+     * @param eth
+     * @return
+     */
+    private boolean isRTP(Ethernet eth){
+        byte[] ipv4Packet = eth.getPayload().serialize();
+        byte[] rawSrcPort = new byte[2];
+        byte[] rawDstPort = new byte[2];
+        System.arraycopy(ipv4Packet, 20, rawSrcPort, 0, 2);
+        System.arraycopy(ipv4Packet, 22, rawDstPort, 0, 2);
+
+        int srcPort= (int) ( ((rawSrcPort[0] & 0xFF)<<8)
+                |(rawSrcPort[1] & 0xFF));
+
+        int dstPort= (int) ( ((rawDstPort[0] & 0xFF)<<8)
+                |(rawDstPort[1] & 0xFF));
+        if (dstPort == 5004){
+            log.info("This is a video stream");
+            return true;
+        }
+        return false;
+    }
 }

@@ -157,9 +157,10 @@ public interface IRoutingService extends IFloodlightService {
      * @param dstPort
      * @param pkLoss
      * @param linkDelay
+     * @param queueID
      * @return
      */
-    Path getPath(DatapathId src, OFPort srcPort, DatapathId dst, OFPort dstPort, Map<LinkEntry<DatapathId, DatapathId>, Integer> pkLoss, Map<LinkEntry<DatapathId, DatapathId>, Integer> linkDelay, byte dscpField);
+    Path getPath(DatapathId src, OFPort srcPort, DatapathId dst, OFPort dstPort, Map<LinkEntry<DatapathId, DatapathId>, Integer> pkLoss, Map<LinkEntry<DatapathId, DatapathId>, Integer> linkDelay, Long queueID);
     /**
      * Provides the shortest path between srcPort on src and dstPort on dst based on the .
      * @param src source switch
