@@ -71,7 +71,7 @@ public class QoSManager implements IFloodlightModule, IQoSManagerService {
         restApi = context.getServiceImpl(IRestApiService.class);
         routingEngineService = context.getServiceImpl(IRoutingService.class);
         switchService = context.getServiceImpl(IOFSwitchService.class);
-
+        deviceService = context.getServiceImpl(IDeviceService.class);
 //        flowSetIdRegistry = StaticCacheManager.FlowSetIdRegistry.getInstance();
 //        messageDamper = new OFMessageDamper(OFMESSAGE_DAMPER_CAPACITY,
 //                EnumSet.of(OFType.FLOW_MOD),
@@ -83,8 +83,6 @@ public class QoSManager implements IFloodlightModule, IQoSManagerService {
         restApi.addRestletRoutable(new StaticCacheWebRoutable());
 
     }
-
-
 
     private void getQueue(IOFSwitch sw){
         OFQueueGetConfigRequest cr = sw.getOFFactory().buildQueueGetConfigRequest().setPort(OFPort.of(1)).build(); /* Request queues on any port (i.e. don't care) */

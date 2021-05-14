@@ -1,13 +1,10 @@
 package net.floodlightcontroller.staticCache;
 
-import com.google.common.primitives.UnsignedLong;
-import com.google.common.util.concurrent.ListenableFuture;
 import net.floodlightcontroller.core.FloodlightContext;
 import net.floodlightcontroller.core.IFloodlightProviderService;
 import net.floodlightcontroller.core.IOFMessageListener;
 import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.internal.IOFSwitchService;
-import net.floodlightcontroller.core.internal.OFSwitch;
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.module.FloodlightModuleException;
 import net.floodlightcontroller.core.module.IFloodlightModule;
@@ -24,23 +21,17 @@ import net.floodlightcontroller.routing.Path;
 import net.floodlightcontroller.routing.RoutingDecision;
 import net.floodlightcontroller.staticCache.web.StaticCacheStrategy;
 import net.floodlightcontroller.staticCache.web.StaticCacheWebRoutable;
-import net.floodlightcontroller.topology.ITopologyService;
 import net.floodlightcontroller.util.*;
 import org.projectfloodlight.openflow.protocol.*;
 import org.projectfloodlight.openflow.protocol.action.OFAction;
 import org.projectfloodlight.openflow.protocol.action.OFActionOutput;
 import org.projectfloodlight.openflow.protocol.match.Match;
 import org.projectfloodlight.openflow.protocol.match.MatchField;
-import org.projectfloodlight.openflow.protocol.queueprop.OFQueueProp;
-import org.projectfloodlight.openflow.protocol.queueprop.OFQueuePropMaxRate;
-import org.projectfloodlight.openflow.protocol.queueprop.OFQueuePropMinRate;
-import org.projectfloodlight.openflow.protocol.ver13.OFFactoryVer13;
-import org.projectfloodlight.openflow.protocol.ver13.OFQueuePropertiesSerializerVer13;
+
 import org.projectfloodlight.openflow.types.*;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import sun.lwawt.macosx.CPrinterDevice;
 
 import java.util.*;
 import java.util.concurrent.*;
@@ -57,7 +48,7 @@ public class StaticCacheManager implements IOFMessageListener, IFloodlightModule
     protected IDeviceService deviceService;
     protected IRoutingService routingEngineService;
     protected List<StaticCacheStrategy> strategies;
-
+    protected OFMessageDamper messageDamper;
     protected static Logger log = LoggerFactory.getLogger(StaticCacheManager.class);
 
 
