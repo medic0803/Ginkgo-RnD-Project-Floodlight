@@ -13,7 +13,6 @@ import net.floodlightcontroller.core.types.NodePortTuple;
 import net.floodlightcontroller.core.util.AppCookie;
 import net.floodlightcontroller.core.util.SingletonTask;
 import net.floodlightcontroller.packet.*;
-import net.floodlightcontroller.qos.QoSManager.IQoSManagerService;
 import net.floodlightcontroller.qos.ResourceMonitor.QosResourceMonitor;
 import net.floodlightcontroller.qos.ResourceMonitor.pojo.LinkEntry;
 import net.floodlightcontroller.routing.*;
@@ -45,7 +44,6 @@ public class MulticastManager implements IOFMessageListener, IFloodlightModule, 
     protected ITopologyService topologyService;
     protected OFMessageDamper messageDamper;
     protected QosResourceMonitor qosResourceMonitor;
-    protected IQoSManagerService qoSManagerService;
 
     // Multicast Data structure
     private ConcurrentHashMap<IPv4Address, MulticastGroup> multicastGroupInfoTable = new ConcurrentHashMap<>();
@@ -331,8 +329,8 @@ public class MulticastManager implements IOFMessageListener, IFloodlightModule, 
                 OFPort srcPort = multicastSource.getSrcPort();
 
                 MulticastTree tempMulticastTree = multicastGroupInfoTable.get(multicastAddress).getMulticastTreeInfoTable().get(multicastSource.getSrcAddress());
-                OFActionSetQueue setQueue = null;
-                Path path = getMulticastRoutingDecision(srcId, srcPort, dstId, dstPort, hostIPAddress, tempMulticastTree, eth, setQueue);
+                OFActionSetQueue setQueue = getQueueAction(hostIPAddress, eth, sw);
+                Path path = getMulticastRoutingDecision(srcId, srcPort, dstId, dstPort, hostIPAddress, tempMulticastTree, eth, setQueue.getQueueId());
                 pushMulticastingRoute(path, multicastSource.getMatch(), pi, pinSwitchId, multicastSource.getCookie(), cntx, tempMulticastTree.getAltBPRegister(), false, false, setQueue);
             }
         }
@@ -466,8 +464,8 @@ public class MulticastManager implements IOFMessageListener, IFloodlightModule, 
         for (IPv4Address hostAddress : multicastGroupInfoTable.get(multicastAddress).getMulticastHosts()) {
             dstId = pinSwitchInfoMap.get(hostAddress).getPinSwitchId();
             dstPort = pinSwitchInfoMap.get(hostAddress).getPinSwitchInPort();
-            OFActionSetQueue setQueue = null;
-            path = getMulticastRoutingDecision(srcId, srcPort, dstId, dstPort, hostAddress, multicastGroupInfoTable.get(multicastAddress).getMulticastTreeInfoTable().get(sourceAddress), eth, setQueue);
+            OFActionSetQueue setQueue = getQueueAction(hostAddress, eth, sw);
+            path = getMulticastRoutingDecision(srcId, srcPort, dstId, dstPort, hostAddress, multicastGroupInfoTable.get(multicastAddress).getMulticastTreeInfoTable().get(sourceAddress), eth, setQueue.getQueueId());
             pushMulticastingRoute(path, match, pi, sw.getId(), cookie, cntx, multicastGroupInfoTable.get(multicastAddress).getMulticastTreeInfoTable().get(sourceAddress).getAltBPRegister(), false, false, setQueue);
         }
 
@@ -557,11 +555,7 @@ public class MulticastManager implements IOFMessageListener, IFloodlightModule, 
                 // add all out ports as buckets
                 for (OFPort forwardPort : currentAltBPSet.get(switchDPID).getOutPortSet()) {
                     List<OFAction> actions = new ArrayList<>();
-//                    actions.add(sw.getOFFactory().actions().buildOutput()
-//                                    .setMaxLen(0xffFFffFF)
-//                                    .setPort(forwardPort)
-//                                    .build());
-//                    actions.add(setQueue);
+
                     bucketList.add(sw.getOFFactory().buildBucket()
                             .setWatchGroup(OFGroup.ANY)
                             .setWatchPort(OFPort.ANY)
@@ -569,18 +563,8 @@ public class MulticastManager implements IOFMessageListener, IFloodlightModule, 
                                     .setMaxLen(0xffFFffFF)
                                     .setPort(forwardPort)
                                     .build()))
-                            .setActions(Collections.singletonList((OFAction) setQueue))
                             .build());
-                    bucketList.add(sw.getOFFactory().buildBucket()
-                            .setWatchGroup(OFGroup.ANY)
-                            .setWatchPort(OFPort.ANY)
-                            .setActions(Collections.singletonList((OFAction) setQueue))
-                            .build());
-//                    bucketList.add(sw.getOFFactory().buildBucket()
-//                            .setWatchGroup(OFGroup.ANY)
-//                            .setWatchPort(OFPort.ANY)
-//                            .setActions(actions)
-//                            .build());
+
                 }
                 if (currentAltBPSet.get(switchDPID).getOutPortSet().size() > 2) {
                     OFGroupModify modifyGroup = sw.getOFFactory().buildGroupModify()
@@ -613,8 +597,8 @@ public class MulticastManager implements IOFMessageListener, IFloodlightModule, 
                 List<OFAction> actions = new ArrayList<>();
                 aob.setPort(outPort);
                 aob.setMaxLen(Integer.MAX_VALUE);
-                actions.add(aob.build());
                 actions.add(setQueue);
+                actions.add(aob.build());
                 FlowModUtils.setActions(fmb, actions, sw);
             }
 
@@ -957,8 +941,6 @@ public class MulticastManager implements IOFMessageListener, IFloodlightModule, 
         topologyService = context.getServiceImpl(ITopologyService.class);
         threadPoolService = context.getServiceImpl(IThreadPoolService.class);
         qosResourceMonitor = context.getServiceImpl(QosResourceMonitor.class);
-        qoSManagerService = context.getServiceImpl(IQoSManagerService.class);
-
         messageDamper = new OFMessageDamper(OFMESSAGE_DAMPER_CAPACITY,
                 EnumSet.of(OFType.FLOW_MOD),
                 OFMESSAGE_DAMPER_TIMEOUT);
@@ -1013,32 +995,17 @@ public class MulticastManager implements IOFMessageListener, IFloodlightModule, 
     private Path getMulticastRoutingDecision(DatapathId src, OFPort srcPort,
                                              DatapathId dst, OFPort dstPort,
                                              IPv4Address hostAddress, MulticastTree multicastTree,
-                                             Ethernet eth, OFActionSetQueue setQueue) {
+                                             Ethernet eth, Long queueID) {
         DatapathId bp = null;
         Stack<DatapathId> tempBP = new Stack<>();
         Stack<DatapathId> possibleBP = new Stack<>();
 
-        Long queueID;
 
-        if (hostAddress.toString().equals("192.168.2.2") || hostAddress.toString().equals("192.168.2.3")){
-            if (isRTP(eth)){
-                queueID = 0L;
-            }else {
-                queueID = 2L;
-            }
-        } else {
-            if (isRTP(eth)){
-                queueID = 1L;
-            }else {
-                queueID = 3L;
-            }
-        }
         Map<LinkEntry<DatapathId, DatapathId>, Integer> linkDelay = qosResourceMonitor.getLinkDelay();
         Map<LinkEntry<DatapathId, DatapathId>, Integer> linkJitter = qosResourceMonitor.getLinkJitter();
 
         Path newPath = routingService.getPath(src, srcPort, dst, dstPort, linkJitter, linkDelay, queueID);
 
-        setQueue = switchService.getSwitch(src).getOFFactory().actions().buildSetQueue().setQueueId(queueID).build();
 
         if (multicastTree.getPathList().isEmpty()) {
             multicastTree.getPathList().put(hostAddress, newPath);
@@ -1088,22 +1055,23 @@ public class MulticastManager implements IOFMessageListener, IFloodlightModule, 
         return newPath;
     }
 
-    private boolean isRTP(Ethernet eth){
-        byte[] ipv4Packet = eth.getPayload().serialize();
-        byte[] rawSrcPort = new byte[2];
-        byte[] rawDstPort = new byte[2];
-        System.arraycopy(ipv4Packet, 20, rawSrcPort, 0, 2);
-        System.arraycopy(ipv4Packet, 22, rawDstPort, 0, 2);
+    private OFActionSetQueue getQueueAction(IPv4Address hostIPAddress, Ethernet eth, IOFSwitch sw){
+        Long queueID;
 
-        int srcPort= (int) ( ((rawSrcPort[0] & 0xFF)<<8)
-                |(rawSrcPort[1] & 0xFF));
-
-        int dstPort= (int) ( ((rawDstPort[0] & 0xFF)<<8)
-                |(rawDstPort[1] & 0xFF));
-        if (dstPort == 5004){
-            log.info("This is a video stream");
-            return true;
+        if (hostIPAddress.toString().equals("192.168.2.2") || hostIPAddress.toString().equals("192.168.2.3")){
+            if (((TCP) eth.getPayload()).getDestinationPort() == TransportPort.of(5004) || ((IPv4) eth.getPayload()).getDestinationAddress().isMulticast()){
+                queueID = 0L;
+            }else {
+                queueID = 2L;
+            }
+        } else {
+            if (((TCP) eth.getPayload()).getDestinationPort() == TransportPort.of(5004) || ((IPv4) eth.getPayload()).getDestinationAddress().isMulticast()){
+                queueID = 1L;
+            }else {
+                queueID = 3L;
+            }
         }
-        return false;
+        return sw.getOFFactory().actions().buildSetQueue().setQueueId(queueID).build();
+
     }
 }

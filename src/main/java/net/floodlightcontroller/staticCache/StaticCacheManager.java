@@ -49,10 +49,6 @@ public class StaticCacheManager implements IOFMessageListener, IFloodlightModule
     protected IRoutingService routingEngineService;
     protected List<StaticCacheStrategy> strategies;
     protected OFMessageDamper messageDamper;
-<<<<<<< HEAD
-=======
-
->>>>>>> 0fa64c42a7cdf5acd474589a102908ded89c37a3
     protected static Logger log = LoggerFactory.getLogger(StaticCacheManager.class);
 
 

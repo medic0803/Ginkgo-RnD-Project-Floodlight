@@ -35,7 +35,6 @@ import net.floodlightcontroller.linkdiscovery.ILinkDiscoveryService;
 import net.floodlightcontroller.multicasting.IFetchMulticastGroupService;
 import net.floodlightcontroller.packet.*;
 import net.floodlightcontroller.qos.DSCPField;
-import net.floodlightcontroller.qos.QoSManager.IQoSManagerService;
 import net.floodlightcontroller.restserver.IRestApiService;
 import net.floodlightcontroller.routing.*;
 import net.floodlightcontroller.routing.web.RoutingWebRoutable;
@@ -60,7 +59,6 @@ import java.util.concurrent.ConcurrentHashMap;
 public class Forwarding extends ForwardingBase implements IFloodlightModule, IOFSwitchListener, ILinkDiscoveryListener,
         IRoutingDecisionChangedListener, IGatewayService {
     protected static final Logger log = LoggerFactory.getLogger(Forwarding.class);
-    protected IQoSManagerService qoSManagerService;
     /*
      * Cookies are 64 bits:
      * Example: 0x0123456789ABCDEF
@@ -1398,7 +1396,6 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
         this.switchService = context.getServiceImpl(IOFSwitchService.class);
         this.linkService = context.getServiceImpl(ILinkDiscoveryService.class);
         this.fetchMulticastGroupService = context.getServiceImpl(IFetchMulticastGroupService.class);
-        this.qoSManagerService = context.getServiceImpl(IQoSManagerService.class);
 
         l3manager = new L3RoutingManager();
         l3cache = new ConcurrentHashMap<>();
