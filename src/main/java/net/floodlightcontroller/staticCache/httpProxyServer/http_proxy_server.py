@@ -1,6 +1,8 @@
 #coding:utf-8
 from socket import *
- 
+import time
+import threading
+import os
 # Create socket and bind to HTTP 8080
 tcpSerPort = 8080
 tcpSerSock = socket(AF_INET, SOCK_STREAM)
@@ -9,6 +11,8 @@ tcpSerSock = socket(AF_INET, SOCK_STREAM)
 tcpSerSock.bind(('', tcpSerPort))
 tcpSerSock.listen(5)    #listen to maximum 5 requests
  
+total_buff=[]
+R = threading.Lock()
 while True:
     # Begin to receive requests from the client
     print 'Ready to serve...'
@@ -50,7 +54,6 @@ while True:
             request_socket = socket(AF_INET, SOCK_STREAM)
 
             print "The file name is " + filename
-#            hostName = filename.replace("www.", "", 1)
 
             print 'Host Name: ', hostName
             try:
@@ -63,53 +66,37 @@ while True:
                 # Append http get request
                 try:
                     print "begin to write"
-                    fileobj.write("GET /" + filename + " HTTP/1.1\r\nHost: 10.0.0.1:8080\r\nConnection: Keep-Alive\r\n Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8\r\nAccept-Encoding: identity\r\nUpgrade-Insecure-Requests: 1\r\nUser-Agent: Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/45.0.2454.101 Safari/537.36\r\nAccept-Language: zh-CN,zh;q=0.8\r\n\r\n")
+                    fileobj.write("GET /" + filename + " HTTP/1.1\r\nHost:" + hostName +":8080\r\nConnection: keep-alive\r\nAccept: text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8\r\nAccept-Encoding: gzip, deflate\r\nUpgrade-Insecure-Requests: 1\r\nUser-Agent: Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:88.0) Gecko/20100101 Firefox/88.0\r\nAccept-Language: en-US,en;q=0.5\r\n\r\n")
                 except Exception,e:
                     print e
                     print "fail to write the request into fileobj"
                 # Read the response into buffer
-                request_socket.settimeout(5)
-                total_buff=[]
+                request_socket.settimeout(3)
+
                 try:
                     while True:
-                        print "Begin to receive data"
                         buff = request_socket.recv(20480)
                         if not buff: 
                             print "empty, break"
+
                             break
                         else:
-                            print "receive buff"
-                        total_buff.append(buff)
+
+                            tcpCliSock.send(buff)
                 except Exception,e:
                     print e
                     print "loop recv failed"
-                try:
-#                    buff = fileobj.readlines()
-                    fileobj.close()
-#                    print buff
-                except Exception,e:
-                    print e
-                    print "readlines() failed"
+                    if e.message == 'error104 connection reset by peer':
 
-                # Create a new file in the cache for the requested file.
-                # Also send the response in the buffer to client socket
-                # and the corresponding file in the cache
-                try:
-                    tmpFile = open("./" + filename,"wb")
-                except:
-                    print "create temp file failed"
-
-                for line in total_buff:
-                    tmpFile.write(line)
-                    tcpCliSock.send(line)
-#                tcpCliSock.send(buffer)
-#                for i in range(0, len(buff)):
-#                    tmpFile.write(buff[i])
-#                    tcpCliSock.send(buff[i])
+                        break;
+                        
+                    if e.message == 'timed out':
+                        print "cache the source"
+                        os.system("wget http://" + hostName+":8080/"+filename)
             except Exception,e:
                 print e
+               
                 print "Illegal request"
- 
         else:
             # HTTP response message for file not found
             # Do stuff here
