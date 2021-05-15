@@ -1086,16 +1086,10 @@ public class MulticastManager implements IOFMessageListener, IFloodlightModule, 
 
         Map<LinkEntry<DatapathId, DatapathId>, Integer> linkDelay = null;
         Map<LinkEntry<DatapathId, DatapathId>, Integer> linkJitter = null;
-        while (qosResourceMonitor.getLinkDelay() == null || linkDelay == null){
-            try {
-                Thread.sleep(3000);
-            } catch (InterruptedException e) {
-                System.out.println("linkDelay == null");
-                e.printStackTrace();
-            }
-            linkDelay = qosResourceMonitor.getLinkDelay();
-            linkJitter = qosResourceMonitor.getLinkJitter();
-        }
+
+        linkDelay = qosResourceMonitor.getLinkDelay();
+        linkJitter = qosResourceMonitor.getLinkJitter();
+
 
         Path newPath = routingService.getPath(src, srcPort, dst, dstPort, linkJitter, linkDelay, queueID);
 
