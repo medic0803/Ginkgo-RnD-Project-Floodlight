@@ -12,7 +12,6 @@ public class MulticastGroup {
 
     private HashSet<IPv4Address> multicastHosts; // Hosts IPv4 Address Set
 
-    // TODO: use port + multicast address as the identifier of a multicast source
     private HashMap<IPv4Address, MulticastSource> multicastSources; // Sources objects map
     private HashMap<IPv4Address, MulticastTree> multicastTreeInfoTable; // MulticastTree objects map
 

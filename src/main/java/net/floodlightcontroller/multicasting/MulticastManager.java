@@ -254,9 +254,9 @@ public class MulticastManager implements IOFMessageListener, IFloodlightModule, 
     }
 
     /**
-     * The method to process IGMP join or leave message,
+     * This method is use to process IGMP join or leave message,
      * and maintain multicast information table <K: Multicast address, V: Set of host address>,
-     * and pin switch IPv4 address mapping map <K: Ipv4 address, V: Map<DatapthID, Inport>>, the inprot here is used as the Outport in the routing path
+     * and pin switch IPv4 address mapping map <K: Ipv4 address, V: Map<DatapathID, Inport>>, the inprot here is used as the Outport in the routing path
      *
      * @param sw   the attachment point of host
      * @param pi
@@ -287,6 +287,19 @@ public class MulticastManager implements IOFMessageListener, IFloodlightModule, 
         return Command.CONTINUE;
     }
 
+    /**
+     * This method is used to handle the IGMP Join Message,
+     * which will determine if the host has already join on specific multicast group,
+     * if there is already a multicast source, it will do the further route push operations
+     * 
+     * @param multicastAddress          The key of the multicast info table
+     *                                  which is a multicast address for a multicast group
+     * @param hostIPAddress             The IPv4Address of the sender of IGMP packet
+     * @param sw                        The switch pigo of the sender of IGMP packet
+     * @param pi                        The packet_in contains the IGMP packet
+     * @param pinSwitchId               The attachment point switch datapathID of the sender of IGMP pakcet
+     * @param cntx                      Floodlight context
+     */
     private void processIGMPJoinMsg(IPv4Address multicastAddress, IPv4Address hostIPAddress, IOFSwitch sw, OFPacketIn pi, DatapathId pinSwitchId, FloodlightContext cntx) {
         boolean ifExist = false;
         Ethernet eth = IFloodlightProviderService.bcStore.get(cntx, IFloodlightProviderService.CONTEXT_PI_PAYLOAD);
@@ -326,7 +339,6 @@ public class MulticastManager implements IOFMessageListener, IFloodlightModule, 
         // Not exist before && Already has source/sources
         // And it is not the first host who really begins to receive the packet from source
         if (!ifExist && !multicastGroupInfoTable.get(multicastAddress).getMulticastSources().isEmpty() && multicastGroupInfoTable.get(multicastAddress).getMulticastHosts().size() > 1) {
-            //wrf: push Route
             DatapathId dstId = sw.getId();
             OFPort dstPort = OFMessageUtils.getInPort(pi);
 
@@ -342,6 +354,15 @@ public class MulticastManager implements IOFMessageListener, IFloodlightModule, 
         }
     }
 
+    /**
+     * This method is used to process IGMP Leave Message,
+     * and it will determine if the leave host would impact to the whole multicasting routing topology,
+     * then push the new flow table item with modify/new flow mod to maintain the rest of the routing,
+     * and finally remove the information of the hosts in the cache
+     *
+     * @param multicastAddress          The multicast IPv4Address which indicates the multicast group
+     * @param hostIPAddress             The IPv4Address of the hosts who leave the multicast group and send IGMP leave message
+     */
     private void processIGMPLeaveMsg(IPv4Address multicastAddress, IPv4Address hostIPAddress) {
         MulticastGroup tempMulticastGroup = multicastGroupInfoTable.get(multicastAddress);
 
@@ -443,6 +464,15 @@ public class MulticastManager implements IOFMessageListener, IFloodlightModule, 
         }
     }
 
+    /**
+     * This method is triggered by the multicast source sends the flow,
+     * and is aim to save the multicast info and drop duplicated packet_in from the multicast source
+     *
+     * @param sw            The switch pigo of the multicast source
+     * @param pi            The packet_in of the multicast source, which indicates that the source is sending the flow
+     * @param cntx          Floodlight context
+     * @return
+     */
     public Command processSourcePacketInMessage(IOFSwitch sw, OFPacketIn pi, FloodlightContext cntx) {
         Ethernet eth = IFloodlightProviderService.bcStore.get(cntx, IFloodlightProviderService.CONTEXT_PI_PAYLOAD);
 
@@ -462,9 +492,6 @@ public class MulticastManager implements IOFMessageListener, IFloodlightModule, 
         U64 flowSetId = flowSetIdRegistry.generateFlowSetId();
         U64 cookie = makeForwardingCookie(RoutingDecision.rtStore.get(cntx, IRoutingDecision.CONTEXT_DECISION), flowSetId);
 
-
-//        Match match = createMatchFromPacket(sw, srcPort, pi, cntx);
-        //wrf: Change the structure: Packet_In only from source switch !!!
         Match match = createMatchFromPacket(sw, srcPort, pi, cntx);
 
         for (IPv4Address hostAddress : multicastGroupInfoTable.get(multicastAddress).getMulticastHosts()) {
@@ -482,9 +509,9 @@ public class MulticastManager implements IOFMessageListener, IFloodlightModule, 
      * This method is used for writing the flow table item to each switches on the route,
      * and write the table table to RP switch which determined by routing decision
      *
-     * @param route                          QoS route calculated by routing decision algorithm
-     * @param match
-     * @param cookie
+     * @param route                         QoS route calculated by routing decision algorithm
+     * @param match                         Flow table item match
+     * @param cookie                        Flow table cookie
      * @param requestFlowRemovedNotification default is false
      * @return
      */
@@ -591,10 +618,8 @@ public class MulticastManager implements IOFMessageListener, IFloodlightModule, 
                     actions.add(sw.getOFFactory().actions().buildGroup()
                                 .setGroup(OFGroup.of(groupNumber++))
                                 .build());
+                    // add setQueue action
                     actions.add(setQueue);
-//                    fmb.setActions(Collections.singletonList((OFAction) sw.getOFFactory().actions().buildGroup()
-//                            .setGroup(OFGroup.of(groupNumber++))
-//                            .build()));
                     fmb.setActions(actions);
                 }
 
@@ -646,7 +671,6 @@ public class MulticastManager implements IOFMessageListener, IFloodlightModule, 
 
             }
         }
-
         return true;
     }
 
@@ -984,6 +1008,8 @@ public class MulticastManager implements IOFMessageListener, IFloodlightModule, 
         floodlightProvider.addOFMessageListener(OFType.PACKET_IN, this);
         ScheduledExecutorService ses = threadPoolService.getScheduledExecutor();
 
+
+        // run a singletonTask to check the obsolete multicast source in multicast information group
         sourceTimeout = new SingletonTask(ses, new Runnable() {
             @Override
             public void run() {
