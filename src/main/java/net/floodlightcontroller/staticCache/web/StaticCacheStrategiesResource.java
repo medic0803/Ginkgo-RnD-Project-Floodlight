@@ -100,27 +100,15 @@ public class StaticCacheStrategiesResource extends ServerResource {
 
                 else if (currentName.equalsIgnoreCase("src-ip")) {
                     if (!jsonParser.getText().equalsIgnoreCase("ANY")) {
-//                        strategy.any_nw_src = false;
-//                        if (strategy.dl_type.equals(EthType.NONE)){
-//                            strategy.any_dl_type = false;
-//                            strategy.dl_type = EthType.IPv4;
-//                        }
                         try {
                             strategy.nw_src_ipv4 = IPv4Address.of(jsonParser.getText());
                         } catch (IllegalArgumentException e) {
                             log.error("Unable to parse source IP: {}", jsonParser.getText());
-                            //TODO should return some error message via HTTP message
                         }
                     }
                 }
-
                 else if (currentName.equalsIgnoreCase("dst-ip")) {
                     if (!jsonParser.getText().equalsIgnoreCase("ANY")) {
-//                        strategy.any_nw_dst = false;
-//                        if (strategy.dl_type.equals(EthType.NONE)){
-//                            strategy.any_dl_type = false;
-//                            strategy.dl_type = EthType.IPv4;
-//                        }
                         try {
                             strategy.nw_dst_ipv4 = IPv4Address.of(jsonParser.getText());
                         } catch (IllegalArgumentException e) {
@@ -131,16 +119,11 @@ public class StaticCacheStrategiesResource extends ServerResource {
                 }
                 else if (currentName.equalsIgnoreCase("cache-ip")) {
                     if (!jsonParser.getText().equalsIgnoreCase("ANY")) {
-//                        strategy.any_nw_dst = false;
-//                        if (strategy.dl_type.equals(EthType.NONE)){
-//                            strategy.any_dl_type = false;
-//                            strategy.dl_type = EthType.IPv4;
-//                        }
+
                         try {
                             strategy.nw_cache_ipv4 = IPv4Address.of(jsonParser.getText());
                         } catch (IllegalArgumentException e) {
                             log.error("Unable to parse destination IP: {}", jsonParser.getText());
-                            //TODO should return some error message via HTTP message
                         }
                     }
                 }
@@ -150,7 +133,6 @@ public class StaticCacheStrategiesResource extends ServerResource {
                         strategy.tp_dst = TransportPort.of(Integer.parseInt(jsonParser.getText()));
                     } catch (IllegalArgumentException e) {
                         log.error("Unable to parse destination transport port: {}", jsonParser.getText());
-                        //TODO should return some error message via HTTP message
                     }
                 }
 
@@ -159,7 +141,6 @@ public class StaticCacheStrategiesResource extends ServerResource {
                         strategy.priority = Integer.parseInt(jsonParser.getText());
                     } catch (IllegalArgumentException e) {
                         log.error("Unable to parse priority: {}", jsonParser.getText());
-                        //TODO should return some error message via HTTP message
                     }
                 }
             }

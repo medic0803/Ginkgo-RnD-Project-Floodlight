@@ -12,7 +12,7 @@ import java.util.*;
 
 /**
  * @author Michael Kang
- * @create 2021-05-12 下午 02:16
+ * @create 2021-05-12  02:16 PM
  */
 public class LinkResource extends ServerResource {
     @Get("json")

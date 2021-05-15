@@ -82,7 +82,7 @@ public class StaticCacheStrategy {
      * @param dstAddress                Destination Address in a pakcet_in, which stands for host or cache server's IPv4Address
      * @param tp_dst                    Transport port for destination
      * @param hostOrCache               Indicate the packet_in is from host or cache to determine which statement would be processed
-     * @return
+     * @return If match the strategy ? Current strategy : null
      */
     public StaticCacheStrategy ifMatch(IPv4Address srcAddress, IPv4Address dstAddress, TransportPort tp_dst, String hostOrCache) {
         switch (hostOrCache) {
@@ -107,6 +107,7 @@ public class StaticCacheStrategy {
      * modify the source IPv4Address, modify the source MACAddress which are used to implement redirection of packet to cache server
      * set outPort to guide the flow
      * @param src_outPort                   Source(Host)'s out OFPort on it's attachment point switch
+     * @param setQueue                      OFActionSetQueue object is added to openflow action list to be written into flow table item
      */
     public void completeStrategy_host(IOFSwitch sw, OFPacketIn pi, OFPort src_outPort, OFActionSetQueue setQueue) {
         this.src_outPort = src_outPort;
@@ -137,7 +138,6 @@ public class StaticCacheStrategy {
 
         List<OFInstruction> instructions = new ArrayList<>();
         instructions.add(host_instruction);
-        System.out.println("---------------------------Apply the strategy Successfully-------------------------------------------");
         match_host = sw.getOFFactory().buildMatch()
                 .setExact(MatchField.IN_PORT, this.src_inPort)
                 .setExact(MatchField.ETH_TYPE, EthType.IPv4)
@@ -148,7 +148,6 @@ public class StaticCacheStrategy {
                 .setExact(MatchField.TCP_DST, this.tp_dst)
                 .build();
 
-        //wrf: change the hardtimeout
         flowAdd_host = sw.getOFFactory().buildFlowAdd()
                 .setMatch(match_host)
                 .setIdleTimeout(3600)
@@ -168,6 +167,8 @@ public class StaticCacheStrategy {
      * modify the destination IPv4Address, modify the destination MACAddress which are used to implement Reverse Proxy
      * set outPort to guide the flow
      * @param dst_outPort                   Destination(Cache server)'s out OFPort on it's attachment point switch
+     * @param setQueue                      OFActionSetQueue object is added to openflow action list to be written into flow table item
+     *
      */
     public void completeStrategy_cache(IOFSwitch sw, OFPacketIn pi, OFPort dst_outPort, OFActionSetQueue setQueue) {
         this.dst_outPort = dst_outPort;
@@ -209,7 +210,6 @@ public class StaticCacheStrategy {
                 .setExact(MatchField.TCP_DST, this.tp_src)
                 .build();
 
-        //wrf: change the hardtimeout
         flowAdd_cache = sw.getOFFactory().buildFlowAdd()
                 .setMatch(match_cache)
                 .setIdleTimeout(3600)

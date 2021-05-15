@@ -40,7 +40,6 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import static net.floodlightcontroller.routing.ForwardingBase.FORWARDING_APP_ID;
 
-//import sun.lwawt.macosx.CPrinterDevice;
 
 public class StaticCacheManager implements IOFMessageListener, IFloodlightModule, IStaticCacheService {
 
@@ -55,7 +54,6 @@ public class StaticCacheManager implements IOFMessageListener, IFloodlightModule
     protected OFMessageDamper messageDamper;
     protected QosResourceMonitor qosResourceMonitor;
     protected static Logger log = LoggerFactory.getLogger(StaticCacheManager.class);
-
 
     // FlowMod constants
     public static int FLOWMOD_DEFAULT_IDLE_TIMEOUT = 5; // in seconds
@@ -222,7 +220,6 @@ public class StaticCacheManager implements IOFMessageListener, IFloodlightModule
         return AppCookie.makeCookie(FORWARDING_APP_ID, user_fields);
     }
 
-
     @Override
     public Command receive(IOFSwitch sw, OFMessage msg, FloodlightContext cntx) {
         Ethernet eth = IFloodlightProviderService.bcStore.get(cntx, IFloodlightProviderService.CONTEXT_PI_PAYLOAD);
@@ -276,7 +273,6 @@ public class StaticCacheManager implements IOFMessageListener, IFloodlightModule
 
         // Matched strategy exists
         if (matched_strategy != null) {
-            //wrf: apply the strategy
             log.info("match one strategy");
             matched_strategy.tp_src = TransportPort.of(tp_src);
             matched_strategy.src_dpid = sw.getId();
@@ -448,6 +444,7 @@ public class StaticCacheManager implements IOFMessageListener, IFloodlightModule
      * @param cookie      The cookie to set in each flow_mod
      * @param cntx        The floodlight context
      * @param hostOrCache Determine which flowMod should be generated and write into the switch, host or cache
+     * @param setQueue    OFActionSetQueue object which is used to be added into openflow action list, and write to flow table item
      * @return true if a packet out was sent on the first-hop switch of this route
      */
     public boolean pushRoute(Path route, OFPacketIn pi, StaticCacheStrategy strategy,
@@ -501,7 +498,6 @@ public class StaticCacheManager implements IOFMessageListener, IFloodlightModule
                     mb.setExact(MatchField.IN_PORT, inPort);
                 }
 
-                // wrf:determine the src/dst switch
                 aob.setPort(outPort);
                 aob.setMaxLen(Integer.MAX_VALUE);
                 actions.add(setQueue);

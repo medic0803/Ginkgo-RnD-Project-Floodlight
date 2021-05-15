@@ -7,7 +7,7 @@ import org.restlet.routing.Router;
 
 /**
  * @author Michael Kang
- * @create 2021-05-12 下午 02:08
+ * @create 2021-05-12  02:08 PM
  */
 public class GinkgoRouteable implements RestletRoutable {
 
