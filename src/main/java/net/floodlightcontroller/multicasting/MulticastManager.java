@@ -12,6 +12,7 @@ import net.floodlightcontroller.core.module.IFloodlightService;
 import net.floodlightcontroller.core.types.NodePortTuple;
 import net.floodlightcontroller.core.util.AppCookie;
 import net.floodlightcontroller.core.util.SingletonTask;
+import net.floodlightcontroller.linkdiscovery.ILinkDiscoveryService;
 import net.floodlightcontroller.multicasting.web.GinkgoRouteable;
 import net.floodlightcontroller.packet.*;
 import net.floodlightcontroller.qos.DSCPField;
@@ -959,8 +960,10 @@ public class MulticastManager implements IOFMessageListener, IFloodlightModule, 
     public Collection<Class<? extends IFloodlightService>> getModuleDependencies() {
         Collection<Class<? extends IFloodlightService>> l =
                 new ArrayList<Class<? extends IFloodlightService>>();
+        l.add(ILinkDiscoveryService.class);
         l.add(IFloodlightProviderService.class);
         l.add(IRestApiService.class);
+        l.add(QosResourceMonitor.class);
         return l;
     }
 
@@ -971,6 +974,7 @@ public class MulticastManager implements IOFMessageListener, IFloodlightModule, 
         routingService = context.getServiceImpl(IRoutingService.class);
         topologyService = context.getServiceImpl(ITopologyService.class);
         threadPoolService = context.getServiceImpl(IThreadPoolService.class);
+        qosResourceMonitor = context.getServiceImpl(QosResourceMonitor.class);
         restApi = context.getServiceImpl(IRestApiService.class);
         messageDamper = new OFMessageDamper(OFMESSAGE_DAMPER_CAPACITY,
                 EnumSet.of(OFType.FLOW_MOD),
@@ -1080,8 +1084,18 @@ public class MulticastManager implements IOFMessageListener, IFloodlightModule, 
         Stack<DatapathId> possibleBP = new Stack<>();
 
 
-        Map<LinkEntry<DatapathId, DatapathId>, Integer> linkDelay = qosResourceMonitor.getLinkDelay();
-        Map<LinkEntry<DatapathId, DatapathId>, Integer> linkJitter = qosResourceMonitor.getLinkJitter();
+        Map<LinkEntry<DatapathId, DatapathId>, Integer> linkDelay = null;
+        Map<LinkEntry<DatapathId, DatapathId>, Integer> linkJitter = null;
+        while (qosResourceMonitor.getLinkDelay() == null || linkDelay == null){
+            try {
+                Thread.sleep(3000);
+            } catch (InterruptedException e) {
+                System.out.println("linkDelay == null");
+                e.printStackTrace();
+            }
+            linkDelay = qosResourceMonitor.getLinkDelay();
+            linkJitter = qosResourceMonitor.getLinkJitter();
+        }
 
         Path newPath = routingService.getPath(src, srcPort, dst, dstPort, linkJitter, linkDelay, queueID);
 
