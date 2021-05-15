@@ -34,7 +34,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.function.BiConsumer;
@@ -53,11 +52,11 @@ public class MulticastManager implements IOFMessageListener, IFloodlightModule, 
     protected QosResourceMonitor qosResourceMonitor;
 
     // Multicast Data structure
-    private ConcurrentHashMap<IPv4Address, MulticastGroup> multicastGroupInfoTable = new ConcurrentHashMap<>();
+    private HashMap<IPv4Address, MulticastGroup> multicastGroupInfoTable = new HashMap<>();
 
     protected HashSet<Match> receivedMatch;
     protected static Logger log = LoggerFactory.getLogger(MulticastManager.class);
-    private ConcurrentHashMap<IPv4Address, PinSwitch> pinSwitchInfoMap = new ConcurrentHashMap<>();
+    private HashMap<IPv4Address, PinSwitch> pinSwitchInfoMap = new HashMap<>();
     protected static int groupNumber = 0;
 
     // SourceTimeout process
@@ -112,8 +111,8 @@ public class MulticastManager implements IOFMessageListener, IFloodlightModule, 
         private static volatile FlowSetIdRegistry instance;
 
         private FlowSetIdRegistry() {
-            nptToFlowSetIds = new ConcurrentHashMap<>();
-            flowSetIdToNpts = new ConcurrentHashMap<>();
+            nptToFlowSetIds = new HashMap<>();
+            flowSetIdToNpts = new HashMap<>();
         }
 
         protected static FlowSetIdRegistry getInstance() {
