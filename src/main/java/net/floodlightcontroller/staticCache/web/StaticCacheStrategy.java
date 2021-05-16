@@ -23,6 +23,7 @@ public class StaticCacheStrategy {
     public IPv4Address nw_src_ipv4;
     public IPv4Address nw_dst_ipv4;
     public IPv4Address nw_cache_ipv4;
+    public MacAddress nw_cache_dl_dst;
     public int priority = 0;
 
     // Complements
@@ -38,8 +39,7 @@ public class StaticCacheStrategy {
     public OFFlowAdd flowAdd_cache;
     public Match match_host;
     public Match match_cache;
-    public MacAddress nw_src_dl_dst;
-    public MacAddress nw_cache_dl_dst;
+
     //Constructor
     public StaticCacheStrategy() {
         this.strategyid = this.genID();
@@ -84,15 +84,15 @@ public class StaticCacheStrategy {
      * @param hostOrCache               Indicate the packet_in is from host or cache to determine which statement would be processed
      * @return If match the strategy ? Current strategy : null
      */
-    public StaticCacheStrategy ifMatch(IPv4Address srcAddress, IPv4Address dstAddress, TransportPort tp_dst, String hostOrCache, MacAddress switchMACAddress) {
+    public StaticCacheStrategy ifMatch(IPv4Address srcAddress, IPv4Address dstAddress, TransportPort tp_dst, String hostOrCache) {
         switch (hostOrCache) {
             case "HOST":
-                if (srcAddress.equals(this.nw_src_ipv4) && dstAddress.equals(this.nw_dst_ipv4) && tp_dst.equals(this.tp_dst) && switchMACAddress.equals(nw_src_dl_dst)) {
+                if (srcAddress.equals(this.nw_src_ipv4) && dstAddress.equals(this.nw_dst_ipv4) && tp_dst.equals(this.tp_dst)) {
                     return this;
                 }
                 break;
             case "CACHE":
-                if (srcAddress.equals(this.nw_cache_ipv4) && dstAddress.equals(this.nw_src_ipv4) && tp_dst.equals(this.tp_src) && switchMACAddress.equals(nw_cache_dl_dst)) {
+                if (srcAddress.equals(this.nw_cache_ipv4) && dstAddress.equals(this.nw_src_ipv4) && tp_dst.equals(this.tp_src)) {
                     return this;
                 }
                 break;
