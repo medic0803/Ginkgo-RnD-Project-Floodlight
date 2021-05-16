@@ -259,7 +259,7 @@ public class StaticCacheManager implements IOFMessageListener, IFloodlightModule
     private Command process_http_from_host(IPv4Address srcAddress, IPv4Address dstAddress, int tp_src, int tp_dst, IOFSwitch sw, OFPacketIn pi, FloodlightContext cntx, Ethernet eth) {
         StaticCacheStrategy matched_strategy = null;
         for (StaticCacheStrategy strategy : strategies) {
-            StaticCacheStrategy temp_strategy = strategy.ifMatch(srcAddress, dstAddress, TransportPort.of(tp_dst), "HOST");
+            StaticCacheStrategy temp_strategy = strategy.ifMatch(srcAddress, dstAddress, TransportPort.of(tp_dst), "HOST", eth.getSourceMACAddress());
             if (temp_strategy != null) {
                 if (matched_strategy == null) {
                     matched_strategy = temp_strategy;
@@ -275,7 +275,6 @@ public class StaticCacheManager implements IOFMessageListener, IFloodlightModule
         if (matched_strategy != null) {
             log.info("match one strategy");
             matched_strategy.tp_src = TransportPort.of(tp_src);
-            matched_strategy.src_dpid = sw.getId();
             matched_strategy.src_inPort = OFMessageUtils.getInPort(pi);
 
             OFActionSetQueue setQueue = getQueueAction(srcAddress, eth, sw);
@@ -286,7 +285,7 @@ public class StaticCacheManager implements IOFMessageListener, IFloodlightModule
 
             U64 flowSetId = flowSetIdRegistry.generateFlowSetId();
             U64 cookie = makeForwardingCookie(RoutingDecision.rtStore.get(cntx, IRoutingDecision.CONTEXT_DECISION), flowSetId);
-            pushRoute(path_forward, pi, matched_strategy, sw.getId(), cookie, cntx, false, "HOST", setQueue);
+            pushRoute(path_forward, pi, matched_strategy, matched_strategy.src_dpid, cookie, cntx, false, "HOST", setQueue);
 
             return Command.STOP;
         } else
@@ -306,7 +305,7 @@ public class StaticCacheManager implements IOFMessageListener, IFloodlightModule
 
         StaticCacheStrategy matched_strategy = null;
         for (StaticCacheStrategy strategy : strategies) {
-            StaticCacheStrategy temp_strategy = strategy.ifMatch(srcAddress, dstAddress, TransportPort.of(tp_dst), "CACHE");
+            StaticCacheStrategy temp_strategy = strategy.ifMatch(srcAddress, dstAddress, TransportPort.of(tp_dst), "CACHE", eth.getSourceMACAddress());
             if (temp_strategy != null) {
                 if (matched_strategy == null) {
                     matched_strategy = temp_strategy;
@@ -330,7 +329,7 @@ public class StaticCacheManager implements IOFMessageListener, IFloodlightModule
             U64 flowSetId = flowSetIdRegistry.generateFlowSetId();
             U64 cookie = makeForwardingCookie(RoutingDecision.rtStore.get(cntx, IRoutingDecision.CONTEXT_DECISION), flowSetId);
 
-            pushRoute(path_inverse, pi, matched_strategy, sw.getId(), cookie, cntx, false, "CACHE",setQueue);
+            pushRoute(path_inverse, pi, matched_strategy, matched_strategy.dst_dpid, cookie, cntx, false, "CACHE",setQueue);
 
             return Command.STOP;
         } else
@@ -406,11 +405,14 @@ public class StaticCacheManager implements IOFMessageListener, IFloodlightModule
 
         Collection<? extends IDevice> devices = deviceService.getAllDevices();
         for (IDevice device : devices) {
-            for (IPv4Address srcAddress : device.getIPv4Addresses()) {
-                if (srcAddress.equals(strategy.nw_cache_ipv4)) {
+            for (IPv4Address iPv4Address : device.getIPv4Addresses()) {
+                if (iPv4Address.equals(strategy.nw_cache_ipv4)) {
                     strategy.nw_cache_dl_dst = device.getMACAddress();
                     strategy.dst_inPort = device.getAttachmentPoints()[0].getPortId();
                     strategy.dst_dpid = device.getAttachmentPoints()[0].getNodeId();
+                } else if (iPv4Address.equals(strategy.nw_src_ipv4)) {
+                    strategy.nw_src_dl_dst = device.getMACAddress();
+                    strategy.src_dpid = device.getAttachmentPoints()[0].getNodeId();
                 }
             }
         }
@@ -470,21 +472,22 @@ public class StaticCacheManager implements IOFMessageListener, IFloodlightModule
             OFPort outPort = switchPortList.get(indx).getPortId();
             OFPort inPort = switchPortList.get(indx - 1).getPortId();
 
-            Match match = null;
-            switch (hostOrCache) {
-                case "HOST":
-                    match = strategy.setStrategyMatch_host(inPort, sw);
-                    break;
-                case "CACHE":
-                    match = strategy.setStrategyMatch_cache(inPort, sw);
-                    break;
-            }
+//            Match match = null;
+//            switch (hostOrCache) {
+//                case "HOST":
+//                    match = strategy.setStrategyMatch_host(inPort, sw);
+//                    break;
+//                case "CACHE":
+//                    match = strategy.setStrategyMatch_cache(inPort, sw);
+//                    break;
+//            }
 
 
             if (pinSwitch.equals(switchDPID)) {
                 switch (hostOrCache) {
                     case "HOST":
                         strategy.completeStrategy_host(sw, pi, outPort, setQueue);
+
                         sw.write(strategy.flowAdd_host);
                         log.info("Redirect the packet from " + strategy.nw_dst_ipv4 + " to " + strategy.nw_cache_ipv4);
                         break;
@@ -515,7 +518,18 @@ public class StaticCacheManager implements IOFMessageListener, IFloodlightModule
                     fmb.setFlags(flags);
                 }
 
-                fmb.setMatch(match);
+                Match m = createMatchFromPacket(sw, inPort, pi, cntx);
+                Match.Builder mb = MatchUtils.convertToVersion(m, sw.getOFFactory().getVersion());
+                if (FLOWMOD_DEFAULT_MATCH_IN_PORT) {
+                    mb.setExact(MatchField.IN_PORT, inPort);
+                }
+                fmb.setMatch(mb.build())
+                        .setIdleTimeout(FLOWMOD_DEFAULT_IDLE_TIMEOUT)
+                        .setHardTimeout(FLOWMOD_DEFAULT_HARD_TIMEOUT)
+                        .setBufferId(OFBufferId.NO_BUFFER)
+                        .setCookie(cookie)
+                        .setOutPort(outPort)
+                        .setPriority(FLOWMOD_DEFAULT_PRIORITY);
 
                 FlowModUtils.setActions(fmb, actions, sw);
 
