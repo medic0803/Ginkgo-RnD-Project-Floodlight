@@ -8,7 +8,6 @@ import net.floodlightcontroller.core.types.NodePortTuple;
 import net.floodlightcontroller.linkdiscovery.ILinkDiscoveryService;
 import net.floodlightcontroller.linkdiscovery.Link;
 import net.floodlightcontroller.qos.ResourceMonitor.MonitorDelayService;
-import net.floodlightcontroller.qos.ResourceMonitor.MonitorPkLossService;
 import net.floodlightcontroller.qos.ResourceMonitor.QosResourceMonitor;
 import net.floodlightcontroller.qos.ResourceMonitor.pojo.LinkEntry;
 import net.floodlightcontroller.qos.ResourceMonitor.pojo.SwitchPortCounter;
@@ -30,7 +29,6 @@ public class QosResourceMonitorImpl implements QosResourceMonitor, IFloodlightMo
     private static IStatisticsService bandwidthService;
     private static MonitorDelayService delayService;
     private static ILinkDiscoveryService linkDiscoveryService;
-    private static MonitorPkLossService pkLossService;
 
     private static Map<NodePortTuple,SwitchPortBandwidth> bandwidthMap;
     private static Map<LinkEntry<DatapathId, DatapathId>, Integer> linkDelaySecMap;
@@ -77,60 +75,7 @@ public class QosResourceMonitorImpl implements QosResourceMonitor, IFloodlightMo
         return linkJitterSecMap;
     }
 
-    /**
-     * parket loss services
-     */
-    @Override
-    public void setPkLossCollection(boolean collect) {
-        pkLossService.collectStatistics(collect);
-    }
 
-
-
-    @Override
-    public Map<LinkEntry<DatapathId,DatapathId>,Double> getPkLoss() {
-        if (!pklossMap.isEmpty()){
-            pklossMap.clear();
-        }
-        Set<Link> links = linkDiscoveryService.getLinks().keySet();
-        Map<NodePortTuple, SwitchPortCounter> portStatsMap = new HashMap<>();
-        portStatsMap.putAll(pkLossService.getPortStatsMap());
-        for (Link linkEntry:links) {
-            NodePortTuple headPortTuple = new NodePortTuple(linkEntry.getSrc(), linkEntry.getSrcPort());
-            NodePortTuple tailPortTuple = new NodePortTuple(linkEntry.getDst(), linkEntry.getDstPort());
-            LinkEntry<DatapathId,DatapathId> linkAsKey = new LinkEntry<>(headPortTuple.getNodeId(),tailPortTuple.getNodeId());
-
-//            U64 tx = portStatsMap.get(headPortTuple).getTx();
-//            U64 rx = portStatsMap.get(tailPortTuple).getRx();
-            U64 tx = getBandwidthMap().get(headPortTuple).getBitsPerSecondTx();
-            U64 rx = getBandwidthMap().get(tailPortTuple).getBitsPerSecondRx();
-            pklossMap.put(linkAsKey,countPkloss(tx.getValue(),rx.getValue()));
-
-            System.out.println("------------------------below is tx and rx-----------------------");
-            System.out.println(headPortTuple);
-            System.out.println(tailPortTuple);
-
-            System.out.println(tx.getValue());
-            System.out.println(rx.getValue());
-            System.out.println(countPkloss(tx.getValue(),rx.getValue()));
-            System.out.println("--------------------");
-            System.out.println(bandwidthService.getBandwidthConsumption().get(headPortTuple).getBitsPerSecondTx().getValue());
-            System.out.println(bandwidthService.getBandwidthConsumption().get(tailPortTuple).getBitsPerSecondRx().getValue());
-            System.out.println(countPkloss(bandwidthService.getBandwidthConsumption().get(headPortTuple).getBitsPerSecondTx().getValue(),
-                    bandwidthService.getBandwidthConsumption().get(tailPortTuple).getBitsPerSecondRx().getValue()));
-            System.out.println("------------------------------get pkloss end-----------------------------------------");
-            System.out.println();
-        }
-        return pklossMap;
-    }
-    private double countPkloss(long send, long receive){
-        //kwmtodo: if send ==0
-        System.out.println("==========computing========");
-        System.out.println(receive);
-        System.out.println(send);
-        System.out.println("==========compute out========");
-        return 1-(receive*1.0)/send;
-    }
 
 
     /**
@@ -176,7 +121,6 @@ public class QosResourceMonitorImpl implements QosResourceMonitor, IFloodlightMo
         Collection<Class<? extends IFloodlightService>> l = new ArrayList<Class<? extends IFloodlightService>>();
         l.add(IStatisticsService.class);
         l.add(MonitorDelayService.class);
-        l.add(MonitorPkLossService.class);
         l.add(ILinkDiscoveryService.class);
         return l;
     }
@@ -195,7 +139,6 @@ public class QosResourceMonitorImpl implements QosResourceMonitor, IFloodlightMo
     public void init(FloodlightModuleContext context) throws FloodlightModuleException {
         bandwidthService = context.getServiceImpl(IStatisticsService.class);
         delayService = context.getServiceImpl(MonitorDelayService.class);
-        pkLossService = context.getServiceImpl(MonitorPkLossService.class);
         linkDiscoveryService = context.getServiceImpl(ILinkDiscoveryService.class);
 
         pklossMap = new HashMap<>();
@@ -218,7 +161,6 @@ public class QosResourceMonitorImpl implements QosResourceMonitor, IFloodlightMo
     public void startUp(FloodlightModuleContext context) throws FloodlightModuleException {
         System.out.println("----------------QosResourceMonitor actived-------------------");
         this.setBandwidthCollection(true);
-        this.setPkLossCollection(true);
         //kwmtodo: test the out put
         new Thread(() -> {
             for (int i = 0; i < 100; i++) {
