@@ -459,15 +459,6 @@ public class StaticCacheManager implements IOFMessageListener, IFloodlightModule
             DatapathId switchDPID = switchPortList.get(indx).getNodeId();
             IOFSwitch sw = switchService.getSwitch(switchDPID);
 
-            Match match = null;
-            switch (hostOrCache) {
-                case "HOST":
-                    match = strategy.match_host;
-                    break;
-                case "CACHE":
-                    match = strategy.match_cache;
-                    break;
-            }
             // set input and output ports on the switch
             OFPort outPort = switchPortList.get(indx).getPortId();
             OFPort inPort = switchPortList.get(indx - 1).getPortId();
@@ -500,6 +491,7 @@ public class StaticCacheManager implements IOFMessageListener, IFloodlightModule
                 OFActionOutput.Builder aob = sw.getOFFactory().actions().buildOutput();
                 List<OFAction> actions = new ArrayList<>();
 
+                Match match = createMatchFromPacket(sw, inPort, pi, cntx);
                 Match.Builder mb = MatchUtils.convertToVersion(match, sw.getOFFactory().getVersion());
 
 
