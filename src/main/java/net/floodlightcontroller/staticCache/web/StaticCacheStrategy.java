@@ -160,32 +160,6 @@ public class StaticCacheStrategy {
                 .build();
     }
 
-    public Match setStrategyMatch_host (OFPort inPort, IOFSwitch sw){
-        match_host = sw.getOFFactory().buildMatch()
-                .setExact(MatchField.IN_PORT, inPort)
-                .setExact(MatchField.ETH_TYPE, EthType.IPv4)
-                .setExact(MatchField.IPV4_SRC, this.nw_src_ipv4)
-                .setExact(MatchField.IP_PROTO, IpProtocol.TCP)
-                .setExact(MatchField.IPV4_DST, this.nw_dst_ipv4)
-                .setExact(MatchField.TCP_SRC, this.tp_src)
-                .setExact(MatchField.TCP_DST, this.tp_dst)
-                .build();
-
-        return match_host;
-    }
-    public Match setStrategyMatch_cache(OFPort inPort, IOFSwitch sw){
-        match_cache = sw.getOFFactory().buildMatch()
-                .setExact(MatchField.IN_PORT, inPort)
-                .setExact(MatchField.ETH_TYPE, EthType.IPv4)
-                .setExact(MatchField.IPV4_SRC, this.nw_cache_ipv4)
-                .setExact(MatchField.IP_PROTO, IpProtocol.TCP)
-                .setExact(MatchField.IPV4_DST, this.nw_src_ipv4)
-                .setExact(MatchField.TCP_SRC, this.tp_dst)
-                .setExact(MatchField.TCP_DST, this.tp_src)
-                .build();
-
-        return match_cache;
-    }
     /**
      * This method should be processed in pushRoute method in StaticCacheManager,
      * which used to compose the instructions and FlowAdd for the pinSwitch of the cache server.
