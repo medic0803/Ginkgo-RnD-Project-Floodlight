@@ -272,7 +272,8 @@ public class StaticCacheManager implements IOFMessageListener, IFloodlightModule
         }
 
         // Matched strategy exists
-        if (matched_strategy != null) {
+        if (matched_strategy != null && !matched_strategy.strategy_active_host) {
+            matched_strategy.strategy_active_host = true;
             log.info("match one strategy");
             matched_strategy.tp_src = TransportPort.of(tp_src);
             matched_strategy.src_inPort = OFMessageUtils.getInPort(pi);
@@ -286,7 +287,9 @@ public class StaticCacheManager implements IOFMessageListener, IFloodlightModule
             U64 flowSetId = flowSetIdRegistry.generateFlowSetId();
             U64 cookie = makeForwardingCookie(RoutingDecision.rtStore.get(cntx, IRoutingDecision.CONTEXT_DECISION), flowSetId);
             pushRoute(path_forward, pi, matched_strategy, matched_strategy.src_dpid, cookie, cntx, false, "HOST", setQueue);
-
+            matched_strategy.strategy_active_host = false;
+            return Command.STOP;
+        } else if (matched_strategy.strategy_active_host){
             return Command.STOP;
         } else
             return Command.CONTINUE;
@@ -318,7 +321,8 @@ public class StaticCacheManager implements IOFMessageListener, IFloodlightModule
         }
 
         // Matched strategy exists
-        if (matched_strategy != null) {
+        if (matched_strategy != null && !matched_strategy.strategy_active_cache) {
+            matched_strategy.strategy_active_cache = true;
             log.info("match one strategy");
 
             OFActionSetQueue setQueue = getQueueAction(srcAddress, eth, sw);
@@ -330,7 +334,9 @@ public class StaticCacheManager implements IOFMessageListener, IFloodlightModule
             U64 cookie = makeForwardingCookie(RoutingDecision.rtStore.get(cntx, IRoutingDecision.CONTEXT_DECISION), flowSetId);
 
             pushRoute(path_inverse, pi, matched_strategy, matched_strategy.dst_dpid, cookie, cntx, false, "CACHE",setQueue);
-
+            matched_strategy.strategy_active_cache = false;
+            return Command.STOP;
+        } else if (matched_strategy.strategy_active_cache) {
             return Command.STOP;
         } else
             return Command.CONTINUE;

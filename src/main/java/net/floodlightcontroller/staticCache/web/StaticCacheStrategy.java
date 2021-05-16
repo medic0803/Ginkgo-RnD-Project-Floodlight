@@ -40,6 +40,8 @@ public class StaticCacheStrategy {
     public Match match_cache;
     public MacAddress nw_src_dl_dst;
     public MacAddress nw_cache_dl_dst;
+    public Boolean strategy_active_host;
+    public Boolean strategy_active_cache;
     //Constructor
     public StaticCacheStrategy() {
         this.strategyid = this.genID();
@@ -50,6 +52,8 @@ public class StaticCacheStrategy {
         this.tp_src = TransportPort.NONE;
         this.tp_dst = TransportPort.NONE;
         this.priority = 0;
+        this.strategy_active_host = false;
+        this.strategy_active_cache = false;
     }
     //kwm: method to check if is same
     public boolean isSameAs(StaticCacheStrategy scs){
