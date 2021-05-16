@@ -171,7 +171,7 @@ public abstract class ForwardingBase implements IOFMessageListener {
      */
     public boolean pushRoute(Path route, Match match, OFPacketIn pi,
             DatapathId pinSwitch, U64 cookie, FloodlightContext cntx,
-            boolean requestFlowRemovedNotification, OFFlowModCommand flowModCommand, boolean packetOutSent, Long queueID) {
+            boolean requestFlowRemovedNotification, OFFlowModCommand flowModCommand, boolean packetOutSent) {
 
         List<NodePortTuple> switchPortList = route.getPath();
 
@@ -219,10 +219,7 @@ public abstract class ForwardingBase implements IOFMessageListener {
             if (FLOWMOD_DEFAULT_MATCH_IN_PORT) {
                 mb.setExact(MatchField.IN_PORT, inPort);
             }
-            if (queueID >= 0){
-                OFActionSetQueue setQueue = sw.getOFFactory().actions().buildSetQueue().setQueueId(queueID).build();
-                actions.add(setQueue);
-            }
+
             aob.setPort(outPort);
             aob.setMaxLen(Integer.MAX_VALUE);
             actions.add(aob.build());
