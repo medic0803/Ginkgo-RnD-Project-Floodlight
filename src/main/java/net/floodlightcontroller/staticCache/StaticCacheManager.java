@@ -520,6 +520,14 @@ public class StaticCacheManager implements IOFMessageListener, IFloodlightModule
 
                 Match m = createMatchFromPacket(sw, inPort, pi, cntx);
                 Match.Builder mb = MatchUtils.convertToVersion(m, sw.getOFFactory().getVersion());
+                switch (hostOrCache){
+                    case "HOST":
+                        mb.setExact(MatchField.IPV4_DST, strategy.nw_cache_ipv4);
+                        break;
+                    case "CACHE":
+                        mb.setExact(MatchField.IPV4_SRC, strategy.nw_dst_ipv4);
+
+                }
                 if (FLOWMOD_DEFAULT_MATCH_IN_PORT) {
                     mb.setExact(MatchField.IN_PORT, inPort);
                 }
