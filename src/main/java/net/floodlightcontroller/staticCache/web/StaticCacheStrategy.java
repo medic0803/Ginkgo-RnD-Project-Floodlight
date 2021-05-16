@@ -166,7 +166,7 @@ public class StaticCacheStrategy {
                 .setExact(MatchField.ETH_TYPE, EthType.IPv4)
                 .setExact(MatchField.IPV4_SRC, this.nw_src_ipv4)
                 .setExact(MatchField.IP_PROTO, IpProtocol.TCP)
-                .setExact(MatchField.IPV4_DST, this.nw_cache_ipv4)
+                .setExact(MatchField.IPV4_DST, this.nw_dst_ipv4)
                 .setExact(MatchField.TCP_SRC, this.tp_src)
                 .setExact(MatchField.TCP_DST, this.tp_dst)
                 .build();
@@ -177,7 +177,7 @@ public class StaticCacheStrategy {
         match_cache = sw.getOFFactory().buildMatch()
                 .setExact(MatchField.IN_PORT, inPort)
                 .setExact(MatchField.ETH_TYPE, EthType.IPv4)
-                .setExact(MatchField.IPV4_SRC, this.nw_dst_ipv4)
+                .setExact(MatchField.IPV4_SRC, this.nw_cache_ipv4)
                 .setExact(MatchField.IP_PROTO, IpProtocol.TCP)
                 .setExact(MatchField.IPV4_DST, this.nw_src_ipv4)
                 .setExact(MatchField.TCP_SRC, this.tp_dst)
