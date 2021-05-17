@@ -77,7 +77,7 @@ public class Path implements Comparable<Path> {
     }
 
     /**
-     * @param path the path to set
+     *  path the path to set
      */
     public void setPath(List<NodePortTuple> switchPorts) {
         this.switchPorts = switchPorts;
