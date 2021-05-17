@@ -371,6 +371,8 @@ public class StaticCacheManager implements IOFMessageListener, IFloodlightModule
         l.add(IRestApiService.class);
         l.add(IOFSwitchService.class);
         l.add(QosResourceMonitor.class);
+        l.add(IDeviceService.class);
+        l.add(IRoutingService.class);
         return l;
     }
 

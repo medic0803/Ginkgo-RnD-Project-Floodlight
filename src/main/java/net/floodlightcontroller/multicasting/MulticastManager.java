@@ -963,6 +963,11 @@ public class MulticastManager implements IOFMessageListener, IFloodlightModule, 
         l.add(IFloodlightProviderService.class);
         l.add(IRestApiService.class);
         l.add(QosResourceMonitor.class);
+        l.add(IOFSwitchService.class);
+        l.add(IRoutingService.class);
+        l.add(ITopologyService.class);
+        l.add(IThreadPoolService.class);
+        l.add(IRestApiService.class);
         return l;
     }
 
