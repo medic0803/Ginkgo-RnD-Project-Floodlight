@@ -517,20 +517,14 @@ public class StaticCacheManager implements IOFMessageListener, IFloodlightModule
                 }
 
 
-//                fmb.setMatch(mb.build())
-//                        .setIdleTimeout(FLOWMOD_DEFAULT_IDLE_TIMEOUT)
-//                        .setHardTimeout(FLOWMOD_DEFAULT_HARD_TIMEOUT)
-//                        .setBufferId(OFBufferId.NO_BUFFER)
-//                        .setCookie(cookie)
-//                        .setOutPort(outPort)
-//                        .setPriority(FLOWMOD_DEFAULT_PRIORITY);
                 fmb.setMatch(mb.build())
-                        .setIdleTimeout(20000)
-                        .setHardTimeout(20000)
+                        .setIdleTimeout(FLOWMOD_DEFAULT_IDLE_TIMEOUT)
+                        .setHardTimeout(FLOWMOD_DEFAULT_HARD_TIMEOUT)
                         .setBufferId(OFBufferId.NO_BUFFER)
                         .setCookie(cookie)
                         .setOutPort(outPort)
                         .setPriority(FLOWMOD_DEFAULT_PRIORITY);
+
                 FlowModUtils.setActions(fmb, actions, sw);
 
                 /* Configure for particular switch pipeline */
