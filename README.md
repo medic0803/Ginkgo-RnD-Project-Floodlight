@@ -39,11 +39,18 @@ OpenFlow is a open standard managed by Open Networking Foundation. It specifies 
 
 <a id="org355ff40"></a>
 
-### 1. Recommendation way
+### Recommendation way
 
-Clone this project to an IDEA project and let your idea to help you to finish the rest of dirty works
+Recommended to use maven to manage the project. Clone this project to local and open with a Java IDE and let your IDE to help you to finish the rest of dirty works.There are serverl steps:
 
-**\***
+1. Run the maven install if it is your first time open this project with you IDE. This is for install dependency in you local maven repository.
+2. After the maven install SUCESS, you can start and run the Main.java 
+
+Or more straightforwardly, go the file fold [see here](https://github.com/medic0803/Ginkgo-RnD-Project-Floodlight/tree/dev/GinkgoController) in your local and run our SDN controller using command: 
+
+    java -jar floodlight_ginkgo.jar -cf floodlightdefault.properties
+
+Note: in order to run the java, you need jre or jdk in your system environment; -cf means config file using the floodlightdefault.properties in the same fold; You may generate this .jar file using maven package command.
 
 
 <a id="orgc26d3fb"></a>
