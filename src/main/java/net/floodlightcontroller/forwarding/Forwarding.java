@@ -361,6 +361,9 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
         IDevice dstDevice = IDeviceService.fcStore.get(cntx, IDeviceService.CONTEXT_DST_DEVICE);
         IDevice srcDevice = IDeviceService.fcStore.get(cntx, IDeviceService.CONTEXT_SRC_DEVICE);
 
+//        Vector<Long> queues = qoSManagerService.getQueues(sw);
+        Long queueID = 0L;
+        
         if (dstDevice == null) {
             // Try one more time to retrieve dst device
             if (eth.getEtherType() == EthType.IPv4 && eth.getDestinationMACAddress().equals(virtualGatewayMac)) {
@@ -459,6 +462,13 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
                 dstAp.getNodeId(),
                 dstAp.getPortId());
 
+        IPv4Address ip = ((IPv4) eth.getPayload()).getDestinationAddress();
+        if (ip.toString().equals("10.0.0.2")){
+//            queueID = queues.get(0);
+            System.out.println("L3");
+            System.out.println(queueID);
+//            System.out.println(queues.get(0));
+        }
 
         if (!eth.getDestinationMACAddress().equals(virtualGatewayMac)) { // Normal L2 forwarding
             Match m = createMatchFromPacket(sw, srcPort, pi, cntx);
@@ -475,7 +485,7 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
 
                 pushRoute(path, m, pi, sw.getId(), cookie,
                         cntx, requestFlowRemovedNotifn,
-                        OFFlowModCommand.ADD, false);
+                        OFFlowModCommand.ADD, false, queueID);
 
                 /*
                  * Register this flowset with ingress and egress ports for link down
@@ -507,7 +517,7 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
             Path newPath = getNewPath(path);
             pushRoute(newPath, match, pi, sw.getId(), cookie,
                     cntx, requestFlowRemovedNotifn,
-                    OFFlowModCommand.ADD, packetOutSent);
+                    OFFlowModCommand.ADD, packetOutSent, queueID);
 
             /* Register flow sets */
             for (NodePortTuple npt : path.getPath()) {
@@ -630,6 +640,9 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
         IDevice dstDevice = IDeviceService.fcStore.get(cntx, IDeviceService.CONTEXT_DST_DEVICE);
         IDevice srcDevice = IDeviceService.fcStore.get(cntx, IDeviceService.CONTEXT_SRC_DEVICE);
 
+//        Vector<Long> queues = qoSManagerService.getQueues(sw);
+        Long queueID = 0L;
+
         if (dstDevice == null) {
             log.debug("Destination device unknown. Flooding packet");
             doFlood(sw, pi, decision, cntx);
@@ -697,7 +710,42 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
         U64 flowSetId = flowSetIdRegistry.generateFlowSetId();
         U64 cookie = makeForwardingCookie(decision, flowSetId);
 
+        // initilise dscpfiled
+        DSCPField dscpField = DSCPField.Default;
 
+        if (eth.getEtherType() == EthType.IPv4){
+            // translate from two's complement representation
+            byte diffServ = (byte) ((((IPv4) eth.getPayload()).getDiffServ() >> 2) & 0x3f);
+            IPv4Address destinationAddress = ((IPv4) eth.getPayload()).getDestinationAddress();
+
+            if (destinationAddress.toString().equals("192.168.2.2") || destinationAddress.toString().equals("192.168.2.3")){
+                if (isRTP(eth)){
+                    queueID = 0L;
+                }else {
+                    queueID = 2L;
+                }
+            } else {
+                if (isRTP(eth)) {
+                    queueID = 1L;
+                } else {
+                    queueID = 3L;
+                }
+            }
+            // determine the PHB of DSCPField
+            for (DSCPField dscp: DSCPField.values()){
+                if ((byte) dscp.getDSCPField() == diffServ){
+                    dscpField = dscp;
+                }
+            }
+
+            // Non-QoS Flow
+            if (dscpField.equals(DSCPField.Default)){
+                log.info("Receive a Non-Qos Flow with dscpField: " + dscpField);
+            } else{ // QoS Flow
+                log.info("Receive a Qos Flow with dscpField: " + dscpField);
+            }
+
+        }
 
         Path path = routingEngineService.getPath(srcSw,
                 srcPort,
@@ -715,9 +763,10 @@ public class Forwarding extends ForwardingBase implements IFloodlightModule, IOF
                                 dstAp.getPortId()});
                 log.debug("Creating flow rules on the route, match rule: {}", m);
             }
+//zzy
             pushRoute(path, m, pi, sw.getId(), cookie,
                     cntx, requestFlowRemovedNotifn,
-                    OFFlowModCommand.ADD, false);
+                    OFFlowModCommand.ADD, false, queueID);
 
             /*
              * Register this flowset with ingress and egress ports for link down

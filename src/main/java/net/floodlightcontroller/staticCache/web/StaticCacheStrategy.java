@@ -23,6 +23,7 @@ public class StaticCacheStrategy {
     public IPv4Address nw_src_ipv4;
     public IPv4Address nw_dst_ipv4;
     public IPv4Address nw_cache_ipv4;
+    public MacAddress nw_cache_dl_dst;
     public int priority = 0;
 
     // Complements
@@ -42,6 +43,7 @@ public class StaticCacheStrategy {
     public MacAddress nw_cache_dl_dst;
     public Boolean strategy_active_host;
     public Boolean strategy_active_cache;
+
     //Constructor
     public StaticCacheStrategy() {
         this.strategyid = this.genID();
@@ -88,15 +90,15 @@ public class StaticCacheStrategy {
      * @param hostOrCache               Indicate the packet_in is from host or cache to determine which statement would be processed
      * @return If match the strategy ? Current strategy : null
      */
-    public StaticCacheStrategy ifMatch(IPv4Address srcAddress, IPv4Address dstAddress, TransportPort tp_dst, String hostOrCache, MacAddress switchMACAddress) {
+    public StaticCacheStrategy ifMatch(IPv4Address srcAddress, IPv4Address dstAddress, TransportPort tp_dst, String hostOrCache) {
         switch (hostOrCache) {
             case "HOST":
-                if (srcAddress.equals(this.nw_src_ipv4) && dstAddress.equals(this.nw_dst_ipv4) && tp_dst.equals(this.tp_dst) && switchMACAddress.equals(nw_src_dl_dst)) {
+                if (srcAddress.equals(this.nw_src_ipv4) && dstAddress.equals(this.nw_dst_ipv4) && tp_dst.equals(this.tp_dst)) {
                     return this;
                 }
                 break;
             case "CACHE":
-                if (srcAddress.equals(this.nw_cache_ipv4) && dstAddress.equals(this.nw_src_ipv4) && tp_dst.equals(this.tp_src) && switchMACAddress.equals(nw_cache_dl_dst)) {
+                if (srcAddress.equals(this.nw_cache_ipv4) && dstAddress.equals(this.nw_src_ipv4) && tp_dst.equals(this.tp_src)) {
                     return this;
                 }
                 break;
@@ -164,32 +166,6 @@ public class StaticCacheStrategy {
                 .build();
     }
 
-    public Match setStrategyMatch_host (OFPort inPort, IOFSwitch sw){
-        match_host = sw.getOFFactory().buildMatch()
-                .setExact(MatchField.IN_PORT, inPort)
-                .setExact(MatchField.ETH_TYPE, EthType.IPv4)
-                .setExact(MatchField.IPV4_SRC, this.nw_src_ipv4)
-                .setExact(MatchField.IP_PROTO, IpProtocol.TCP)
-                .setExact(MatchField.IPV4_DST, this.nw_cache_ipv4)
-                .setExact(MatchField.TCP_SRC, this.tp_src)
-                .setExact(MatchField.TCP_DST, this.tp_dst)
-                .build();
-
-        return match_host;
-    }
-    public Match setStrategyMatch_cache(OFPort inPort, IOFSwitch sw){
-        match_cache = sw.getOFFactory().buildMatch()
-                .setExact(MatchField.IN_PORT, inPort)
-                .setExact(MatchField.ETH_TYPE, EthType.IPv4)
-                .setExact(MatchField.IPV4_SRC, this.nw_dst_ipv4)
-                .setExact(MatchField.IP_PROTO, IpProtocol.TCP)
-                .setExact(MatchField.IPV4_DST, this.nw_src_ipv4)
-                .setExact(MatchField.TCP_SRC, this.tp_dst)
-                .setExact(MatchField.TCP_DST, this.tp_src)
-                .build();
-
-        return match_cache;
-    }
     /**
      * This method should be processed in pushRoute method in StaticCacheManager,
      * which used to compose the instructions and FlowAdd for the pinSwitch of the cache server.

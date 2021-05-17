@@ -33,10 +33,5 @@ public interface QosResourceMonitor extends IFloodlightService{
     public Map<LinkEntry<DatapathId,DatapathId>,Integer> getLinkDelay();
     public Map<LinkEntry<DatapathId,DatapathId>,Integer> getLinkJitter();
 
-    /**
-     * MonitorPkLossServices
-     * shape the method of the StatisticsCollector used in bandwith to collect Parket loss
-     */
-    public void setPkLossCollection (boolean collect);
-    public Map<LinkEntry<DatapathId,DatapathId>,Double> getPkLoss();
+
 }
