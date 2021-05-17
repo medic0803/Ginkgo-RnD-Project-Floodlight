@@ -1,0 +1,14 @@
+
+s1 ovs-vsctl add-br s1
+
+s1 ovs-vsctl set port eth1 qos=@newqos -- --id=@newqos create qos \type=linux-htb other-config:max-rate=10000000 queues:0=@newqueue -- \--id=@newqueue create queue other-config:min-rate=17500000 \other-config:max-rate=100000000 \other-config:prio=10
+s1 ovs-vsctl set port eth1 qos=@newqos -- --id=@newqos create qos \type=linux-htb other-config:max-rate=10000000 queues:1=@newqueue -- \--id=@newqueue create queue other-config:min-rate=15000000 \other-config:max-rate=100000000 \other-config:prio=10
+s1 ovs-vsctl set port eth1 qos=@newqos -- --id=@newqos create qos \type=linux-htb other-config:max-rate=10000000 queues:2=@newqueue -- \--id=@newqueue create queue other-config:min-rate=10000000 \other-config:max-rate=100000000 \other-config:prio=10
+s1 ovs-vsctl set port eth1 qos=@newqos -- --id=@newqos create qos \type=linux-htb other-config:max-rate=100000000 queues:3=@newqueue -- \--id=@newqueue create queue other-config:min-rate=7500000 \other-config:max-rate=100000000 \other-config:prio=10
+
+s1 ovs-vsctl set port eth2 qos=@newqos -- --id=@newqos create qos \type=linux-htb other-config:max-rate=10000000 queues:0=@newqueue -- \--id=@newqueue create queue other-config:min-rate=17500000 \other-config:max-rate=100000000 \other-config:prio=10
+s1 ovs-vsctl set port eth2 qos=@newqos -- --id=@newqos create qos \type=linux-htb other-config:max-rate=10000000 queues:1=@newqueue -- \--id=@newqueue create queue other-config:min-rate=15000000 \other-config:max-rate=100000000 \other-config:prio=10
+s1 ovs-vsctl set port eth2 qos=@newqos -- --id=@newqos create qos \type=linux-htb other-config:max-rate=10000000 queues:2=@newqueue -- \--id=@newqueue create queue other-config:min-rate=10000000 \other-config:max-rate=100000000 \other-config:prio=10
+s1 ovs-vsctl set port eth2 qos=@newqos -- --id=@newqos create qos \type=linux-htb other-config:max-rate=100000000 queues:3=@newqueue -- \--id=@newqueue create queue other-config:min-rate=7500000 \other-config:max-rate=100000000 \other-config:prio=10
+
+
