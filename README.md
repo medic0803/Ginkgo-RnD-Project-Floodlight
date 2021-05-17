@@ -1,40 +1,43 @@
 
 # Table of Contents
 
-1.  [Ginkgo Floodlight OpenFlow Controller](#orgbedf451)
-    1.  [What is this Project?](#orgb64190f)
-    2.  [What is OpenFlow?](#org0ede526)
-    3.  [Getting Started](#org85ea5ee)
-        1.  [1. Recommendation way](#org6f95b1d)
-    4.  [Future works](#orgb020581)
-    5.  [Authors](#org7fc448c)
+1.  [Ginkgo Floodlight OpenFlow Controller](#org5a81ced)
+    1.  [What is this Project?](#org0168fc0)
+    2.  [What is OpenFlow?](#orga3407b1)
+    3.  [Getting Started](#org18c1e97)
+        1.  [1. Recommendation way](#org355ff40)
+    4.  [Functional Modules](#orgc26d3fb)
+        1.  [Real-time video transmission module](#orge960938)
+        2.  [Non-real-time video transmission module](#org1a672e4)
+    5.  [Future works](#orgefddcd7)
+    6.  [Authors](#orgf7dd218)
 
 
-<a id="orgbedf451"></a>
+<a id="org5a81ced"></a>
 
 # Ginkgo Floodlight OpenFlow Controller
 
 
-<a id="orgb64190f"></a>
+<a id="org0168fc0"></a>
 
 ## What is this Project?
 
 This is a research and development project, which is aims to implement an Application of Software Defined Network Technology in Campus Area Level Multimedia Service Guarantee, the controller is developed by team Ginkgo based on Floodlight.
 
 
-<a id="org0ede526"></a>
+<a id="orga3407b1"></a>
 
 ## What is OpenFlow?
 
 OpenFlow is a open standard managed by Open Networking Foundation. It specifies a protocol by which a remote controller can modify the behavior of networking devices through a well-defined “forwarding instruction set”. Floodlight is designed to work with the growing number of switches, routers, virtual switches, and access points that support the OpenFlow standard.
 
 
-<a id="org85ea5ee"></a>
+<a id="org18c1e97"></a>
 
 ## Getting Started
 
 
-<a id="org6f95b1d"></a>
+<a id="org355ff40"></a>
 
 ### 1. Recommendation way
 
@@ -43,7 +46,48 @@ Clone this project to an IDEA project and let your idea to help you to finish th
 **\***
 
 
-<a id="orgb020581"></a>
+<a id="orgc26d3fb"></a>
+
+## Functional Modules
+
+
+<a id="orge960938"></a>
+
+### Real-time video transmission module
+
+1.  Module Dependencies
+
+    1.  MulticastManager
+    2.  ILinkDiscoveryService
+    3.  IFloodlightProviderService
+    4.  IRestApiService
+    5.  QosResourceMonitor
+
+2.  Service Implementation
+
+    1.  IFetchMulticastGroupService
+
+
+<a id="org1a672e4"></a>
+
+### Non-real-time video transmission module
+
+1.  Module & Service Dependencies
+
+    1.  StaticCacheManager
+    2.  IRoutingService
+    3.  IFloodlightProviderService
+    4.  IRestApiService
+    5.  QosResourceMonitor
+    6.  IDeviceService
+    7.  IOFSwitchService
+
+2.  Service Implementation
+
+    1.  IStaticCacheService
+
+
+<a id="orgefddcd7"></a>
 
 ## Future works
 
@@ -61,7 +105,7 @@ We also list some functional features we do not complete:
 8.  Implement the controller to real campus network environment
 
 
-<a id="org7fc448c"></a>
+<a id="orgf7dd218"></a>
 
 ## Authors
 
