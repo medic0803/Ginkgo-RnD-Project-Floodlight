@@ -29,19 +29,18 @@ public class StaticCacheStrategy {
     public TransportPort tp_src;
     public TransportPort tp_dst;
     public OFPort src_inPort;
-    public OFPort dst_inPort;
+    public OFPort cache_inPort;
     public OFPort src_outPort;
     public OFPort dst_outPort;
     public DatapathId src_dpid;
-    public DatapathId dst_dpid;
+    public DatapathId cache_dpid;
     public OFFlowAdd flowAdd_host;
     public OFFlowAdd flowAdd_cache;
     public Match match_host;
     public Match match_cache;
     public MacAddress nw_src_dl_dst;
     public MacAddress nw_cache_dl_dst;
-    public Boolean strategy_active_host;
-    public Boolean strategy_active_cache;
+    public MacAddress nw_dst_dl_dst;
 
     //Constructor
     public StaticCacheStrategy() {
@@ -50,11 +49,10 @@ public class StaticCacheStrategy {
         this.nw_dst_ipv4 = IPv4Address.NONE;
         this.nw_cache_ipv4 = IPv4Address.NONE;
         this.nw_cache_dl_dst = MacAddress.NONE;
+        this.nw_dst_dl_dst = MacAddress.NONE;
         this.tp_src = TransportPort.NONE;
         this.tp_dst = TransportPort.NONE;
         this.priority = 0;
-        this.strategy_active_host = false;
-        this.strategy_active_cache = false;
     }
     //kwm: method to check if is same
     public boolean isSameAs(StaticCacheStrategy scs){
@@ -89,15 +87,15 @@ public class StaticCacheStrategy {
      * @param hostOrCache               Indicate the packet_in is from host or cache to determine which statement would be processed
      * @return If match the strategy ? Current strategy : null
      */
-    public StaticCacheStrategy ifMatch(IPv4Address srcAddress, IPv4Address dstAddress, TransportPort tp_dst, String hostOrCache, MacAddress macAddress) {
+    public StaticCacheStrategy ifMatch(IPv4Address srcAddress, IPv4Address dstAddress, TransportPort tp_dst, String hostOrCache, MacAddress macAddress, DatapathId dpid) {
         switch (hostOrCache) {
             case "HOST":
-                if (srcAddress.equals(this.nw_src_ipv4) && dstAddress.equals(this.nw_dst_ipv4) && tp_dst.equals(this.tp_dst) && macAddress.equals(this.nw_src_dl_dst)) {
+                if (srcAddress.equals(this.nw_src_ipv4) && dstAddress.equals(this.nw_dst_ipv4) && tp_dst.equals(this.tp_dst) && macAddress.equals(this.nw_src_dl_dst) && dpid.equals(this.src_dpid)) {
                     return this;
                 }
                 break;
             case "CACHE":
-                if (srcAddress.equals(this.nw_cache_ipv4) && dstAddress.equals(this.nw_src_ipv4) && tp_dst.equals(this.tp_src) && macAddress.equals(this.nw_cache_dl_dst)) {
+                if (srcAddress.equals(this.nw_cache_ipv4) && dstAddress.equals(this.nw_src_ipv4) && tp_dst.equals(this.tp_src) && macAddress.equals(this.nw_cache_dl_dst) && dpid.equals(this.cache_dpid)) {
                     return this;
                 }
                 break;
@@ -114,7 +112,7 @@ public class StaticCacheStrategy {
      * @param src_outPort                   Source(Host)'s out OFPort on it's attachment point switch
      * @param setQueue                      OFActionSetQueue object is added to openflow action list to be written into flow table item
      */
-    public void completeStrategy_host(IOFSwitch sw, OFPacketIn pi, OFPort src_outPort, OFActionSetQueue setQueue) {
+    public void completeStrategy_host(IOFSwitch sw, OFPacketIn pi, OFPort src_outPort, OFPort inPort, OFActionSetQueue setQueue) {
         this.src_outPort = src_outPort;
 
         OFActionSetField host_setEthDst = sw.getOFFactory().actions().buildSetField()
@@ -144,7 +142,7 @@ public class StaticCacheStrategy {
         List<OFInstruction> instructions = new ArrayList<>();
         instructions.add(host_instruction);
         match_host = sw.getOFFactory().buildMatch()
-                .setExact(MatchField.IN_PORT, this.src_inPort)
+                .setExact(MatchField.IN_PORT, inPort)
                 .setExact(MatchField.ETH_TYPE, EthType.IPv4)
                 .setExact(MatchField.IPV4_SRC, this.nw_src_ipv4)
                 .setExact(MatchField.IP_PROTO, IpProtocol.TCP)
@@ -172,16 +170,17 @@ public class StaticCacheStrategy {
      * modify the destination IPv4Address, modify the destination MACAddress which are used to implement Reverse Proxy
      * set outPort to guide the flow
      * @param dst_outPort                   Destination(Cache server)'s out OFPort on it's attachment point switch
+     * @param cache_inPort                  Cache OF_InPort
      * @param setQueue                      OFActionSetQueue object is added to openflow action list to be written into flow table item
      *
      */
-    public void completeStrategy_cache(IOFSwitch sw, OFPacketIn pi, OFPort dst_outPort, OFActionSetQueue setQueue) {
+    public void completeStrategy_cache(IOFSwitch sw, OFPacketIn pi, OFPort dst_outPort, OFPort cache_inPort, OFActionSetQueue setQueue) {
         this.dst_outPort = dst_outPort;
 
         OFActionSetField cache_setEthSrc = sw.getOFFactory().actions().buildSetField()
                 .setField(
                         sw.getOFFactory().oxms().buildEthSrc()
-                                .setValue(nw_cache_dl_dst)
+                                .setValue(this.nw_dst_dl_dst)
                                 .build()
                 )
                 .build();
@@ -206,7 +205,7 @@ public class StaticCacheStrategy {
         instructions_cache.add(instruction_cache);
 
         match_cache = sw.getOFFactory().buildMatch()
-                .setExact(MatchField.IN_PORT, dst_inPort)
+                .setExact(MatchField.IN_PORT, cache_inPort)
                 .setExact(MatchField.ETH_TYPE, EthType.IPv4)
                 .setExact(MatchField.IPV4_SRC, this.nw_cache_ipv4)
                 .setExact(MatchField.IP_PROTO, IpProtocol.TCP)

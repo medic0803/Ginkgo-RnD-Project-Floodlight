@@ -259,7 +259,7 @@ public class StaticCacheManager implements IOFMessageListener, IFloodlightModule
     private Command process_http_from_host(IPv4Address srcAddress, IPv4Address dstAddress, int tp_src, int tp_dst, IOFSwitch sw, OFPacketIn pi, FloodlightContext cntx, Ethernet eth) {
         StaticCacheStrategy matched_strategy = null;
         for (StaticCacheStrategy strategy : strategies) {
-            StaticCacheStrategy temp_strategy = strategy.ifMatch(srcAddress, dstAddress, TransportPort.of(tp_dst), "HOST", eth.getSourceMACAddress());
+            StaticCacheStrategy temp_strategy = strategy.ifMatch(srcAddress, dstAddress, TransportPort.of(tp_dst), "HOST", eth.getSourceMACAddress(), sw.getId());
             if (temp_strategy != null) {
                 if (matched_strategy == null) {
                     matched_strategy = temp_strategy;
@@ -272,8 +272,7 @@ public class StaticCacheManager implements IOFMessageListener, IFloodlightModule
         }
 
         // Matched strategy exists
-        if (matched_strategy != null && !matched_strategy.strategy_active_host) {
-            matched_strategy.strategy_active_host = true;
+        if (matched_strategy != null) {
             log.info("match one strategy");
             matched_strategy.tp_src = TransportPort.of(tp_src);
             matched_strategy.src_dpid = sw.getId();
@@ -283,14 +282,11 @@ public class StaticCacheManager implements IOFMessageListener, IFloodlightModule
             Map<LinkEntry<DatapathId, DatapathId>, Integer> linkDelay = qosResourceMonitor.getLinkDelay();
             Map<LinkEntry<DatapathId, DatapathId>, Integer> linkJitter = qosResourceMonitor.getLinkJitter();
 
-            Path path_forward = routingEngineService.getPath(matched_strategy.src_dpid, matched_strategy.src_inPort, matched_strategy.dst_dpid, matched_strategy.dst_inPort, linkJitter, linkDelay, setQueue.getQueueId());
+            Path path_forward = routingEngineService.getPath(matched_strategy.src_dpid, matched_strategy.src_inPort, matched_strategy.cache_dpid, matched_strategy.cache_inPort, linkJitter, linkDelay, setQueue.getQueueId());
 
             U64 flowSetId = flowSetIdRegistry.generateFlowSetId();
             U64 cookie = makeForwardingCookie(RoutingDecision.rtStore.get(cntx, IRoutingDecision.CONTEXT_DECISION), flowSetId);
             pushRoute(path_forward, pi, matched_strategy, matched_strategy.src_dpid, cookie, cntx, false, "HOST", setQueue);
-            matched_strategy.strategy_active_host = false;
-            return Command.STOP;
-        } else if (matched_strategy.strategy_active_host){
             return Command.STOP;
         } else
             return Command.CONTINUE;
@@ -309,7 +305,7 @@ public class StaticCacheManager implements IOFMessageListener, IFloodlightModule
 
         StaticCacheStrategy matched_strategy = null;
         for (StaticCacheStrategy strategy : strategies) {
-            StaticCacheStrategy temp_strategy = strategy.ifMatch(srcAddress, dstAddress, TransportPort.of(tp_dst), "CACHE", eth.getSourceMACAddress());
+            StaticCacheStrategy temp_strategy = strategy.ifMatch(srcAddress, dstAddress, TransportPort.of(tp_dst), "CACHE", eth.getSourceMACAddress(), sw.getId());
             if (temp_strategy != null) {
                 if (matched_strategy == null) {
                     matched_strategy = temp_strategy;
@@ -322,22 +318,18 @@ public class StaticCacheManager implements IOFMessageListener, IFloodlightModule
         }
 
         // Matched strategy exists
-        if (matched_strategy != null && !matched_strategy.strategy_active_cache) {
-            matched_strategy.strategy_active_cache = true;
+        if (matched_strategy != null){
             log.info("match one strategy");
 
             OFActionSetQueue setQueue = getQueueAction(srcAddress, eth, sw);
             Map<LinkEntry<DatapathId, DatapathId>, Integer> linkDelay = qosResourceMonitor.getLinkDelay();
             Map<LinkEntry<DatapathId, DatapathId>, Integer> linkJitter = qosResourceMonitor.getLinkJitter();
-            Path path_inverse = routingEngineService.getPath(matched_strategy.dst_dpid, matched_strategy.dst_inPort, matched_strategy.src_dpid, matched_strategy.src_inPort, linkJitter, linkDelay, setQueue.getQueueId());
+            Path path_inverse = routingEngineService.getPath(matched_strategy.cache_dpid, matched_strategy.cache_inPort, matched_strategy.src_dpid, matched_strategy.src_inPort, linkJitter, linkDelay, setQueue.getQueueId());
 
             U64 flowSetId = flowSetIdRegistry.generateFlowSetId();
             U64 cookie = makeForwardingCookie(RoutingDecision.rtStore.get(cntx, IRoutingDecision.CONTEXT_DECISION), flowSetId);
 
-            pushRoute(path_inverse, pi, matched_strategy, matched_strategy.dst_dpid, cookie, cntx, false, "CACHE",setQueue);
-            matched_strategy.strategy_active_cache = false;
-            return Command.STOP;
-        } else if (matched_strategy.strategy_active_cache) {
+            pushRoute(path_inverse, pi, matched_strategy, matched_strategy.cache_dpid, cookie, cntx, false, "CACHE",setQueue);
             return Command.STOP;
         } else
             return Command.CONTINUE;
@@ -415,11 +407,13 @@ public class StaticCacheManager implements IOFMessageListener, IFloodlightModule
             for (IPv4Address ipv4Address : device.getIPv4Addresses()) {
                 if (ipv4Address.equals(strategy.nw_cache_ipv4)) {
                     strategy.nw_cache_dl_dst = device.getMACAddress();
-                    strategy.dst_inPort = device.getAttachmentPoints()[0].getPortId();
-                    strategy.dst_dpid = device.getAttachmentPoints()[0].getNodeId();
+                    strategy.cache_inPort = device.getAttachmentPoints()[0].getPortId();
+                    strategy.cache_dpid = device.getAttachmentPoints()[0].getNodeId();
                 } else if (ipv4Address.equals(strategy.nw_src_ipv4)) {
                     strategy.nw_src_dl_dst = device.getMACAddress();
                     strategy.src_dpid = device.getAttachmentPoints()[0].getNodeId();
+                } else if (ipv4Address.equals(strategy.nw_dst_ipv4)){
+                    strategy.nw_dst_dl_dst = device.getMACAddress();
                 }
             }
         }
@@ -480,12 +474,12 @@ public class StaticCacheManager implements IOFMessageListener, IFloodlightModule
             if (pinSwitch.equals(switchDPID)) {
                 switch (hostOrCache) {
                     case "HOST":
-                        strategy.completeStrategy_host(sw, pi, outPort, setQueue);
+                        strategy.completeStrategy_host(sw, pi, outPort, inPort, setQueue);
                         sw.write(strategy.flowAdd_host);
                         log.info("Redirect the packet from " + strategy.nw_dst_ipv4 + " to " + strategy.nw_cache_ipv4);
                         break;
                     case "CACHE":
-                        strategy.completeStrategy_cache(sw, pi, outPort, setQueue);
+                        strategy.completeStrategy_cache(sw, pi, outPort, inPort, setQueue);
                         sw.write(strategy.flowAdd_cache);
                         log.info("Inverse proxy the packet from " + strategy.nw_dst_ipv4 + " to " + strategy.nw_cache_ipv4);
                         break;
@@ -501,7 +495,6 @@ public class StaticCacheManager implements IOFMessageListener, IFloodlightModule
                 List<OFAction> actions = new ArrayList<>();
 
 
-                // wrf: 更换match，修改destionation
                 Match match = null;
                 switch (hostOrCache){
                     case "HOST":
