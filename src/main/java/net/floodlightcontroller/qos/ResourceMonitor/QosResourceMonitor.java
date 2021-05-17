@@ -3,10 +3,8 @@ package net.floodlightcontroller.qos.ResourceMonitor;
 import net.floodlightcontroller.core.module.IFloodlightService;
 import net.floodlightcontroller.core.types.NodePortTuple;
 import net.floodlightcontroller.qos.ResourceMonitor.pojo.LinkEntry;
-import net.floodlightcontroller.qos.ResourceMonitor.pojo.SwitchPortCounter;
 import net.floodlightcontroller.statistics.SwitchPortBandwidth;
 import org.projectfloodlight.openflow.types.DatapathId;
-import org.projectfloodlight.openflow.types.OFPort;
 
 import java.util.Map;
 
@@ -28,10 +26,8 @@ public interface QosResourceMonitor extends IFloodlightService{
     /**
      * MonitorDelayServices
      * use the service of Floodlight get links, and return the delay using class Link and LinkInfo of Floodlight
-     * @return key-value ==> Link-delay （ms）
+     * @return key-value ==> Link-delay(ms)
      */
     public Map<LinkEntry<DatapathId,DatapathId>,Integer> getLinkDelay();
     public Map<LinkEntry<DatapathId,DatapathId>,Integer> getLinkJitter();
-
-
 }

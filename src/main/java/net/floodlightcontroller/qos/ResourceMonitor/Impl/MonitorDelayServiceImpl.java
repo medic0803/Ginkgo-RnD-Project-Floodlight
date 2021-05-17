@@ -22,7 +22,7 @@ import java.util.concurrent.TimeUnit;
 
 /**
  * @author Michael Kang
- * @create 2021-01-29 下午 06:03
+ * @create 2021-01-29 PM 06:03
  */
 public class MonitorDelayServiceImpl implements MonitorDelayService, IFloodlightModule{
 
@@ -115,38 +115,7 @@ public class MonitorDelayServiceImpl implements MonitorDelayService, IFloodlight
     public void startUp(FloodlightModuleContext context) throws FloodlightModuleException {
         threadPoolService = context.getServiceImpl(IThreadPoolService.class);
         startJitterCollection();
-        //kwm: caution that the method should be the call when there exits the actual links;
-//kwmtodo: reserve the x test function
-//        while (testFunc() == 0){
-//             Time.sleep(5);
-//        }
-//        System.out.println("=========休息十秒=============");
-//        Time.sleep(10);
-//        int x  = 3;
-//        while (x-- >0){
-//            testFunc();
-//        }
-
     }
-//kwmtodo: 有两种get延迟的方法, 记录实验结果到日志中。
-//    public int testFunc(){
-//        Map<Link, LinkInfo> linkInfo = linkDiscoveryService.getLinks();
-//        if (linkInfo.isEmpty()){
-//            return 0;
-//        }else {
-//            Iterator<Entry<Link, LinkInfo>> iter = linkInfo.entrySet().iterator();
-//            while(iter.hasNext()){
-//                Entry<Link, LinkInfo> node = iter.next();
-//                System.out.println("=======================================");
-//                System.out.println("源交换机:"+node.getKey().getSrc().toString()+",源端口："+node.getKey().getSrcPort());
-//                System.out.println("目的交换机:"+node.getKey().getDst().toString()+",目的端口："+node.getKey().getDstPort());
-//                System.out.println("链路时延:"+node.getKey().getLatency().getValue()+"ms");
-//                System.out.println("当前时延："+node.getValue().getCurrentLatency().getValue()+"ms");
-//                System.out.println("=======================================");
-//            }
-//            return 1;
-//        }
-//    }
 
     @Override
     public Map<LinkEntry<DatapathId, DatapathId>, Integer> getLinkDelay() {
@@ -186,21 +155,21 @@ public class MonitorDelayServiceImpl implements MonitorDelayService, IFloodlight
             if (first_JitterStampMap.isEmpty()){
                 initialLinkJitterMap();
             }else{
-                //获取第二个stamp
+                //the second stamp
                 sceond_JitterStampMap = getLinkDelay();
-                //两个stamp 有效
+                //two stamps is valid
                 if (first_JitterStampMap.size() == sceond_JitterStampMap.size()){
                     if (!linkJitterSecMap.isEmpty()){
                         linkJitterSecMap.clear();
                     }
-                    //计算jitter
+                    //calculate jitter
                     Iterator<LinkEntry<DatapathId, DatapathId>> iterator = first_JitterStampMap.keySet().iterator();
                     while (iterator.hasNext()){
                         LinkEntry<DatapathId, DatapathId> key = iterator.next();
                         linkJitterSecMap.put(key,Math.abs(first_JitterStampMap.get(key) - sceond_JitterStampMap.get(key))/jitterInterval);
                     }
                 }
-                //更新firstStamp
+                //update firstStamp
                 first_JitterStampMap = sceond_JitterStampMap;
             }
         }
