@@ -147,8 +147,8 @@ public class StaticCacheStrategy {
                 .setExact(MatchField.IPV4_SRC, this.nw_src_ipv4)
                 .setExact(MatchField.IP_PROTO, IpProtocol.TCP)
                 .setExact(MatchField.IPV4_DST, this.nw_dst_ipv4)
-                .setExact(MatchField.TCP_SRC, this.tp_src)
-                .setExact(MatchField.TCP_DST, this.tp_dst)
+//                .setExact(MatchField.TCP_SRC, this.tp_src)
+//                .setExact(MatchField.TCP_DST, this.tp_dst)
                 .build();
 
         flowAdd_host = sw.getOFFactory().buildFlowAdd()
@@ -210,8 +210,8 @@ public class StaticCacheStrategy {
                 .setExact(MatchField.IPV4_SRC, this.nw_cache_ipv4)
                 .setExact(MatchField.IP_PROTO, IpProtocol.TCP)
                 .setExact(MatchField.IPV4_DST, this.nw_src_ipv4)
-                .setExact(MatchField.TCP_SRC, this.tp_dst)
-                .setExact(MatchField.TCP_DST, this.tp_src)
+//                .setExact(MatchField.TCP_SRC, this.tp_dst)
+//                .setExact(MatchField.TCP_DST, this.tp_src)
                 .build();
 
         flowAdd_cache = sw.getOFFactory().buildFlowAdd()
@@ -228,27 +228,29 @@ public class StaticCacheStrategy {
 
     }
 
-    public Match getMatch_host(IOFSwitch sw){
+    public Match getMatch_host(IOFSwitch sw, OFPort inPort){
         Match match_host = sw.getOFFactory().buildMatch()
+                .setExact(MatchField.IN_PORT, inPort)
                 .setExact(MatchField.ETH_TYPE, EthType.IPv4)
                 .setExact(MatchField.IPV4_SRC, this.nw_src_ipv4)
                 .setExact(MatchField.IP_PROTO, IpProtocol.TCP)
-                .setExact(MatchField.IPV4_DST, this.nw_cache_ipv4)
-                .setExact(MatchField.TCP_SRC, this.tp_src)
-                .setExact(MatchField.TCP_DST, this.tp_dst)
+                .setExact(MatchField.IPV4_DST, this.nw_dst_ipv4)
+//                .setExact(MatchField.TCP_SRC, this.tp_src)
+//                .setExact(MatchField.TCP_DST, this.tp_dst)
                 .build();
 
         return match_host;
     }
 
-    public Match getMatch_cache(IOFSwitch sw){
+    public Match getMatch_cache(IOFSwitch sw, OFPort inPort){
         Match match_cache = sw.getOFFactory().buildMatch()
+                .setExact(MatchField.IN_PORT, inPort)
                 .setExact(MatchField.ETH_TYPE, EthType.IPv4)
-                .setExact(MatchField.IPV4_SRC, this.nw_dst_ipv4)
+                .setExact(MatchField.IPV4_SRC, this.nw_cache_ipv4)
                 .setExact(MatchField.IP_PROTO, IpProtocol.TCP)
                 .setExact(MatchField.IPV4_DST, this.nw_src_ipv4)
-                .setExact(MatchField.TCP_SRC, this.tp_dst)
-                .setExact(MatchField.TCP_DST, this.tp_src)
+//                .setExact(MatchField.TCP_SRC, this.tp_dst)
+//                .setExact(MatchField.TCP_DST, this.tp_src)
                 .build();;
 
         return match_cache;

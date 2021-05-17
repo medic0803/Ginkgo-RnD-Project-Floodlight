@@ -494,21 +494,16 @@ public class StaticCacheManager implements IOFMessageListener, IFloodlightModule
                 OFActionOutput.Builder aob = sw.getOFFactory().actions().buildOutput();
                 List<OFAction> actions = new ArrayList<>();
 
-
                 Match match = null;
                 switch (hostOrCache){
                     case "HOST":
-                        match = strategy.getMatch_host(sw);
+                        match = strategy.getMatch_host(sw, inPort);
                         break;
                     case "CACHE":
-                        match = strategy.getMatch_cache(sw);
+                        match = strategy.getMatch_cache(sw, inPort);
                 }
                 Match.Builder mb = MatchUtils.convertToVersion(match, sw.getOFFactory().getVersion());
 
-
-                if (FLOWMOD_DEFAULT_MATCH_IN_PORT) {
-                    mb.setExact(MatchField.IN_PORT, inPort);
-                }
 
                 aob.setPort(outPort);
                 aob.setMaxLen(Integer.MAX_VALUE);
@@ -522,25 +517,20 @@ public class StaticCacheManager implements IOFMessageListener, IFloodlightModule
                 }
 
 
-                switch (hostOrCache){
-                    case "HOST":
-                        mb.setExact(MatchField.IPV4_DST, strategy.nw_cache_ipv4);
-                        break;
-                    case "CACHE":
-                        mb.setExact(MatchField.IPV4_SRC, strategy.nw_dst_ipv4);
-
-                }
-                if (FLOWMOD_DEFAULT_MATCH_IN_PORT) {
-                    mb.setExact(MatchField.IN_PORT, inPort);
-                }
+//                fmb.setMatch(mb.build())
+//                        .setIdleTimeout(FLOWMOD_DEFAULT_IDLE_TIMEOUT)
+//                        .setHardTimeout(FLOWMOD_DEFAULT_HARD_TIMEOUT)
+//                        .setBufferId(OFBufferId.NO_BUFFER)
+//                        .setCookie(cookie)
+//                        .setOutPort(outPort)
+//                        .setPriority(FLOWMOD_DEFAULT_PRIORITY);
                 fmb.setMatch(mb.build())
-                        .setIdleTimeout(FLOWMOD_DEFAULT_IDLE_TIMEOUT)
-                        .setHardTimeout(FLOWMOD_DEFAULT_HARD_TIMEOUT)
+                        .setIdleTimeout(20000)
+                        .setHardTimeout(20000)
                         .setBufferId(OFBufferId.NO_BUFFER)
                         .setCookie(cookie)
                         .setOutPort(outPort)
                         .setPriority(FLOWMOD_DEFAULT_PRIORITY);
-
                 FlowModUtils.setActions(fmb, actions, sw);
 
                 /* Configure for particular switch pipeline */
