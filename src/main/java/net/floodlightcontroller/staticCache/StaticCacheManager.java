@@ -259,7 +259,7 @@ public class StaticCacheManager implements IOFMessageListener, IFloodlightModule
     private Command process_http_from_host(IPv4Address srcAddress, IPv4Address dstAddress, int tp_src, int tp_dst, IOFSwitch sw, OFPacketIn pi, FloodlightContext cntx, Ethernet eth) {
         StaticCacheStrategy matched_strategy = null;
         for (StaticCacheStrategy strategy : strategies) {
-            StaticCacheStrategy temp_strategy = strategy.ifMatch(srcAddress, dstAddress, TransportPort.of(tp_dst), "HOST");
+            StaticCacheStrategy temp_strategy = strategy.ifMatch(srcAddress, dstAddress, TransportPort.of(tp_dst), "HOST", eth.getSourceMACAddress());
             if (temp_strategy != null) {
                 if (matched_strategy == null) {
                     matched_strategy = temp_strategy;
@@ -309,7 +309,7 @@ public class StaticCacheManager implements IOFMessageListener, IFloodlightModule
 
         StaticCacheStrategy matched_strategy = null;
         for (StaticCacheStrategy strategy : strategies) {
-            StaticCacheStrategy temp_strategy = strategy.ifMatch(srcAddress, dstAddress, TransportPort.of(tp_dst), "CACHE");
+            StaticCacheStrategy temp_strategy = strategy.ifMatch(srcAddress, dstAddress, TransportPort.of(tp_dst), "CACHE", eth.getSourceMACAddress());
             if (temp_strategy != null) {
                 if (matched_strategy == null) {
                     matched_strategy = temp_strategy;
@@ -412,11 +412,14 @@ public class StaticCacheManager implements IOFMessageListener, IFloodlightModule
 
         Collection<? extends IDevice> devices = deviceService.getAllDevices();
         for (IDevice device : devices) {
-            for (IPv4Address srcAddress : device.getIPv4Addresses()) {
-                if (srcAddress.equals(strategy.nw_cache_ipv4)) {
+            for (IPv4Address ipv4Address : device.getIPv4Addresses()) {
+                if (ipv4Address.equals(strategy.nw_cache_ipv4)) {
                     strategy.nw_cache_dl_dst = device.getMACAddress();
                     strategy.dst_inPort = device.getAttachmentPoints()[0].getPortId();
                     strategy.dst_dpid = device.getAttachmentPoints()[0].getNodeId();
+                } else if (ipv4Address.equals(strategy.nw_src_ipv4)) {
+                    strategy.nw_src_dl_dst = device.getMACAddress();
+                    strategy.src_dpid = device.getAttachmentPoints()[0].getNodeId();
                 }
             }
         }
@@ -497,7 +500,16 @@ public class StaticCacheManager implements IOFMessageListener, IFloodlightModule
                 OFActionOutput.Builder aob = sw.getOFFactory().actions().buildOutput();
                 List<OFAction> actions = new ArrayList<>();
 
-                Match match = createMatchFromPacket(sw, inPort, pi, cntx);
+
+                // wrf: 更换match，修改destionation
+                Match match = null;
+                switch (hostOrCache){
+                    case "HOST":
+                        match = strategy.getMatch_host(sw);
+                        break;
+                    case "CACHE":
+                        match = strategy.getMatch_cache(sw);
+                }
                 Match.Builder mb = MatchUtils.convertToVersion(match, sw.getOFFactory().getVersion());
 
 
@@ -516,8 +528,7 @@ public class StaticCacheManager implements IOFMessageListener, IFloodlightModule
                     fmb.setFlags(flags);
                 }
 
-                Match m = createMatchFromPacket(sw, inPort, pi, cntx);
-                Match.Builder mb = MatchUtils.convertToVersion(m, sw.getOFFactory().getVersion());
+
                 switch (hostOrCache){
                     case "HOST":
                         mb.setExact(MatchField.IPV4_DST, strategy.nw_cache_ipv4);
@@ -800,37 +811,11 @@ public class StaticCacheManager implements IOFMessageListener, IFloodlightModule
 
         if (hostIPAddress.toString().equals("192.168.2.2") || hostIPAddress.toString().equals("192.168.2.3")){
 
-            if (isRTP(eth) || ((IPv4) eth.getPayload()).getDestinationAddress().isMulticast()){
-                queueID = 0L;
-            }else {
-                queueID = 2L;
-            }
+            queueID = 2L;
         } else {
-            if (isRTP(eth)  || ((IPv4) eth.getPayload()).getDestinationAddress().isMulticast()){
-                queueID = 1L;
-            }else {
-                queueID = 3L;
-            }
+            queueID = 3L;
         }
         return sw.getOFFactory().actions().buildSetQueue().setQueueId(queueID).build();
 
-    }
-    /**
-     * Judge this is an RTP
-     * @param eth
-     * @return
-     */
-    private boolean isRTP(Ethernet eth){
-        byte[] ipv4Packet = eth.getPayload().serialize();
-        byte[] rawDstPort = new byte[2];
-        System.arraycopy(ipv4Packet, 22, rawDstPort, 0, 2);
-
-        int dstPort= (int) ( ((rawDstPort[0] & 0xFF)<<8)
-                |(rawDstPort[1] & 0xFF));
-        if (dstPort == 5004){
-            log.info("This is a video stream");
-            return true;
-        }
-        return false;
     }
 }

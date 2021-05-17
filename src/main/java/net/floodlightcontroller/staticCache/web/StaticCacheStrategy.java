@@ -23,7 +23,6 @@ public class StaticCacheStrategy {
     public IPv4Address nw_src_ipv4;
     public IPv4Address nw_dst_ipv4;
     public IPv4Address nw_cache_ipv4;
-    public MacAddress nw_cache_dl_dst;
     public int priority = 0;
 
     // Complements
@@ -90,15 +89,15 @@ public class StaticCacheStrategy {
      * @param hostOrCache               Indicate the packet_in is from host or cache to determine which statement would be processed
      * @return If match the strategy ? Current strategy : null
      */
-    public StaticCacheStrategy ifMatch(IPv4Address srcAddress, IPv4Address dstAddress, TransportPort tp_dst, String hostOrCache) {
+    public StaticCacheStrategy ifMatch(IPv4Address srcAddress, IPv4Address dstAddress, TransportPort tp_dst, String hostOrCache, MacAddress macAddress) {
         switch (hostOrCache) {
             case "HOST":
-                if (srcAddress.equals(this.nw_src_ipv4) && dstAddress.equals(this.nw_dst_ipv4) && tp_dst.equals(this.tp_dst)) {
+                if (srcAddress.equals(this.nw_src_ipv4) && dstAddress.equals(this.nw_dst_ipv4) && tp_dst.equals(this.tp_dst) && macAddress.equals(this.nw_src_dl_dst)) {
                     return this;
                 }
                 break;
             case "CACHE":
-                if (srcAddress.equals(this.nw_cache_ipv4) && dstAddress.equals(this.nw_src_ipv4) && tp_dst.equals(this.tp_src)) {
+                if (srcAddress.equals(this.nw_cache_ipv4) && dstAddress.equals(this.nw_src_ipv4) && tp_dst.equals(this.tp_src) && macAddress.equals(this.nw_cache_dl_dst)) {
                     return this;
                 }
                 break;
@@ -230,6 +229,31 @@ public class StaticCacheStrategy {
 
     }
 
+    public Match getMatch_host(IOFSwitch sw){
+        Match match_host = sw.getOFFactory().buildMatch()
+                .setExact(MatchField.ETH_TYPE, EthType.IPv4)
+                .setExact(MatchField.IPV4_SRC, this.nw_src_ipv4)
+                .setExact(MatchField.IP_PROTO, IpProtocol.TCP)
+                .setExact(MatchField.IPV4_DST, this.nw_cache_ipv4)
+                .setExact(MatchField.TCP_SRC, this.tp_src)
+                .setExact(MatchField.TCP_DST, this.tp_dst)
+                .build();
+
+        return match_host;
+    }
+
+    public Match getMatch_cache(IOFSwitch sw){
+        Match match_cache = sw.getOFFactory().buildMatch()
+                .setExact(MatchField.ETH_TYPE, EthType.IPv4)
+                .setExact(MatchField.IPV4_SRC, this.nw_dst_ipv4)
+                .setExact(MatchField.IP_PROTO, IpProtocol.TCP)
+                .setExact(MatchField.IPV4_DST, this.nw_src_ipv4)
+                .setExact(MatchField.TCP_SRC, this.tp_dst)
+                .setExact(MatchField.TCP_DST, this.tp_src)
+                .build();;
+
+        return match_cache;
+    }
     @Override
     public String toString() {
         return "StaticCacheStrategy{" +
